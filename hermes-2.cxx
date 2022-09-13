@@ -443,7 +443,9 @@ int Hermes::init(bool restarting) {
   relaxation  = optsc["relaxation"]
               .doc("Relaxation method for potential solvers")
               .withDefault<bool>(false);
-  
+
+  OPTION(optsc, lambda_0, 1e3);
+  OPTION(optsc, lambda_2, 1e5);
   OPTION(optsc, parallel_flow, true);
   OPTION(optsc, parallel_flow_p_term, parallel_flow);
   OPTION(optsc, pe_par, true);
