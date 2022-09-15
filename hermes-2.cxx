@@ -1589,54 +1589,54 @@ int Hermes::rhs(BoutReal t) {
         }
 	if (relaxation) {
 	  phi = div_all(phi_1,lambda_2); 
-	}
-        if (split_n0) {
-          ////////////////////////////////////////////
-          // Boussinesq, split
-          // Split into axisymmetric and non-axisymmetric components
-          Field2D Vort2D = DC(Vort); // n=0 component
+	} else{
+	  if (split_n0) {
+	    ////////////////////////////////////////////
+	    // Boussinesq, split
+	    // Split into axisymmetric and non-axisymmetric components
+	    Field2D Vort2D = DC(Vort); // n=0 component
 
-          if (!phi_boundary2d.isAllocated()) {
-            // Make sure that the 2D boundary field is set
-            phi_boundary2d = DC(phi_boundary3d);
-          }
+	    if (!phi_boundary2d.isAllocated()) {
+	      // Make sure that the 2D boundary field is set
+	      phi_boundary2d = DC(phi_boundary3d);
+	    }
           
-          // Set the boundary
-          phi2D.setBoundaryTo(phi_boundary2d);
+	    // Set the boundary
+	    phi2D.setBoundaryTo(phi_boundary2d);
 
-          phi2D = laplacexy->solve(Vort2D, phi2D);
+	    phi2D = laplacexy->solve(Vort2D, phi2D);
 
-          // Solve non-axisymmetric part using X-Z solver
-          if (newXZsolver) {
-            newSolver->setCoefs(1. / SQ(coord->Bxy), 0.0);
-            phi = newSolver->solve(Vort - Vort2D,
-                                   // Second argument is initial guess. Use current phi, and update boundary
-                                   withBoundary(phi + Pi - phi2D, // Value in domain
-                                                phi_boundary3d - phi_boundary2d)); // boundary
-          } else {
-            phiSolver->setCoefC(div_all(1. , mul_all(coord->Bxy, coord->Bxy)));
-            phi = phiSolver->solve((Vort - Vort2D) * SQ(coord->Bxy),
-                                   phi_boundary3d - phi_boundary2d); // Note: non-zero due to Pi variation
-          }
-          phi += phi2D; // Add axisymmetric part
-        } else {
-          ////////////////////////////////////////////
-          // Boussinesq, non-split
-          // Solve all components using X-Z solver
+	    // Solve non-axisymmetric part using X-Z solver
+	    if (newXZsolver) {
+	      newSolver->setCoefs(1. / SQ(coord->Bxy), 0.0);
+	      phi = newSolver->solve(Vort - Vort2D,
+				     // Second argument is initial guess. Use current phi, and update boundary
+				     withBoundary(phi + Pi - phi2D, // Value in domain
+						  phi_boundary3d - phi_boundary2d)); // boundary
+	    } else {
+	      phiSolver->setCoefC(div_all(1. , mul_all(coord->Bxy, coord->Bxy)));
+	      phi = phiSolver->solve((Vort - Vort2D) * SQ(coord->Bxy),
+				     phi_boundary3d - phi_boundary2d); // Note: non-zero due to Pi variation
+	    }
+	    phi += phi2D; // Add axisymmetric part
+	  } else {
+	    ////////////////////////////////////////////
+	    // Boussinesq, non-split
+	    // Solve all components using X-Z solver
 
-          if (newXZsolver) {
-            // Use the new LaplaceXZ solver
-            // newSolver->setCoefs(1./SQ(coord->Bxy), 0.0); // Set when initialised
-            phi = newSolver->solve(Vort, phi + Pi);
-          } else {
-            // Use older Laplacian solver
-            // phiSolver->setCoefC(1./SQ(coord->Bxy)); // Set when initialised
-	    mesh->communicate(phi_boundary3d);
-	    phi = phiSolver->solve(mul_all(Vort , mul_all(coord->Bxy, coord->Bxy)), phi_boundary3d);//_boundary3d);
-	    //phi = phiSolver->solve(Vort, phi);
-          }
+	    if (newXZsolver) {
+	      // Use the new LaplaceXZ solver
+	      // newSolver->setCoefs(1./SQ(coord->Bxy), 0.0); // Set when initialised
+	      phi = newSolver->solve(Vort, phi + Pi);
+	    } else {
+	      // Use older Laplacian solver
+	      // phiSolver->setCoefC(1./SQ(coord->Bxy)); // Set when initialised
+	      mesh->communicate(phi_boundary3d);
+	      phi = phiSolver->solve(mul_all(Vort , mul_all(coord->Bxy, coord->Bxy)), phi_boundary3d);//_boundary3d);
+	      //phi = phiSolver->solve(Vort, phi);
+	    }
+	  }
         }
-        
         // Hot ion term in vorticity
 	mesh->communicate(phi, Pi);
         phi = sub_all(phi,Pi);
