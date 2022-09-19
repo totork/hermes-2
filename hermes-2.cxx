@@ -2753,7 +2753,7 @@ int Hermes::rhs(BoutReal t) {
   }
   
   if (numdiff > 0.0) {
-    BOUT_FOR(i, Ne.getRegion("RGN_ALL")) {
+    BOUT_FOR(i, Ne.getRegion("RGN_NOY")) {
       ddt(Ne)[i] += numdiff*(Ne.ydown()[i.ym()] - 2.*Ne[i] + Ne.yup()[i.yp()]);
     }
   }
@@ -3090,7 +3090,7 @@ int Hermes::rhs(BoutReal t) {
     }
     
     if (numdiff > 0.0) {
-      for(auto &i : NVi.getRegion("RGN_ALL")) {
+      for(auto &i : NVi.getRegion("RGN_NOY")) {
         ddt(NVi)[i] += numdiff*(Vi.ydown()[i.ym()] - 2.*Vi[i] + Vi.yup()[i.yp()]);
       }
       // ddt(NVi) += numdiff * Div_par_diffusion_index(NVi);
