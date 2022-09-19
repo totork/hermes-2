@@ -2611,18 +2611,16 @@ int Hermes::rhs(BoutReal t) {
     //Skew-symmetric form
 
     Field3D gparne = Grad_par(Ne);
-    mesh->communicate(gparne);
-    gparne.applyParallelBoundary("parallel_neumann");
-    gparne.applyBoundary("neumann");
-
     Field3D dparve = Div_parP(Ve);
-    mesh->communicate(dparve);
-    dparve.applyParallelBoundary("parallel_neumann");
+    gparne.applyBoundary("neumann");
     dparve.applyBoundary("neumann");
+    mesh->communicate(gparne,dparve);
+    gparne.applyParallelBoundary("parallel_neumann");
+    dparve.applyParallelBoundary("parallel_neumann");
 
     check_all(gparne);
     check_all(dparve);
-    mesh->communicate(gparne,dparve);
+
     ddt(Ne) -= 0.5 * (Div_par(neve) + mul_all(Ve,gparne) + mul_all(Ne,
     dparve));
     // b -= 0.5 * (Div_par(neve) + mul_all(Ve,gparne) + mul_all(Ne,
