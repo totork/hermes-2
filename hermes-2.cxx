@@ -1317,8 +1317,12 @@ int Hermes::rhs(BoutReal t) {
   mesh->communicate(EvolvingVars);
   Ne.applyParallelBoundary();
   Vort.applyParallelBoundary();
-  Pe.applyParallelBoundary();
-  Pi.applyParallelBoundary();
+  if (evolve_te){
+    Pe.applyParallelBoundary();
+  }
+  if (evolve_ti){
+    Pi.applyParallelBoundary();
+  }
   NVi.applyParallelBoundary();
 
   // Are there any currents? If not, then there is no source
