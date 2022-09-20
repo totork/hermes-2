@@ -1324,6 +1324,9 @@ int Hermes::rhs(BoutReal t) {
     Pi.applyParallelBoundary();
   }
   NVi.applyParallelBoundary();
+  if (relaxation) {
+    phi_1.applyParallelBoundary();
+  }
 
   // Are there any currents? If not, then there is no source
   // for vorticity, phi = 0 and jpar = 0
