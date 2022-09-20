@@ -3620,7 +3620,7 @@ int Hermes::rhs(BoutReal t) {
         //(4. / 9) * Vi * B32 * Grad_par(Pi_ciperp / B32);
         Field3D phiPi = add_all(phi, Pi);
         ddt(Pi) -= (2. / 6) * Pi_ci * fci_curvature(phiPi);//Curlb_B * Grad(phiPi);
-        ddt(Pi) += (2. / 9) * bracket(Pi_ci, phi + Pi, BRACKET_ARAKAWA) * bracket_factor;
+        ddt(Pi) += (2. / 9) * bracket(Pi_ci, phiPi, BRACKET_ARAKAWA) * bracket_factor;
       }
     }
 
