@@ -1642,8 +1642,9 @@ int Hermes::rhs(BoutReal t) {
 	  }
         }
         // Hot ion term in vorticity
-	mesh->communicate(phi, Pi);
-        phi = sub_all(phi,Pi);
+	mesh->communicate(phi);
+	phi.applyParallelBoundary("parallel_neumann");
+        phi = sub_all(phi, Pi);
       } else {
         ////////////////////////////////////////////
         // Non-Boussinesq
@@ -2562,8 +2563,6 @@ int Hermes::rhs(BoutReal t) {
   if (relaxation) {
     TRACE("relaxation");
     Field3D inv_b2 = div_all(1 , mul_all(coord->Bxy , coord->Bxy));
-    mesh->communicate(inv_b2);
-    inv_b2.applyParallelBoundary("parallel_neumann");
     ddt(phi_1) = lambda_0 * lambda_2
                  * ((1 / lambda_2 * FV::Div_a_Laplace_perp(inv_b2, phi_1)
                      + FV::Div_a_Laplace_perp(inv_b2, Pi))
