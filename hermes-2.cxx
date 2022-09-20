@@ -1656,7 +1656,6 @@ int Hermes::rhs(BoutReal t) {
       }
     }
   }
-  mesh->communicate(phi);
 
   //////////////////////////////////////////////////////////////
   // Calculate perturbed magnetic field psi
