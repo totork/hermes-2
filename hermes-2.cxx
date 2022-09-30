@@ -741,6 +741,10 @@ int Hermes::init(bool restarting) {
   if (output_ddt) {
     SAVE_REPEAT(ddt(Ne));
   }
+
+  // Evolving n_i instead of n_e
+  evolve_ni = optsc["evolve_ni"].doc("Evolve ion density instead?")
+    .withDefault<bool>(true);
   
   // Temperature evolution can be turned off
   // so that Pe = Ne and/or Pi = Ne
@@ -2599,31 +2603,36 @@ int Hermes::rhs(BoutReal t) {
     // 	ddt(Ne) -= FV::Div_par(Ne, Ve, sound_speed);
     //   }
     // }else{
+    
     check_all(Ne);
-    // Ne.applyParallelBoundary("parallel_neumann");
-    check_all(Ve);
-    Field3D neve = mul_all(Ne, Ve);
-    // neve.applyParallelBoundary("parallel_neumann");
-    check_all(neve);
-    // ddt(Ne) -= Div_parP(neve);
-    // b -= Div_parP(Ve);
-    // a += Div_parP(Ne);
 
+    if (!evolve_ni) {
+      check_all(Ve);
+      Field3D neve = mul_all(Ne, Ve);
+      check_all(neve);
+      ddt(Ne) -= Div_parP(neve);
+    } else {
+      check_all(Vi);
+      Field3D nevi = mul_all(Ne, Vi);
+      check_all(nevi);
+      ddt(Ne) -= Div_parP(nevi);      
+    }
+    
     //Skew-symmetric form
 
-    Field3D gparne = Grad_par(Ne);
-    Field3D dparve = Div_parP(Ve);
-    gparne.applyBoundary("neumann");
-    dparve.applyBoundary("neumann");
-    mesh->communicate(gparne,dparve);
-    gparne.applyParallelBoundary("parallel_neumann");
-    dparve.applyParallelBoundary("parallel_neumann");
+    // Field3D gparne = Grad_par(Ne);
+    // Field3D dparve = Div_parP(Ve);
+    // gparne.applyBoundary("neumann");
+    // dparve.applyBoundary("neumann");
+    // mesh->communicate(gparne,dparve);
+    // gparne.applyParallelBoundary("parallel_neumann");
+    // dparve.applyParallelBoundary("parallel_neumann");
 
-    check_all(gparne);
-    check_all(dparve);
+    // check_all(gparne);
+    // check_all(dparve);
 
-    ddt(Ne) -= 0.5 * (Div_par(neve) + mul_all(Ve,gparne) + mul_all(Ne,
-    dparve));
+    // ddt(Ne) -= 0.5 * (Div_par(neve) + mul_all(Ve,gparne) + mul_all(Ne,
+    // dparve));
     // b -= 0.5 * (Div_par(neve) + mul_all(Ve,gparne) + mul_all(Ne,
     // dparve));
     // //ddt(Ne) -= 0.5 * (Div_par(neve) + Ve * Grad_par(Ne) + Ne *
@@ -2642,9 +2651,13 @@ int Hermes::rhs(BoutReal t) {
   if (j_diamag) {
     // Diamagnetic drift, formulated as a magnetic drift
     // i.e Grad-B + curvature drift
-    mesh->communicate(Pe);
-    ddt(Ne) -= fci_curvature(Pe);
-    d -= fci_curvature(Pe);
+    if (!evolve_ni) {
+      mesh->communicate(Pe);
+      ddt(Ne) -= fci_curvature(Pe);
+    } else {
+      mesh->communicate(Pi);
+      ddt(Ne) += fci_curvature(Pi);
+    }
   }
 
   if (ramp_mesh && (t < ramp_timescale)) {
