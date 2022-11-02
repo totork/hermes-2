@@ -2250,15 +2250,15 @@ int Hermes::rhs(BoutReal t) {
 	  Pe.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Pe(x, y, z);
 	  Pi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Pi(x, y, z);
 	
-	  // // Dirichlet conditions
-	  Vi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = 2. * visheath - Vi(x, y, z);
+	  // Dirichlet conditions
+	  Vi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = visheath;//2. * visheath - Vi(x, y, z);
 	  if (par_sheath_ve){
-	    Ve.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = 2. * vesheath - Ve(x, y, z);
+	    Ve.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = vesheath;//2. * vesheath - Ve(x, y, z);
 	  }
-	  Jpar.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) =
-	    2. * jsheath - Jpar(x, y, z);
-	  NVi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) =
-	    2. * nesheath * visheath - NVi(x, y, z);
+	  Jpar.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = jsheath;
+	    // 2. * jsheath - Jpar(x, y, z);
+	  NVi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = nesheath * visheath;//
+	    // 1. * nesheath * visheath;// - NVi(x, y, z);
 	}
       }
       break;
