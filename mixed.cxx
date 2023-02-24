@@ -28,11 +28,11 @@ NeutralMixed::NeutralMixed(Solver *solver, Mesh *UNUSED(mesh), Options &options)
   
   // Optionally output time derivatives
   if (options["output_ddt"].doc("Save derivatives to output?").withDefault(false)) {
-    SAVE_REPEAT(ddt(Nn), ddt(Pn), ddt(NVn));
+    // SAVE_REPEAT(ddt(Nn), ddt(Pn), ddt(NVn));
   }
 
   if (options["diagnose"].doc("Save additional diagnostic fields?").withDefault(false)) {
-    SAVE_REPEAT(Dnn);
+    // SAVE_REPEAT(Dnn);
   }
   
   Dnn = 0.0; // Neutral gas diffusion

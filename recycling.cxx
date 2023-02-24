@@ -17,7 +17,7 @@ NeutralRecycling::NeutralRecycling(Solver*, Mesh *mesh, Options &options)
   F = 0;
   Qi = 0;
   Rp = 0;
-  SAVE_REPEAT(Nn0, lambda, lambda_int, Nn);
+  // SAVE_REPEAT(Nn0, lambda, lambda_int, Nn);
 
   GRID_LOAD(hthe);
 }
@@ -157,36 +157,6 @@ Field2D NeutralRecycling::CumSumY2D(const Field2D &f, bool reverse) {
   //    -- reverse is option to sum from the end of Y
   Field2D result = 0.0;
 
-  if (reverse) {
-    for (int i = mesh->xstart; i <= mesh->xend; i++) {
-      // All but last processor receive
-      if (!mesh->lastY()) {
-        mesh->wait(mesh->irecvYOutOutdest(&result(i, mesh->yend + 1), 1,
-                                          mesh->LocalNz * i));
-      }
-      // Calculate sum (reversed)
-      for (int j = mesh->yend; j >= mesh->ystart; j--) {
-        result(i, j) = result(i, j + 1) + f(i, j);
-      }
-      // Send the value at yend to the next processor.
-      mesh->sendYInOutdest(&result(i, mesh->ystart), 1, mesh->LocalNz * i);
-    }
-  } else {
-    for (int i = mesh->xstart; i <= mesh->xend; i++) {
-      // All but first processor receive
-      if (!mesh->firstY()) {
-        mesh->wait(mesh->irecvYInIndest(&result(i, mesh->ystart - 1), 1,
-                                        mesh->LocalNz * i));
-      }
-      // Calculate sum
-      for (int j = mesh->ystart; j <= mesh->yend; j++) {
-        result(i,j) = result(i, j - 1) + f(i, j);
-      }
-      // Send the value at yend to the next processor.
-      mesh->sendYOutIndest(&result(i, mesh->yend), 1, mesh->LocalNz * i);
-    }
-  }
-
   return result;
 }
 
@@ -195,55 +165,12 @@ Field3D NeutralRecycling::CumSumY3D(const Field3D &f, bool reverse) {
   //    -- reverse is option to sum from the end of Y
   Field3D result = 0.0;
 
-  if (reverse) {
-    for (int k = 0; k < mesh->LocalNz; k++) {
-      for (int i = mesh->xstart; i <= mesh->xend; i++) {
-        // All but last processor receive
-        if (!mesh->lastY()) {
-          mesh->wait(mesh->irecvYOutOutdest(&result(i, mesh->yend + 1, k), 1,
-                                            mesh->LocalNx * i + mesh->LocalNz * k));
-        }
-        // Calculate sum (reversed)
-        for (int j = mesh->yend; j >= mesh->ystart; j--) {
-          result(i, j, k) = result(i, j + 1, k) + f(i, j, k);
-        }
-        // Send the value at yend to the next processor.
-        mesh->sendYInOutdest(&result(i, mesh->ystart, k), 1,
-                             mesh->LocalNx * i + mesh->LocalNz * k);
-      }
-    }
-  } else {
-    for (int k = 0; k < mesh->LocalNz; k++) {
-      for (int i = mesh->xstart; i <= mesh->xend; i++) {
-        // All but first processor receive
-        if (!mesh->firstY()) {
-          mesh->wait(mesh->irecvYInIndest(&result(i, mesh->ystart - 1, k), 1,
-                                          mesh->LocalNx * i + mesh->LocalNz * k));
-        }
-        // Calculate sum
-        for (int j = mesh->ystart; j <= mesh->yend; j++) {
-          result(i, j, k) = result(i, j - 1, k) + f(i, j, k);
-        }
-        // Send the value at yend to the next processor.
-        mesh->sendYOutIndest(&result(i, mesh->yend, k), 1,
-                             mesh->LocalNx * i + mesh->LocalNz * k);
-      }
-    }
-  }
-
   return result;
 }
 
 BoutReal NeutralRecycling::bcast_lasty(const BoutReal f) {
   BoutReal myf;
   // All but last processor receive
-  if (!mesh->lastY()) {
-    mesh->wait(mesh->irecvYOutOutdest(&myf, 1, 0));
-  } else {
-    myf = f;
-  }
-  // Send the value at yend to the next processor.
-  mesh->sendYInOutdest(&myf, 1, 0);
 
   return myf;
 }

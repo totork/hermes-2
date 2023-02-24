@@ -22,8 +22,8 @@ public:
     Rp = 0;
     Rn = 0;
 
-    SAVE_REPEAT4(S,F,Qi,Rp);
-    
+    //// SAVE_REPEAT4(S,F,Qi,Rp);
+
     // Options for calculating rates
     OPTION(options, Eionize, 30); // Energy loss per ionisation [eV]
   }

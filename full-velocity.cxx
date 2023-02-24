@@ -37,7 +37,7 @@ FullVelocity::FullVelocity(Solver *solver, Mesh *mesh, Options &options)
   solver->add(Vn2D, "Vn");
 
   DivV2D.setBoundary("Pn"); // Same boundary condition as Pn
-  SAVE_REPEAT(DivV2D);
+  // SAVE_REPEAT(DivV2D);
 
   // Load necessary metrics for non-orth calculation
   Field2D etaxy, cosbeta;
@@ -146,8 +146,8 @@ FullVelocity::FullVelocity(Solver *solver, Mesh *mesh, Options &options)
   Tyr.applyBoundary("neumann");
   Tyz.applyBoundary("neumann");
 
-  SAVE_ONCE(Urx, Ury, Uzx, Uzy);
-  SAVE_ONCE(Txr, Txz, Tyr, Tyz);
+  // SAVE_ONCE(Urx, Ury, Uzx, Uzy);
+  // SAVE_ONCE(Txr, Txz, Tyr, Tyz);
 
   // Atomic processes
   S = 0;

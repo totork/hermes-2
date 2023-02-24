@@ -14,8 +14,8 @@ Diffusion2D::Diffusion2D(Solver *solver, Mesh*, Options &options) : NeutralModel
   solver->add(Pn, "Pn");
   
   Dnn = 0.0; // Neutral gas diffusion
-  
-  SAVE_REPEAT(Dnn);
+
+  // SAVE_REPEAT(Dnn);
 
   Lmax = options["Lmax"].doc("Maximum mean free path [m]").withDefault(1.0);
 }
