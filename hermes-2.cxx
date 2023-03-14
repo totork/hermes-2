@@ -415,6 +415,9 @@ int Hermes::init(bool restarting) {
 
   OPTION(optsc, evolve_plasma, true);
   OPTION(optsc, show_timesteps, false);
+  if (BoutComm::rank()) {
+    show_timesteps = false;
+  }
 
   electromagnetic = optsc["electromagnetic"]
                         .doc("Include vector potential psi in Ohm's law?")
