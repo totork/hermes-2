@@ -3003,8 +3003,9 @@ int Hermes::rhs(BoutReal t) {
     if (FiniteElMass) {
       // Finite Electron Mass. Small correction needed to conserve energy
       Field3D vdiff = sub_all(Ve,Vi);
-      mesh->communicate(vdiff);
-      vdiff.applyParallelBoundary("parallel_neumann");
+      // Comm breaks sheath par BCs!
+      //mesh->communicate(vdiff);
+      //vdiff.applyParallelBoundary(parbc);
       ddt(VePsi) -= Vi * Grad_par(vdiff); // Parallel advection
       ddt(VePsi) -= bracket(phi, vdiff, BRACKET_ARAKAWA)*bracket_factor;  // ExB advection
       // Should also have ion polarisation advection here
