@@ -2875,12 +2875,11 @@ int Hermes::rhs(BoutReal t) {
               floor(0.5 * (Te(x, y, z) +
                            Te.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
                     0.0);
-          BoutReal nesheath = floor(
-				    0.5 * (Ne(x, y, z) + Ne.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
-				    0.0);
-	  BoutReal vesheath = floor(
-				    0.5 * (Ve(x, y, z) + Ve.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
-				    0.0);
+          BoutReal nesheath =
+              floor(0.5 * (Ne(x, y, z) +
+                           Ne.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
+                    0.0);
+          BoutReal vesheath = 0.5 * (Ve(x, y, z) + Ve.ynext(bndry_par->dir)(x, y + bndry_par->dir, z))
 	  // BoutReal tisheath = floor(
 	  // 			      0.5 * (Ti(x, y, z) + Ti.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
 	  // 			      0.0);
@@ -3207,15 +3206,14 @@ int Hermes::rhs(BoutReal t) {
               floor(0.5 * (Ti(x, y, z) +
                            Ti.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
                     0.0);
-          BoutReal tesheath = floor(
-				    0.5 * (Te(x, y, z) + Te.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
-				    0.0);
-	  BoutReal nesheath = floor(
+          BoutReal tesheath =
+              floor(0.5 * (Te(x, y, z) +
+                           Te.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
+                    0.0);
+          BoutReal nesheath = floor(
 				    0.5 * (Ne(x, y, z) + Ne.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
 				    0.0);
-	  BoutReal visheath = floor(
-				    0.5 * (Vi(x, y, z) + Vi.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
-				    0.0);
+	  BoutReal visheath = 0.5 * (Vi(x, y, z) + Vi.ynext(bndry_par->dir)(x, y + bndry_par->dir, z));
 
 	  // BoutReal tesheath = floor(Te(x,y,z),0.);
 	  // BoutReal tisheath = floor(Te(x,y,z),0.);
