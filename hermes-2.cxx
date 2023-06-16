@@ -415,7 +415,7 @@ int Hermes::init(bool restarting) {
 
   OPTION(optsc, evolve_plasma, true);
   OPTION(optsc, show_timesteps, false);
-  if (BoutComm::rank()) {
+  if (BoutComm::rank() != 0) {
     show_timesteps = false;
   }
 
