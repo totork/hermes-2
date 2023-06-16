@@ -41,6 +41,13 @@
 #include "atomicpp/ImpuritySpecies.hxx"
 #include "atomicpp/Prad.hxx"
 
+#define boutisold 0
+#if boutisold
+std::string parbc{"parallel_neumann"};
+#else
+std::string parbc{"parallel_neumann_o1"};
+#endif
+
 namespace FV {
   template<typename CellEdges = MC>
   const Field3D Div_par_fvv(const Field3D &f_in, const Field3D &v_in,
@@ -905,18 +912,18 @@ int Hermes::init(bool restarting) {
 
     // Note: A Neumann condition simplifies boundary conditions on fluxes
     // where the condition e.g. on J should be on flux (J/B)
-    Bxyz.applyParallelBoundary("parallel_neumann");
-    coord->dz.applyParallelBoundary("parallel_neumann");
-    coord->dy.applyParallelBoundary("parallel_neumann");
-    coord->J.applyParallelBoundary("parallel_neumann");
-    coord->g_22.applyParallelBoundary("parallel_neumann");
-    coord->g_23.applyParallelBoundary("parallel_neumann");
-    coord->g23.applyParallelBoundary("parallel_neumann");
-    coord->Bxy.applyParallelBoundary("parallel_neumann");
+    Bxyz.applyParallelBoundary(parbc);
+    coord->dz.applyParallelBoundary(parbc);
+    coord->dy.applyParallelBoundary(parbc);
+    coord->J.applyParallelBoundary(parbc);
+    coord->g_22.applyParallelBoundary(parbc);
+    coord->g_23.applyParallelBoundary(parbc);
+    coord->g23.applyParallelBoundary(parbc);
+    coord->Bxy.applyParallelBoundary(parbc);
     auto logBxy = log(coord->Bxy);
     logBxy.applyBoundary("neumann");
     mesh->communicate(logBxy);
-    logBxy.applyParallelBoundary("parallel_neumann");
+    logBxy.applyParallelBoundary(parbc);
     printf("Setting from log");
     coord->Bxy = exp_all(logBxy);
 
@@ -1653,7 +1660,7 @@ int Hermes::rhs(BoutReal t) {
         }
         // Hot ion term in vorticity
 	mesh->communicate(phi);
-	phi.applyParallelBoundary("parallel_neumann");
+	phi.applyParallelBoundary(parbc);
         phi = sub_all(phi, Pi);
       } else {
         ////////////////////////////////////////////
@@ -1690,22 +1697,22 @@ int Hermes::rhs(BoutReal t) {
 	psi = aparSolver->solve(Field3D(-Ne * VePsi), Field3D(psi));
 	// psi = aparSolver->solve(-Ne*VePsi, psi);
 	mesh->communicate(psi);
-	psi.applyParallelBoundary("parallel_neumann");
+	psi.applyParallelBoundary(parbc);
         
 	// Ve = VePsi - 0.5 * beta_e * mi_me * psi + Vi;
 	Ve = VePsi - 0.5 * beta_e * mi_me * psi + Vi;
 	// Field3D vepsi_betapsi = sub_all(VePsi , 0.5 * beta_e * mi_me * psi);
 	// mesh->communicate(vepsi_betapsi);
-	// vepsi_betapsi.applyParallelBoundary("parallel_neumann");
+	// vepsi_betapsi.applyParallelBoundary(parbc);
         // Ve = add_all(vepsi_betapsi , Vi);
 
         Ve.applyBoundary(t);
         mesh->communicate(Ve, psi);
-        Ve.applyParallelBoundary("parallel_neumann");
+        Ve.applyParallelBoundary(parbc);
 
         Jpar = mul_all(Ne, sub_all(Vi, Ve));
         mesh->communicate(Jpar);
-        Jpar.applyParallelBoundary("parallel_neumann");
+        Jpar.applyParallelBoundary(parbc);
 	// Jpar.applyBoundary();
       } else {
         // Zero electron mass
@@ -2199,9 +2206,15 @@ int Hermes::rhs(BoutReal t) {
     case 0 :{
       for (const auto &bndry_par : mesh->getBoundariesPar()) {
         for (bndry_par->first(); !bndry_par->isDone(); bndry_par->next()) {
+#if boutisold
           int x = bndry_par->x;
           int y = bndry_par->y;
           int z = bndry_par->z;
+#else
+          int x = bndry_par->ind().x();
+          int y = bndry_par->ind().y();
+          int z = bndry_par->ind().z();
+#endif
           if (x < mesh->LocalNx / 2) {
             continue;
           }
@@ -2274,9 +2287,15 @@ int Hermes::rhs(BoutReal t) {
     case 1:{ //insulating boundary
       for (const auto &bndry_par : mesh->getBoundariesPar()) {
         for (bndry_par->first(); !bndry_par->isDone(); bndry_par->next()) {
+#if boutisold
           int x = bndry_par->x;
           int y = bndry_par->y;
           int z = bndry_par->z;
+#else
+          int x = bndry_par->ind().x();
+          int y = bndry_par->ind().y();
+          int z = bndry_par->ind().z();
+#endif
           if (x < mesh->LocalNx / 2) {
             continue;
           }
@@ -2638,8 +2657,8 @@ int Hermes::rhs(BoutReal t) {
     // gparne.applyBoundary("neumann");
     // dparve.applyBoundary("neumann");
     // mesh->communicate(gparne,dparve);
-    // gparne.applyParallelBoundary("parallel_neumann");
-    // dparve.applyParallelBoundary("parallel_neumann");
+    // gparne.applyParallelBoundary(parbc);
+    // dparve.applyParallelBoundary(parbc);
 
     // check_all(gparne);
     // check_all(dparve);
@@ -2802,7 +2821,7 @@ int Hermes::rhs(BoutReal t) {
 
       // This term is central differencing so that it balances the parallel gradient
       // of the potential in Ohm's law
-      // Jpar.applyParallelBoundary("parallel_neumann");
+      // Jpar.applyParallelBoundary(parbc);
       ddt(Vort) += Div_parP(Jpar);
       // a += Div_parP(Jpar);
     }
@@ -3349,9 +3368,15 @@ int Hermes::rhs(BoutReal t) {
 
       for (const auto &bndry_par : mesh->getBoundariesPar()) {
         for (bndry_par->first(); !bndry_par->isDone(); bndry_par->next()) {
+#if boutisold
           int x = bndry_par->x;
           int y = bndry_par->y;
           int z = bndry_par->z;
+#else
+          int x = bndry_par->ind().x();
+          int y = bndry_par->ind().y();
+          int z = bndry_par->ind().z();
+#endif
           if (x < mesh->LocalNx / 2) {
             continue;
           }
@@ -3769,9 +3794,15 @@ int Hermes::rhs(BoutReal t) {
 
       for (const auto &bndry_par : mesh->getBoundariesPar()) {
         for (bndry_par->first(); !bndry_par->isDone(); bndry_par->next()) {
+#if boutisold
           int x = bndry_par->x;
           int y = bndry_par->y;
           int z = bndry_par->z;
+#else
+          int x = bndry_par->ind().x();
+          int y = bndry_par->ind().y();
+          int z = bndry_par->ind().z();
+#endif
           if (x < mesh->LocalNx / 2) {
             continue;
           }
@@ -4034,7 +4065,7 @@ int Hermes::rhs(BoutReal t) {
         if (fci_transform) {
           Field3D tmp = neutrals->Fperp / (Ne * SQ(coord->Bxy));
           mesh->communicate(tmp);
-          tmp.applyParallelBoundary("parallel_neumann");
+          tmp.applyParallelBoundary(parbc);
           ddt(Vort) -= FV::Div_a_Laplace_perp(tmp, phi);
         } else {
           ddt(Vort) -= FV::Div_a_Laplace_perp(
