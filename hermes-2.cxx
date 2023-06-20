@@ -1974,6 +1974,8 @@ int Hermes::rhs(BoutReal t) {
 	      2. * jsheath - Jpar(x, y, z);
 	    NVi.ydown()(x, y+bndry_par->dir, z) =
 	      2. * nesheath * visheath - NVi(x, y, z);
+	  } else {
+	    throw BoutException("Unexpected value {:d} for bndry_par->dir", bndry_par->dir);
 	  }
         }
       }
