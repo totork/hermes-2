@@ -2709,7 +2709,7 @@ int Hermes::rhs(BoutReal t) {
     //  Skew-symmetric form
     // ddt(NVi) -= 0.5 * (Div_par(mul_all(NVi, Vi)) + Vi * Grad_par(NVi) + NVi *
     // Div_par(Vi));
-    ddt(NVi) -= Div_parP_n(Ne, Vi, sound_speed);
+    ddt(NVi) -= Div_parP_n(Ne, Vi, sound_speed, fwd_bndry_mask, bwd_bndry_mask);
 
     // Ignoring polarisation drift for now
     if (pe_par) {
