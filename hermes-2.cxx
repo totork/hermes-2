@@ -933,6 +933,19 @@ int Hermes::init(bool restarting) {
     coord->Bxy = exp_all(logBxy);
     coord->g_22 = exp_all(logg22);
 
+    fwd_bndry_mask = BoutMask(mesh, false);
+    bwd_bndry_mask = BoutMask(mesh, false);
+    for (const auto &bndry_par : mesh->getBoundariesPar(BoundaryParType::fwd)) {
+      for (bndry_par->first(); !bndry_par->isDone(); bndry_par->next()) {
+	fwd_bndry_mask[bndry_par->ind()] = true;
+      }
+    }
+    for (const auto &bndry_par : mesh->getBoundariesPar(BoundaryParType::bwd)) {
+      for (bndry_par->first(); bndry_par->isDone(); bndry_par->next()) {
+	bwd_bndry_mask[bndry_par->ind()] = true;
+      }
+    }
+
     bout::checkPositive(coord->Bxy, "f", "RGN_NOCORNERS");
     // bout::checkPositive(coord->Bxy.yup(), "fyup", "RGN_YPAR_+1");
     // bout::checkPositive(coord->Bxy.ydown(), "fdown", "RGN_YPAR_-1");

@@ -30,6 +30,7 @@ class Hermes;
 #include <bout/invert/laplacexy.hxx>
 #include <bout/invert/laplacexz.hxx>
 #include <bout/constants.hxx>
+#include <mask.hxx>
 
 #include "neutral-model.hxx"
 
@@ -293,6 +294,7 @@ private:
   Field3D Bxyz, logB;
   Field3D bracket_factor;
   Field3D fci_curvature(const Field3D &f);
+  BoutMask fwd_bndry_mask, bwd_bndry_mask;
 };
 
 /// Fundamental constants
