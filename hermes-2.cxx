@@ -3839,9 +3839,9 @@ Field3D Hermes::Div_parP_n(const Field3D &n, const Field3D &v,
     const BoutReal amaxm = std::max({abs(v[i]), abs(v.ydown()[im]),
                                      sound_speed[i], sound_speed.ydown()[im]});
     BoutReal Gnvp = 0.5 * (niR * SQ(viR) + npL * SQ(vpL)) +
-                          0.5 * amaxp * (niR * viR - npL * vpL);
+                    0.5 * amaxp * (niR * viR - npL * vpL);
     BoutReal Gnvm = 0.5 * (nmR * SQ(vmR) + niL * SQ(viL)) +
-                          0.5 * amaxm * (nmR * vmR - niL * viL);
+                    0.5 * amaxm * (nmR * vmR - niL * viL);
     if (fwd[i]) {
       const BoutReal vip = 0.5 * (v[i] + v.yup()[ip]);
       const BoutReal nip = 0.5 * (n[i] + n.yup()[ip]);
