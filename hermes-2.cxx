@@ -923,11 +923,15 @@ int Hermes::init(bool restarting) {
     coord->g23.applyParallelBoundary(parbc);
     coord->Bxy.applyParallelBoundary(parbc);
     auto logBxy = log(coord->Bxy);
+    auto logg22 = log(coord->g_22);
     logBxy.applyBoundary("neumann");
-    mesh->communicate(logBxy);
+    logg22.applyBoundary("neumann");
+    mesh->communicate(logBxy, logg22);
     logBxy.applyParallelBoundary(parbc);
+    logg22.applyParallelBoundary(parbc);
     printf("Setting from log");
     coord->Bxy = exp_all(logBxy);
+    coord->g_22 = exp_all(logg22);
 
     bout::checkPositive(coord->Bxy, "f", "RGN_NOCORNERS");
     // bout::checkPositive(coord->Bxy.yup(), "fyup", "RGN_YPAR_+1");
