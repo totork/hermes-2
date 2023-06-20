@@ -2690,11 +2690,14 @@ int Hermes::rhs(BoutReal t) {
       // Magnetic drift
       ddt(NVi) -= fci_curvature(mul_all(NVi , Ti));
     }
-    Field3D nvivi = mul_all(NVi, Vi);
-    ddt(NVi) -= Div_parP(nvivi);
-    //Skew-symmetric form
-    // ddt(NVi) -= 0.5 * (Div_par(mul_all(NVi, Vi)) + Vi * Grad_par(NVi) + NVi * Div_par(Vi));
-    
+
+    // Field3D nvivi = mul_all(NVi, Vi);
+    // ddt(NVi) -= Div_parP(nvivi);
+    //  Skew-symmetric form
+    // ddt(NVi) -= 0.5 * (Div_par(mul_all(NVi, Vi)) + Vi * Grad_par(NVi) + NVi *
+    // Div_par(Vi));
+    ddt(NVi) -= Div_parP_n(Ne, Vi, sound_speed);
+
     // Ignoring polarisation drift for now
     if (pe_par) {
       Field3D peppi = add_all(Pe, Pi);
@@ -3759,6 +3762,119 @@ Field3D Hermes::Div_parP(const Field3D &f) {
   }
   return result;
   //return Div_par(f) + 0.5*beta_e*coord->Bxy*bracket(psi, f/coord->Bxy, BRACKET_ARAKAWA);
+}
+
+Field3D MinMod(const Field3D &f) {
+  Field3D result;
+  result.allocate();
+  BOUT_FOR(i, f.getRegion("RGN_NOY")) {
+    const BoutReal fp = f.yup()[i.yp()];
+    const BoutReal fm = f.ydown()[i.ym()];
+    const BoutReal fi = f[i];
+    const BoutReal gp = fp - fi;
+    const BoutReal gm = fi - fm;
+    if ((gp * gm) < 0) {
+      result[i] = 0;
+    } else if (abs(gp) < abs(gm)) {
+      result[i] = gp;
+    } else {
+      result[i] = gm;
+    }
+  }
+  result.applyBoundary("neumann_o2");
+  return result;
+}
+
+Field3D Hermes::Div_parP_f(const Field3D &f, const Field3D &v,
+                           Field3D &sound_speed) {
+  throw BoutException("NI");
+}
+
+Field3D Hermes::Div_parP_n(const Field3D &n, const Field3D &v,
+                           Field3D &sound_speed, const BoutMask &fwd,
+                           const BoutMask &bwd) {
+  Field3D gn = MinMod(n);
+  Field3D gv = MinMod(v);
+  n.getMesh()->communicate(gn, gv, sound_speed);
+  gn.applyParallelBoundary(parbc);
+  gv.applyParallelBoundary(parbc);
+  sound_speed.applyParallelBoundary(parbc);
+  Field3D result{0.0};
+
+  auto coord = n.getCoordinates();
+  BOUT_FOR(i, n.getRegion("RGN_NOBNDRY")) {
+    const auto ip = i.yp();
+    const auto im = i.ym();
+
+    const BoutReal iVi =
+        1 / (coord->dx[i] * coord->dy[i] * coord->dz[i] * coord->J[i]);
+    // J = np.sqrt(
+    //             ds[f"g_11{suffix}"] * ds[f"g_33{suffix}"] -
+    //             ds[f"g_13{suffix}"] ** 2
+    // 		);
+    // spatial_volume_element = J * dx * dz;
+    // const BoutReal Ai = coord->dx[i] * coord->dz[i] * sqrt(coord->g_11[i] *
+    // coord->g_33[i] - SQ(coord->g_13[i])); const BoutReal Ap =
+    // coord->dx.yup()[ip] * coord->dz.yup()[ip] * sqrt(coord->g_11.yup()[ip] *
+    // coord->g_33.yup()[ip] - SQ(coord->g_13.yup()[ip])); const BoutReal Am =
+    // coord->dx.ydown()[im] * coord->dz.ydown()[im] *
+    // sqrt(coord->g_11.ydown()[im] * coord->g_33.ydown()[im] -
+    // SQ(coord->g_13.ydown()[im]));
+
+    const BoutReal Ai =
+        coord->dx[i] * coord->dz[i] * coord->J[i] / sqrt(coord->g_22[i]);
+    const BoutReal Ap = coord->dx.yup()[ip] * coord->dz.yup()[ip] *
+                        coord->J.yup()[ip] / sqrt(coord->g_22.yup()[ip]);
+    ASSERT1(std::isfinite(coord->dx.ydown()[im]));
+    ASSERT1(std::isfinite(coord->dy.ydown()[im]));
+    ASSERT1(std::isfinite(coord->dz.ydown()[im]));
+    ASSERT1(std::isfinite(coord->J.ydown()[im]));
+    ASSERT1(std::isfinite(coord->g_22.ydown()[im]));
+    ASSERT1(std::isfinite(sqrt(coord->g_22.ydown()[im])));
+    const BoutReal Am = coord->dx.ydown()[im] * coord->dz.ydown()[im] *
+                        coord->J.ydown()[im] / sqrt(coord->g_22.ydown()[im]);
+
+    // // For right cell boundaries
+    // BoutReal common_factor = (coord->J[i] + coord->J.yup()[ip] ) /
+    //   (sqrt(coord->g_22[i]) + sqrt(coord->g_22.yup()[ip]));
+
+    // const BoutReal flux_factor_rc = common_factor / (coord->dy[i] *
+    // coord->J[i]); const BoutReal flux_factor_rp = common_factor /
+    // (coord->dy.yup()[ip] * coord->J.yup()[ip]);
+
+    // // For left cell boundaries
+    // common_factor = (coord->J[i] + coord->J.ydown()[im] ) /
+    //   (sqrt(coord->g_22[i]) + sqrt(coord->g_22.ydown()[im]));
+
+    // const BoutReal flux_factor_lc = common_factor / (coord->dy[i] *
+    // coord->J[i]); const BoutReal flux_factor_lm = common_factor /
+    // (coord->dy.ydown()[im] * coord->J.ydown()[im]);
+
+    const BoutReal niR = n[i] + gn[i] / 2;
+    const BoutReal viR = v[i] + gv[i] / 2;
+    const BoutReal npL = n.yup()[ip] - gn.yup()[ip];
+    const BoutReal vpL = v.yup()[ip] - gv.yup()[ip];
+    const BoutReal niL = n[i] - gn[i] / 2;
+    const BoutReal viL = v[i] - gv[i] / 2;
+    const BoutReal nmR = n.ydown()[im] - gn.ydown()[im];
+    const BoutReal vmR = v.ydown()[im] - gv.ydown()[im];
+    const BoutReal amaxp = std::max(
+        {abs(v[i]), abs(v.yup()[ip]), sound_speed[i], sound_speed.yup()[ip]});
+    const BoutReal amaxm = std::max({abs(v[i]), abs(v.ydown()[im]),
+                                     sound_speed[i], sound_speed.ydown()[im]});
+    const BoutReal Gnvp = 0.5 * (niR * SQ(viR) + npL * SQ(vpL)) +
+                          0.5 * amaxp * (niR * viR - npL * vpL);
+    const BoutReal Gnvm = 0.5 * (nmR * SQ(vmR) + niL * SQ(viL)) +
+                          0.5 * amaxm * (nmR * vmR - niL * viL);
+    ASSERT1(std::isfinite(iVi));
+    ASSERT1(std::isfinite(Ai));
+    ASSERT1(std::isfinite(Ap));
+    ASSERT1(std::isfinite(Am));
+    ASSERT1(std::isfinite(Gnvp));
+    ASSERT1(std::isfinite(Gnvm));
+    result[i] = iVi * ((Ai + Ap) * Gnvp - (Am + Ai) * Gnvm) * 0.5;
+  }
+  return result;
 }
 
 // Standard main() function

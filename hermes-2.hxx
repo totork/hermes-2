@@ -252,6 +252,9 @@ private:
   // Perturbed parallel gradient operators
   Field3D Grad_parP(const Field3D &f);
   Field3D Div_parP(const Field3D &f);
+  Field3D Div_parP_f(const Field3D &f, const Field3D &v, Field3D &cs);
+  Field3D Div_parP_n(const Field3D &f, const Field3D &v, Field3D &cs,
+                     const BoutMask &fwd, const BoutMask &bwd);
 
   // Electromagnetic solver for finite electron mass case
   bool split_n0_psi;   // Split the n=0 component of Apar (psi)?
