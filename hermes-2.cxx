@@ -941,7 +941,7 @@ int Hermes::init(bool restarting) {
       }
     }
     for (const auto &bndry_par : mesh->getBoundariesPar(BoundaryParType::bwd)) {
-      for (bndry_par->first(); bndry_par->isDone(); bndry_par->next()) {
+      for (bndry_par->first(); !bndry_par->isDone(); bndry_par->next()) {
 	bwd_bndry_mask[bndry_par->ind()] = true;
       }
     }
