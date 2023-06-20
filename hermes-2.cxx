@@ -3733,17 +3733,17 @@ int Hermes::precon(BoutReal t, BoutReal gamma, BoutReal delta) {
   return 0;
 }
 
-const Field3D Hermes::fci_curvature(const Field3D &f) {
+Field3D Hermes::fci_curvature(const Field3D &f) {
   // Field3D result = mul_all(bracket(logB, f, BRACKET_ARAKAWA), bracket_factor);
   // mesh->communicate(result);
   return 2 * bracket(logB, f, BRACKET_ARAKAWA) * bracket_factor;
 }
 
-const Field3D Hermes::Grad_parP(const Field3D &f) {
+Field3D Hermes::Grad_parP(const Field3D &f) {
   return Grad_par(f); //+ 0.5*beta_e*bracket(psi, f, BRACKET_ARAKAWA);
 }
 
-const Field3D Hermes::Div_parP(const Field3D &f) {
+Field3D Hermes::Div_parP(const Field3D &f) {
   auto* coords = mesh->getCoordinates();
   Field3D result;
   result.allocate();

@@ -250,8 +250,8 @@ private:
   Vector3D Curlb_B; // Curl(b/B)
   
   // Perturbed parallel gradient operators
-  const Field3D Grad_parP(const Field3D &f);
-  const Field3D Div_parP(const Field3D &f);
+  Field3D Grad_parP(const Field3D &f);
+  Field3D Div_parP(const Field3D &f);
 
   // Electromagnetic solver for finite electron mass case
   bool split_n0_psi;   // Split the n=0 component of Apar (psi)?
@@ -289,7 +289,7 @@ private:
   bool fci_transform;
   Field3D Bxyz, logB;
   Field3D bracket_factor;
-  const Field3D fci_curvature(const Field3D &f);
+  Field3D fci_curvature(const Field3D &f);
 };
 
 /// Fundamental constants
