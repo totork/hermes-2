@@ -907,14 +907,16 @@ int Hermes::init(bool restarting) {
     SAVE_ONCE(Bxyz);
     Bxyz.applyBoundary("neumann");
     ASSERT1( min(Bxyz) > 0.0 );
-    
-    mesh->communicate(Bxyz, coord->dz, coord->dy, coord->J, coord->g_22, coord->g_23, coord->g23, coord->Bxy); // To get yup/ydown fields
-
+    mesh->communicate(Bxyz, coord->dx, coord->dy, coord->dz, coord->J, coord->g_22, coord->g_23, coord->g23, coord->Bxy); // To get yup/ydown fields
     // Note: A Neumann condition simplifies boundary conditions on fluxes
     // where the condition e.g. on J should be on flux (J/B)
     Bxyz.applyParallelBoundary(parbc);
-    coord->dz.applyParallelBoundary(parbc);
+
+    coord->dx.applyParallelBoundary(parbc);
     coord->dy.applyParallelBoundary(parbc);
+    coord->dz.applyParallelBoundary(parbc);
+
+    ASSERT1(coord->J.hasParallelSlices());
     coord->J.applyParallelBoundary(parbc);
     coord->g_22.applyParallelBoundary(parbc);
     coord->g_23.applyParallelBoundary(parbc);
