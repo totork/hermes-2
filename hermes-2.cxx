@@ -2887,7 +2887,7 @@ int Hermes::rhs(BoutReal t) {
               floor(0.5 * (Ne(x, y, z) +
                            Ne.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
                     0.0);
-          BoutReal vesheath = 0.5 * (Ve(x, y, z) + Ve.ynext(bndry_par->dir)(x, y + bndry_par->dir, z))
+          BoutReal vesheath = 0.5 * (Ve(x, y, z) + Ve.ynext(bndry_par->dir)(x, y + bndry_par->dir, z));
 	  // BoutReal tisheath = floor(
 	  // 			      0.5 * (Ti(x, y, z) + Ti.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
 	  // 			      0.0);
