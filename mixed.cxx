@@ -210,7 +210,7 @@ void NeutralMixed::update(const Field3D &Ne, const Field3D &Te,
   ddt(Nn) =
       -FV::Div_par(Nn, Vnlim, sound_speed) // Advection
       + S                               // Source from recombining plasma
-      + FV::Div_a_Laplace_perp(DnnNn, logPnlim) // Perpendicular diffusion
+      + FCI::Div_a_Grad_perp(DnnNn, logPnlim) // Perpendicular diffusion
       ;
 
   /////////////////////////////////////////////////////
@@ -227,8 +227,8 @@ void NeutralMixed::update(const Field3D &Ne, const Field3D &Te,
       -FV::Div_par(NVn, Vnlim, sound_speed)         // Momentum flow
       + F                                           // Friction with plasma
       - Grad_par(Pnlim)                             // Pressure gradient
-      + FV::Div_a_Laplace_perp(DnnNVn, logPnlim) // Perpendicular diffusion
-      + FV::Div_a_Laplace_perp((2./5)*DnnNn, Vn) // Perpendicular viscosity
+      + FCI::Div_a_Grad_perp(DnnNVn, logPnlim) // Perpendicular diffusion
+      + FCI::Div_a_Grad_perp((2./5)*DnnNn, Vn) // Perpendicular viscosity
       + FV::Div_par_K_Grad_par((2./5)*DnnNn, Vn) // Parallel viscosity
       ;
 
@@ -243,8 +243,8 @@ void NeutralMixed::update(const Field3D &Ne, const Field3D &Te,
       -FV::Div_par(Pn, Vnlim, sound_speed)         // Advection
       - (2. / 3) * Pnlim * Div_par(Vn)             // Compression
       + (2. / 3) * Qi                              // Energy exchange with ions
-      + FV::Div_a_Laplace_perp(DnnPn, logPnlim) // Perpendicular diffusion
-      + FV::Div_a_Laplace_perp(DnnNn, Tn)       // Conduction
+      + FCI::Div_a_Grad_perp(DnnPn, logPnlim) // Perpendicular diffusion
+      + FCI::Div_a_Grad_perp(DnnNn, Tn)       // Conduction
       + FV::Div_par_K_Grad_par(DnnNn, Tn)       // Parallel conduction
       ;
   

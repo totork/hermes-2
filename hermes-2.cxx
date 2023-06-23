@@ -1730,9 +1730,9 @@ int Hermes::rhs(BoutReal t) {
 	if(fci_transform){
           Field3D one;
           set_all(one, 1.0);
-          Jpar = FV::Div_a_Laplace_perp(one, psi);
+          Jpar = FCI::Div_a_Grad_perp(one, psi);
         } else {
-	  Jpar = FV::Div_a_Laplace_perp(1.0, psi);
+	  Jpar = FCI::Div_a_Grad_perp(1.0, psi);
 	}
 
         mesh->communicate(Jpar);
@@ -2195,8 +2195,8 @@ int Hermes::rhs(BoutReal t) {
     TRACE("relaxation");
     Field3D inv_b2 = div_all(1 , mul_all(coord->Bxy , coord->Bxy));
     ddt(phi_1) = lambda_0 * lambda_2
-                 * ((1 / lambda_2 * FV::Div_a_Laplace_perp(inv_b2, phi_1)
-                     + FV::Div_a_Laplace_perp(inv_b2, Pi))
+                 * ((1 / lambda_2 * FCI::Div_a_Grad_perp(inv_b2, phi_1)
+                     + FCI::Div_a_Grad_perp(inv_b2, Pi))
                     - Vort);
   }
   
@@ -2314,11 +2314,11 @@ int Hermes::rhs(BoutReal t) {
       Ne_tauB2.ydown()[i] = Ne.ydown()[i] / tauemimeSQB.ydown()[i];
       TiTediff.ydown()[i] = Ti.ydown()[i] - (0.5 * Te.ydown()[i]);
     }
-    ddt(Ne) += FV::Div_a_Laplace_perp(Dn, Ne);
-    ddt(Ne) += FV::Div_a_Laplace_perp(Ne_tauB2, TiTediff);
+    ddt(Ne) += FCI::Div_a_Grad_perp(Dn, Ne);
+    ddt(Ne) += FCI::Div_a_Grad_perp(Ne_tauB2, TiTediff);
   }
   if (anomalous_D > 0.0) {
-    ddt(Ne) += FV::Div_a_Laplace_perp(a_d3d, Ne);
+    ddt(Ne) += FCI::Div_a_Grad_perp(a_d3d, Ne);
   }
 
   // Source
@@ -2449,10 +2449,10 @@ int Hermes::rhs(BoutReal t) {
 	  
 	  
 	  if(!fci_transform){
-	    ddt(Vort) -= FV::Div_a_Laplace_perp(0.5 / SQ(coord->Bxy), vEdotGradPi);
+	    ddt(Vort) -= FCI::Div_a_Grad_perp(0.5 / SQ(coord->Bxy), vEdotGradPi);
 	  }else{
 	    Field3D inv_2sqb = 0.5 / SQ(Bxyz);
-	    ddt(Vort) -= FV::Div_a_Laplace_perp(inv_2sqb, vEdotGradPi);
+	    ddt(Vort) -= FCI::Div_a_Grad_perp(inv_2sqb, vEdotGradPi);
 	  }
 
 	  // delp2 phi v_ExB term
@@ -2485,7 +2485,7 @@ int Hermes::rhs(BoutReal t) {
       Field3D tauisqB = tau_i * SQ(coord->Bxy);
 
       Field3D mu = div_all(tilim_3 , tauisqB);
-      ddt(Vort) += FV::Div_a_Laplace_perp(mu, Vort);
+      ddt(Vort) += FCI::Div_a_Grad_perp(mu, Vort);
     }
 
     if (ion_viscosity) {
@@ -2504,7 +2504,7 @@ int Hermes::rhs(BoutReal t) {
     if (anomalous_nu > 0.0) {
       TRACE("Vort:anomalous_nu");
       // Perpendicular anomalous momentum diffusion
-      ddt(Vort) += FV::Div_a_Laplace_perp(a_nu3d, Vort);
+      ddt(Vort) += FCI::Div_a_Grad_perp(a_nu3d, Vort);
     }
     
     if (ion_neutral_rate > 0.0) {
@@ -2753,17 +2753,17 @@ int Hermes::rhs(BoutReal t) {
     if (classical_diffusion) {
       // Using same cross-field drift as in density equation
       Field3D ViDn = mul_all(Vi,Dn);
-      ddt(NVi) += FV::Div_a_Laplace_perp(ViDn, Ne);
+      ddt(NVi) += FCI::Div_a_Grad_perp(ViDn, Ne);
       Field3D NVi_tauB2 = div_all(NVi, tauemimeSQB);
-      ddt(NVi) += FV::Div_a_Laplace_perp(NVi_tauB2, TiTediff);
+      ddt(NVi) += FCI::Div_a_Grad_perp(NVi_tauB2, TiTediff);
     }
 
     if ((anomalous_D > 0.0) && anomalous_D_nvi) {
-      ddt(NVi) += FV::Div_a_Laplace_perp(mul_all(Vi , a_d3d), Ne);
+      ddt(NVi) += FCI::Div_a_Grad_perp(mul_all(Vi , a_d3d), Ne);
     }
     
     if (anomalous_nu > 0.0) {
-      ddt(NVi) += FV::Div_a_Laplace_perp(mul_all(Ne , a_nu3d), Vi);
+      ddt(NVi) += FCI::Div_a_Grad_perp(mul_all(Ne , a_nu3d), Vi);
     }
     
     if (hyperpar > 0.0) {
@@ -2947,18 +2947,18 @@ int Hermes::rhs(BoutReal t) {
       Field3D PePi = add_all(Pe, Pi);
       Field3D nu_rho2Ne = mul_all(nu_rho2, Ne);
       ddt(Pe) += (2. / 3)
-    	* (FV::Div_a_Laplace_perp(nu_rho2, PePi)
-    	   + (11. / 12) * FV::Div_a_Laplace_perp(nu_rho2Ne, Te));
+    	* (FCI::Div_a_Grad_perp(nu_rho2, PePi)
+    	   + (11. / 12) * FCI::Div_a_Grad_perp(nu_rho2Ne, Te));
     }
 
     //////////////////////
     // Anomalous diffusion
 
     if ((anomalous_D > 0.0) && anomalous_D_pepi) {
-      ddt(Pe) += FV::Div_a_Laplace_perp(mul_all(a_d3d , Te), Ne);
+      ddt(Pe) += FCI::Div_a_Grad_perp(mul_all(a_d3d , Te), Ne);
     }
     if (anomalous_chi > 0.0) {
-      ddt(Pe) += (2. / 3) * FV::Div_a_Laplace_perp(mul_all(a_chi3d , Ne), Te);
+      ddt(Pe) += (2. / 3) * FCI::Div_a_Grad_perp(mul_all(a_chi3d , Ne), Te);
     }
 
     //////////////////////
@@ -3149,13 +3149,13 @@ int Hermes::rhs(BoutReal t) {
 
       // BOUT_FOR(i, Pi.getRegion("RGN_NOBNDRY")) {
       ddt(Pi) +=
-          (2. / 3) * FV::Div_a_Laplace_perp(Pi_B2tau, Ti);
+          (2. / 3) * FCI::Div_a_Grad_perp(Pi_B2tau, Ti);
 
       // Resistive drift terms
 
       // mesh->communicate(nu_rho2Ne,Te);
-      ddt(Pi) += (5. / 3) * (FV::Div_a_Laplace_perp(nu_rho2, PePi) -
-                             (1.5) * FV::Div_a_Laplace_perp(nu_rho2Ne, Te));
+      ddt(Pi) += (5. / 3) * (FCI::Div_a_Grad_perp(nu_rho2, PePi) -
+                             (1.5) * FCI::Div_a_Grad_perp(nu_rho2Ne, Te));
 
       // Collisional heating from perpendicular viscosity
       // in the vorticity equation
@@ -3188,11 +3188,11 @@ int Hermes::rhs(BoutReal t) {
     // Anomalous diffusion
 
     if ((anomalous_D > 0.0) && anomalous_D_pepi) {
-      ddt(Pi) += FV::Div_a_Laplace_perp(mul_all(a_d3d , Ti), Ne);
+      ddt(Pi) += FCI::Div_a_Grad_perp(mul_all(a_d3d , Ti), Ne);
     }
 
     if (anomalous_chi > 0.0) {
-      ddt(Pi) += (2. / 3) * FV::Div_a_Laplace_perp(mul_all(a_chi3d , Ne), Ti);
+      ddt(Pi) += (2. / 3) * FCI::Div_a_Grad_perp(mul_all(a_chi3d , Ne), Ti);
     }
 
     ///////////////////////////////////
@@ -3474,14 +3474,14 @@ int Hermes::rhs(BoutReal t) {
           Field3D tmp = neutrals->Fperp / (Ne * SQ(coord->Bxy));
           mesh->communicate(tmp);
           tmp.applyParallelBoundary(parbc);
-          ddt(Vort) -= FV::Div_a_Laplace_perp(tmp, phi);
+          ddt(Vort) -= FCI::Div_a_Grad_perp(tmp, phi);
         } else {
-          ddt(Vort) -= FV::Div_a_Laplace_perp(
+          ddt(Vort) -= FCI::Div_a_Grad_perp(
               neutrals->Fperp / (Ne * SQ(coord->Bxy)), phi);
         }
       } else {
         ddt(Vort) -=
-            FV::Div_a_Laplace_perp(neutrals->Fperp / SQ(coord->Bxy), phi);
+            FCI::Div_a_Grad_perp(neutrals->Fperp / SQ(coord->Bxy), phi);
       }
     }
 
@@ -3659,7 +3659,7 @@ int Hermes::rhs(BoutReal t) {
     } else {
       ///////////////////////////
       // Vorticity closure
-      ddt(Vort) -= FV::Div_a_Laplace_perp(nsink / SQ(coord->Bxy), phi);
+      ddt(Vort) -= FCI::Div_a_Grad_perp(nsink / SQ(coord->Bxy), phi);
       // ddt(Vort) -= (nsink / Ne)*Vort;
       // Note: If nsink = n * nu then this reduces to
       // ddt(Vort) -= nu * Vort

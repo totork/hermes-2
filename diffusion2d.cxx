@@ -98,11 +98,11 @@ void Diffusion2D::update(const Field3D &Ne, const Field3D &Te, const Field3D &UN
   // Neutral density
   ddt(Nn) = 
     + S 
-    + FV::Div_a_Laplace_perp(Dnn, Nn);
+    + FCI::Div_a_Grad_perp(Dnn, Nn);
   
   // Neutral pressure
   ddt(Pn) = (2./3)*Qi
-    + FV::Div_a_Laplace_perp(Dnn, Pn)
+    + FCI::Div_a_Grad_perp(Dnn, Pn)
     ;
   
 }
