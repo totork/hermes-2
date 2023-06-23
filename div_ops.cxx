@@ -780,3 +780,22 @@ const Field2D Laplace_FV(const Field2D &k, const Field2D &f) {
     }
   return result;
 }
+
+namespace FCI {
+Field3D Div_a_Grad_perp(const Field3D &a, const Field3D &f) {
+  ASSERT1_FIELDS_COMPATIBLE(a, f);
+  auto coord = a.getCoordinates();
+  J = coord->J;
+  Jgxx = coord->g11 * J;
+  Jgzz = coord->g33 * J;
+  Jgxz = coord->g13 * J;
+
+  result = DDX(a * Jgxx) * DDX(f) + a * Jgxx * D2DX2(f);
+  result += DDX(a * Jgxz * DDZ(f, RGN_NOY));
+  result += DDZ(a * Jgxz * DDX(f));
+  result += DDZ(a * Jgzz) * DDZ(f) + a * Jgzz * D2DZ2(f);
+  result /= J;
+  result.name = "FCI::Div_a_Grad_perp()";
+  return result;
+}
+} // namespace FCI
