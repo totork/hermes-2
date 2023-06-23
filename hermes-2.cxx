@@ -3235,13 +3235,9 @@ int Hermes::rhs(BoutReal t) {
 	  BoutReal q = (sheath_gamma_i - 1.5) * tisheath * nesheath * visheath;
 
 	  // Multiply by cell area to get power
-	  BoutReal flux =
-	    q
-	    * (coord->J(x, y, z) + coord->J.ynext(bndry_par->dir)(x, y + bndry_par->dir, z))
-	    / (sqrt(coord->g_22(x, y, z))
-	       + sqrt(coord->g_22.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)));
-	  
-	  // Divide by volume of cell, and 2/3 to get pressure
+          BoutReal flux = q * coord->J(x, y, z) / sqrt(coord->g_22(x, y, z));
+
+          // Divide by volume of cell, and 2/3 to get pressure
 	  BoutReal power =
 	    flux
 	    / (coord->dy(x, y, z) * coord->J(x, y, z));
