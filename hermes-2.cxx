@@ -3835,13 +3835,11 @@ Field3D Hermes::Div_parP_n(const Field3D &n, const Field3D &v,
     if (fwd[i]) {
       const BoutReal vip = 0.5 * (v[i] + v.yup()[ip]);
       const BoutReal nip = 0.5 * (n[i] + n.yup()[ip]);
-#warning is amax == amaxp?
       Gnvp = niR * viR * vip + amaxp * (niR * viR - nip * vip);
     }
     if (bwd[i]) {
       const BoutReal vim = 0.5 * (v[i] + v.ydown()[im]);
       const BoutReal nim = 0.5 * (n[i] + n.ydown()[im]);
-#warning is amax == amaxm?
       Gnvp = niL * viL * vim + amaxm * (niL * viL - nim * vim);
     }
     ASSERT1(std::isfinite(Gnvp));
