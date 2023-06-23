@@ -904,34 +904,22 @@ int Hermes::init(bool restarting) {
     mesh->get(coord->Bxy, "Bxy", 1.0);
     Bxyz /= Bnorm;
     coord->Bxy /= Bnorm;
-    SAVE_ONCE(Bxyz);
-    Bxyz.applyBoundary("neumann");
-    ASSERT1( min(Bxyz) > 0.0 );
-    mesh->communicate(Bxyz, coord->dx, coord->dy, coord->dz, coord->J, coord->g_22, coord->g_23, coord->g23, coord->Bxy); // To get yup/ydown fields
-    // Note: A Neumann condition simplifies boundary conditions on fluxes
-    // where the condition e.g. on J should be on flux (J/B)
-    Bxyz.applyParallelBoundary(parbc);
+    // mesh->communicate(Bxyz, coord->Bxy); // To get yup/ydown fields
+    //  Note: A Neumann condition simplifies boundary conditions on fluxes
+    //  where the condition e.g. on J should be on flux (J/B)
 
-    coord->dx.applyParallelBoundary(parbc);
-    coord->dy.applyParallelBoundary(parbc);
-    coord->dz.applyParallelBoundary(parbc);
-
-    ASSERT1(coord->J.hasParallelSlices());
-    coord->J.applyParallelBoundary(parbc);
-    coord->g_22.applyParallelBoundary(parbc);
-    coord->g_23.applyParallelBoundary(parbc);
-    coord->g23.applyParallelBoundary(parbc);
-    coord->Bxy.applyParallelBoundary(parbc);
     auto logBxy = log(coord->Bxy);
-    auto logg22 = log(coord->g_22);
+    auto logBxyz = log(Bxyz);
     logBxy.applyBoundary("neumann");
-    logg22.applyBoundary("neumann");
-    mesh->communicate(logBxy, logg22);
+    logBxyz.applyBoundary("neumann");
+    mesh->communicate(logBxy, logBxyz);
     logBxy.applyParallelBoundary(parbc);
-    logg22.applyParallelBoundary(parbc);
-    printf("Setting from log");
+    logBxyz.applyParallelBoundary(parbc);
+    output_info.write("Setting from log");
     coord->Bxy = exp_all(logBxy);
-    coord->g_22 = exp_all(logg22);
+    Bxyz = exp_all(logBxyz);
+    SAVE_ONCE(Bxyz);
+    ASSERT1(min(Bxyz) > 0.0);
 
     fwd_bndry_mask = BoutMask(mesh, false);
     bwd_bndry_mask = BoutMask(mesh, false);
