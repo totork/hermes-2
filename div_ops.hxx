@@ -57,4 +57,6 @@ namespace FCI {
 Field3D Div_a_Grad_perp(const Field3D &a, const Field3D &f);
 }
 
+Field3D Div_a_Grad_perp_nonorthog(const Field3D& a, const Field3D& f);
+
 #endif //  __DIV_OPS_H__
