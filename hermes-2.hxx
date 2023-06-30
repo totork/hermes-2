@@ -295,6 +295,10 @@ private:
   Field3D bracket_factor;
   Field3D fci_curvature(const Field3D &f);
   BoutMask fwd_bndry_mask, bwd_bndry_mask;
+
+  // perp boundary
+  BoutReal fall_off_Ne, fall_off_Pe, fall_off_Pi;
+  bool fall_off;
 };
 
 /// Fundamental constants

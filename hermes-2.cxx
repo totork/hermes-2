@@ -781,6 +781,15 @@ int Hermes::init(bool restarting) {
     Pi = Ne;
   }
 
+  fall_off_Ne = optsc["fall_off_ne"].doc("outer radial fall off length BC for density [m]")
+    .withDefault<BoutReal>(-1);
+  fall_off_Pe = optsc["fall_off_pe"].doc("outer radial fall off length BC for electron pressure [m]")
+    .withDefault<BoutReal>(-1);
+  fall_off_Pi = optsc["fall_off_pi"].doc("outer radial fall off length BC for ion pressure [m]")
+    .withDefault<BoutReal>(-1);
+
+  fall_off = fall_off_Ne > 0 || fall_off_Pe > 0 || fall_off_Pi > 0;
+
   evolve_vort = optsc["evolve_vort"].doc("Evolve Vorticity?")
     .withDefault<bool>(true);
 
@@ -1332,6 +1341,29 @@ int Hermes::rhs(BoutReal t) {
     sheath_model = 0;
   }
 
+  if (fall_off and mesh->lastX()) {
+    auto coord = mesh->getCoordinates();
+    for (int y = mesh->ystart ; y <= mesh->yend ; ++y) {
+      for (int z = mesh->xstart ; z <= mesh->zend ; ++z) {
+	BoutReal xdist = 0;
+	for (int x = mesh->xend + 1; x < mesh->LocalNx ; ++x){
+	  xdist += (coord->dx(x - 1, y, z) + coord->dx(x, y, z)) * 0.5;
+	  if (fall_off_Ne > 0) {
+	    const auto fac = exp(- xdist / fall_off_Ne);
+	    Ne(x, y, z) = Ne(mesh->xend, y, z) * fac;
+	  }
+	  if (fall_off_Pe > 0) {
+	    const auto fac = exp(- xdist / fall_off_Pe);
+	    Pe(x, y, z) = Pe(mesh->xend, y, z) * fac;
+	  }
+	  if (fall_off_Pi > 0) {
+	    const auto fac = exp(- xdist / fall_off_Pi);
+	    Pi(x, y, z) = Pi(mesh->xend, y, z) * fac;
+	  }
+	}
+      }
+    }
+  }
   // Communicate evolving variables
   // Note: Parallel slices are not calculated because parallel derivatives
   // are calculated using field aligned quantities
