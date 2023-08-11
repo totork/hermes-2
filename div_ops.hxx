@@ -29,6 +29,22 @@
 #include <field3d.hxx>
 #include <vector3d.hxx>
 
+class CustomStencil {
+public:
+  CustomStencil(Mesh &mesh, const std::string &name,
+                const std::string &type = "3x3");
+  CustomStencil &operator*=(BoutReal fac);
+  CustomStencil &operator/=(BoutReal fac) { return (*this) *= 1 / fac; };
+  Field3D apply(const Field3D &a, const std::string &region = "RGN_NOBNDRY");
+  BoutReal apply(const Field3D &a, const Ind3D &i);
+  BoutReal operator()(const Field3D &a, const Ind3D &i) { return apply(a, i); }
+
+private:
+  std::vector<Field3D> coefs;
+  std::vector<int> xoffset;
+  std::vector<int> zoffset;
+};
+
 /*!
  * Diffusion in index space
  * 
@@ -43,7 +59,6 @@ const Field3D Div_n_bxGrad_f_B_XPPM(const Field3D &n, const Field3D &f, bool bnd
 
 const Field3D Div_Perp_Lap_FV_Index(const Field3D &a, const Field3D &f, bool xflux);
 
-
 // 4th-order flux conserving term, in index space
 const Field3D D4DX4_FV_Index(const Field3D &f, bool bndry_flux=false);
 
@@ -55,6 +70,25 @@ const Field2D Laplace_FV(const Field2D &k, const Field2D &f);
 
 namespace FCI {
 Field3D Div_a_Grad_perp(const Field3D &a, const Field3D &f);
+
+class dagp {
+public:
+  Field3D operator()(const Field3D &a, const Field3D &f,
+                     const std::string &region = "RGN_NOBNDRY");
+  dagp(Mesh &mesh);
+  dagp &operator*=(BoutReal fac) {
+    R /= fac;
+    ddR *= fac;
+    ddZ *= fac;
+    delp2 *= fac * fac;
+    return *this;
+  }
+  dagp &operator/=(BoutReal fac) { return operator*=(1 / fac); }
+
+private:
+  Field3D R;
+  CustomStencil ddR, ddZ, delp2;
+};
 }
 
 Field3D Div_a_Grad_perp_nonorthog(const Field3D& a, const Field3D& f);

@@ -28,6 +28,7 @@
 #include <bout/assert.hxx>
 #include <bout/mesh.hxx>
 #include <derivs.hxx>
+#include <difops.hxx>
 #include <globals.hxx>
 #include <output.hxx>
 #include <utils.hxx>
@@ -784,19 +785,107 @@ const Field2D Laplace_FV(const Field2D &k, const Field2D &f) {
 }
 
 namespace FCI {
+namespace {
+template <DIRECTION dir> BoutReal getderiv(Ind3D i, const Field3D &f) {
+  static_assert(dir == DIRECTION::X || dir == DIRECTION::Z);
+  if (dir == DIRECTION::X) {
+    return (f[i.zp()] - f[i.zm()]) * 1;
+  }
+  return (f[i.xp()] - f[i.xm()]) * 1;
+}
+template <DIRECTION dir, int sign>
+BoutReal getflux(Ind3D i, const Field3D &a, const Field3D &f, const Field3D &di,
+                 const Field3D &dj, const Field3D &gii, const Field3D &J,
+                 const Field3D &gij, const Field3D &g_jj) {
+  Ind3D is;
+  if (sign > 0) {
+    is = i.plus<sign, dir>();
+  } else {
+    is = i.minus<-sign, dir>();
+  }
+  BoutReal ai = a[i] + a[is];
+  BoutReal Ji = J[i] + J[is];
+  BoutReal dji = dj[i] + dj[is];
+  BoutReal df = (f[is] - f[i]) * sign;
+  BoutReal dii = di[i] + di[is];
+  BoutReal giii = gii[i] + gii[is];
+  BoutReal dfj = (getderiv<dir>(i, f) + getderiv<dir>(is, f)) * 0.5;
+  BoutReal giji = gij[i] + gij[is];
+  // BoutReal g_jji = 0.5 * (g_jj[i] + g_jj[is]);
+  return ai * (giii * df / dii + giji * dfj / dji) * Ji * dji * 0.125 * sign;
+  // return Ji * ai * dji * (df * giii / dii + dfj * giji / dji) * 0.125 * sign;
+
+  // BoutReal dfi = (gii[i] + gii[is]) * (f[is] - f[i]) * sign / (di[i] +
+  // di[is]); BoutReal dfj = (gij[i] + gij[is] ) * (getderiv<dir>(i, f) +
+  // getderiv<dir>(is, f)) / (dj[i] + dj[is]) * 0.5; BoutReal Ai = J[i] * dj[i]
+  // * gii[i] + J[is] * dj[is] * gii[is]; //sqrt(gjj[i]) * dj[i] + sqrt(gjj[is])
+  // * dj[is]; return ai * (dfi + dfj)  * Ai / (8 * -sign);
+}
+} // namespace
 Field3D Div_a_Grad_perp(const Field3D &a, const Field3D &f) {
   ASSERT1_FIELDS_COMPATIBLE(a, f);
+#if 1
   auto coord = a.getCoordinates();
-  auto J = coord->J;
-  auto Jgxx = coord->g11 * J;
-  auto Jgzz = coord->g33 * J;
-  auto Jgxz = coord->g13 * J;
-
-  auto result = DDX(a * Jgxx) * DDX(f) + a * Jgxx * D2DX2(f);
-  result += DDX(a * Jgxz * DDZ(f, CELL_DEFAULT, "DEFAULT", "RGN_NOY"));
-  result += DDZ(a * Jgxz * DDX(f));
-  result += DDZ(a * Jgzz) * DDZ(f) + a * Jgzz * D2DZ2(f);
+  const auto &g11 = coord->g11;
+  const auto &g33 = coord->g33;
+  const auto &g13 = coord->g13;
+  const auto &g_11 = coord->g_11;
+  const auto &g_33 = coord->g_33;
+  const auto &J = coord->J;
+  // Assumes g23 and g12 are zero
+  const auto aJ = a * J;
+  const auto ddxf = DDX(f);
+  const auto ddzf = DDZ(f, CELL_DEFAULT, "DEFAULT", "RGN_NOY");
+  auto result = DDX(aJ * g11) * DDX(f) + DDX(aJ * g13 * ddzf) +
+                DDZ(aJ * g13 * ddxf) + DDZ(aJ * g33) * DDZ(f);
   result /= J;
+  result += a * g11 * D2DX2(f);
+  result += a * g33 * D2DZ2(f);
+#elif 0
+  BoutReal ar = getUniform(a);
+  auto result = ar * Delp2(f);
+#else
+  auto coord = a.getCoordinates();
+  auto g11 = coord->g11;
+  auto g33 = coord->g33;
+  auto g13 = coord->g13;
+  auto g_11 = coord->g_11;
+  auto g_33 = coord->g_33;
+  const auto &J = coord->J;
+  // auto g_13 = coord->g_13;
+  auto dx = coord->dx;
+  auto dz = coord->dz;
+  Field3D result = emptyFrom(f);
+  BOUT_FOR(i, result.getRegion("RGN_NOBNDRY")) {
+    result[i] = getflux<DIRECTION::Z, +1>(i, a, f, dz, dx, g33, J, g13,
+                                          g_11); //, g_33);
+    result[i] += getflux<DIRECTION::Z, -1>(i, a, f, dz, dx, g33, J, g13,
+                                           g_11); //, g_33);
+    result[i] += getflux<DIRECTION::X, +1>(i, a, f, dx, dz, g11, J, g13,
+                                           g_33); //, g_33);
+    result[i] += getflux<DIRECTION::X, -1>(i, a, f, dx, dz, g11, J, g13,
+                                           g_33); //, g_33);
+    // result[i] += getflux<DIRECTION::Z, -1>(i, a, f, dz, dx, g_11, g_13,
+    // g_33); result[i] += getflux<DIRECTION::Z, +1>(i, a, f, dz, dx, g_33,
+    // g_13, g_11); result[i] += getflux<DIRECTION::Z, -1>(i, a, f, dz, dx,
+    // g_33, g_13, g_11);
+    //  auto im = i.xm();
+    //  auto ip = i.xp();
+    //  result[i] = (a[i] + a[is]) * (f[i] - f[is]) * (sqrt(g_33[i]) * dz[i] +
+    //  sqrt(g_33[is]) * dz[is]) / (dx[i] + dx[ip]); result[i] -= (a[ip] + a[i])
+    //  * (f[ip] - f[i]) * (sqrt(g_33[ip]) * dz[ip] + sqrt(g_33[i]) * dz[i]) /
+    //  (dx[i] + dx[im]); im = i.zm(); ip = i.zp(); result[i] += (a[i] + a[im])
+    //  * (f[i] - f[im]) * (sqrt(g_11[i]) * dx[i] + sqrt(g_11[im]) * dx[im]) /
+    //  (dz[i] + dz[ip]); result[i] -= (a[ip] + a[i]) * (f[ip] - f[i]) *
+    //  (sqrt(g_11[ip]) * dx[ip] + sqrt(g_11[i]) * dx[i]) / (dz[i] + dz[im]);
+    result[i] /= J[i] * dx[i] * dz[i]; // / sqrt(coord->g_22[i]);
+  }
+  // auto result = DDX(a * Jgxx) * DDX(f) + a * Jgxx * D2DX2(f);
+  // result += DDX(a * Jgxz * DDZ(f, CELL_DEFAULT, "DEFAULT", "RGN_NOY"));
+  // result += DDZ(a * Jgxz * DDX(f));
+  // result += DDZ(a * Jgzz) * DDZ(f) + a * Jgzz * D2DZ2(f);
+  // result /= J;
+#endif
   result.name = "FCI::Div_a_Grad_perp()";
   return result;
 }
@@ -1152,3 +1241,67 @@ Field3D Div_a_Grad_perp_nonorthog(const Field3D& a, const Field3D& f) {
 
   return result;
 }
+
+CustomStencil::CustomStencil(Mesh &mesh, const std::string &name,
+                             const std::string &type) {
+  size_t num = 0;
+  while (mesh.sourceHasVar(fmt::format("{:s}_{:s}_{:d}", name, type, num))) {
+    num++;
+  }
+  ASSERT0(num > 1);
+  coefs.resize(num);
+  xoffset.resize(num);
+  zoffset.resize(num);
+  for (size_t i = 0; i < num; ++i) {
+    Field3D ftmp(&mesh);
+    mesh.get(ftmp, fmt::format("{:s}_{:s}_{:d}", name, type, i));
+    coefs[i] = ftmp;
+    int tmp;
+    mesh.get(tmp, fmt::format("xoffset_{:s}_{:d}", type, i), 0);
+    xoffset[i] = tmp;
+    mesh.get(tmp, fmt::format("zoffset_{:s}_{:d}", type, i), 0);
+    zoffset[i] = tmp;
+  }
+}
+
+CustomStencil &CustomStencil::operator*=(BoutReal fac) {
+  for (size_t i = 0; i < coefs.size(); ++i) {
+    coefs[i] *= fac;
+  }
+  return *this;
+}
+
+Field3D CustomStencil::apply(const Field3D &a, const std::string &region) {
+  auto result{zeroFrom(a)};
+  BOUT_FOR(i, a.getRegion(region)) { result[i] = apply(a, i); }
+  result.setRegion(region);
+  return result;
+}
+
+BoutReal CustomStencil::apply(const Field3D &a, const Ind3D &i) {
+  BoutReal result = 0;
+  for (size_t c = 0; c < coefs.size(); ++c) {
+    result += coefs[c][i] * a[i.xp(xoffset[c]).zpm(zoffset[c])];
+  }
+  return result;
+}
+
+namespace FCI {
+Field3D dagp::operator()(const Field3D &a, const Field3D &f,
+                         const std::string &region) {
+  auto result{zeroFrom(f)};
+  // auto aR = a * R;
+  ASSERT1_FIELDS_COMPATIBLE(a, f);
+  BOUT_FOR(i, f.getRegion(region)) {
+    result[i] =
+        ddR(a, i) * ddR(f, i) + ddZ(a, i) * ddZ(f, i) + a[i] * delp2(f, i);
+  };
+  result.name = fmt::format("dagp({:s}, {:s})", a.name, f.name);
+  return result;
+}
+
+dagp::dagp(Mesh &mesh)
+    : R(&mesh), ddR(mesh, "ddR"), ddZ(mesh, "ddZ"), delp2(mesh, "delp2") {
+  mesh.get(R, "R");
+};
+} // namespace FCI

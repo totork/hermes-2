@@ -37,6 +37,12 @@ class Hermes;
 // OpenADAS interface Atomicpp by T.Body
 #include "atomicpp/ImpuritySpecies.hxx"
 
+#include "div_ops.hxx"
+
+namespace FCI {
+class dagp;
+};
+
 class Hermes : public PhysicsModel {
 public:
   virtual ~Hermes() {}
@@ -299,6 +305,11 @@ private:
   // perp boundary
   BoutReal fall_off_Ne, fall_off_Pe, fall_off_Pi;
   bool fall_off;
+  Field3D xdist;
+
+  // new diff methods
+  std::unique_ptr<FCI::dagp> _FCIDiv_a_Grad_perp;
+  Field3D FCIDiv_a_Grad_perp(const Field3D &a, const Field3D &f);
 };
 
 /// Fundamental constants
