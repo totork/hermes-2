@@ -17,27 +17,6 @@ success = True
 failed = collections.defaultdict(list)
 failed2 = set()
 
-linestyle_tuple = [
-    ("loosely dotted", (0, (1, 10))),
-    ("dotted", (0, (1, 1))),
-    ("densely dotted", (0, (1, 1))),
-    ("long dash with offset", (5, (10, 3))),
-    ("loosely dashed", (0, (5, 10))),
-    ("dashed", (0, (5, 5))),
-    ("densely dashed", (0, (5, 1))),
-    ("loosely dashdotted", (0, (3, 10, 1, 10))),
-    ("dashdotted", (0, (3, 5, 1, 5))),
-    ("densely dashdotted", (0, (3, 1, 1, 1))),
-    ("dashdotdotted", (0, (3, 5, 1, 5, 1, 5))),
-    ("loosely dashdotdotted", (0, (3, 10, 1, 10, 1, 10))),
-    ("densely dashdotdotted", (0, (3, 1, 1, 1, 1, 1))),
-]
-
-
-# normalize = mcolors.Normalize(vmin=np.min(colorparams), vmax=np.max(colorparams))
-# def getColor():
-#    color = colormap(normalize(mu))
-
 
 def doit(path):
     def collect(var, mesh=0, path=path):
@@ -165,15 +144,12 @@ def doit(path):
         label = f'{attrs["inp"]} {attrs["operator"]}'
         with open(f"result_real_{i}.txt", "w") as f:
             f.write("real\n")
-            f.write("{label}\n")
+            f.write(f"{label}\n")
             f.write(" ".join([str(x) for x in lst]))
             f.write("\n")
             f.write(" ".join([str(x) for x in l2]))
             f.write("\n")
-        # plt.plot([1 / x for x in lst], l2, label=label)
     toplot2 = dict()
-    ass = set([x[0] for x in toplot])
-    bss = set([x[0] for x in toplot])
     for a, b, c, d in toplot:
         toplot2[a] = []
         # toplot2[b] = []
@@ -189,15 +165,6 @@ def doit(path):
         plt.gca().set_yscale("log")
         plt.gca().set_xscale("log")
     plt.show()
-    # plt.figure()
-    # plt.pcolormesh(Rs[m][s], Zs[m][s], o[s])
-    # at = o.attributes
-    # plt.title(
-    #     " ".join([f"{k}:{at[k]}" for k in ["function", "operator"]])
-    #     + f" {Rs[m].shape}"
-    # )
-    # plt.colorbar()
-    # plt.savefig(f"/u/dave/Downloads/figs/mms_{m}_{i}.png")
 
 
 if sys.argv[1:]:
