@@ -3896,5 +3896,6 @@ Field3D Hermes::Div_parP_n(const Field3D &n, const Field3D &v,
   return result;
 }
 
-// Standard main() function
-BOUTMAIN(Hermes);
+Field3D Hermes::FCIDiv_a_Grad_perp(const Field3D &a, const Field3D &f) {
+  return (*_FCIDiv_a_Grad_perp)(a, f);
+}

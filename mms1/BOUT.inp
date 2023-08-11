@@ -26,27 +26,43 @@ extrapolate_y = false
 [mesh:paralleltransform]
 type = fci
 
-
 [mesh_0]
-file = "v13/W7X-conf0-36x36x192.emc3.inner:f.vessel:f.island:f.fci.nc"
+file = "test/laplace_const_16_4_16_1.fci.nc"
 symmetricGlobalX = true
 extrapolate_y = false
+
 
 [mesh_1]
-file = "v13/W7X-conf0-68x36x384.emc3.inner:f.vessel:f.island:f.fci.nc"
+file = "test/laplace_const_32_4_32_1.fci.nc"
 symmetricGlobalX = true
 extrapolate_y = false
 
-[mesh_20]
-file = "v13/W7X-conf0-132x36x768.emc3.inner:f.vessel:f.island:f.fci.nc"
+[mesh_2]
+file = "test/laplace_const_64_4_64_1.fci.nc"
 symmetricGlobalX = true
 extrapolate_y = false
 
-[mesh_3]
-file = "v13/W7X-conf0-260x36x1536.emc3.inner:f.vessel:f.island:f.fci.nc"
+[mesh_30]
+file = "test/laplace_const_128_4_128_1.fci.nc"
 symmetricGlobalX = true
 extrapolate_y = false
 
+
+[mesh_10]
+#file = "v12/W7X-conf0-132x36x512.fci.nc"
+file = "v12/W7X-conf0-132x36x512.emc3.inner:f.vessel:f.island:f.fci.nc"
+symmetricGlobalX = true
+extrapolate_y = false
+
+[mesh_11]
+file = "v12/W7X-conf0-260x36x1024.emc3.inner:f.vessel:f.island:f.fci.nc"
+symmetricGlobalX = true
+extrapolate_y = false
+
+[mesh_12]
+file = "v12/W7X-conf0-516x36x2048.emc3.inner:f.vessel:f.island:f.fci.nc"
+symmetricGlobalX = true
+extrapolate_y = false
 
 [mesh_66]
 file = "v8/W7X-conf0-132x36x512.fci.nc"
