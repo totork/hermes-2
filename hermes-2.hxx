@@ -40,7 +40,7 @@ class Hermes;
 #include "div_ops.hxx"
 
 namespace FCI {
-class dagp;
+class dagp_fv;
 };
 
 class Hermes : public PhysicsModel {
@@ -308,7 +308,7 @@ private:
   Field3D xdist;
 
   // new diff methods
-  std::unique_ptr<FCI::dagp> _FCIDiv_a_Grad_perp;
+  std::unique_ptr<FCI::dagp_fv> _FCIDiv_a_Grad_perp;
   Field3D FCIDiv_a_Grad_perp(const Field3D &a, const Field3D &f);
 };
 

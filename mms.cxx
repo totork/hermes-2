@@ -112,8 +112,8 @@ int main(int argc, char** argv) {
     Mesh* mesh = Mesh::create(&Options::root()[meshname]);
     mesh->load();
 
-    CustomStencil newDelp2(*mesh, "delp2");
-    FCI::dagp dagp(*mesh);
+    // FCI::dagp dagp(*mesh);
+    FCI::dagp_fv dagp(*mesh);
 
     Options dump;
     Field3D R{mesh}, Z{mesh};
@@ -152,6 +152,16 @@ int main(int argc, char** argv) {
         dump[outname].setAttributes({
             {"operator", dif.name},
             {"function", func.name},
+            {"f", func.name},
+            {"inp", func.name},
+        });
+      }
+      {
+        const auto outname = fmt::format("out_{}", i++);
+        dump[outname] = dagp(a, f);
+        const auto opname = "FCI::dagp_fv(1, f)";
+        dump[outname].setAttributes({
+            {"operator", opname},
             {"f", func.name},
             {"inp", func.name},
         });
@@ -204,19 +214,8 @@ int main(int argc, char** argv) {
       }
       {
         const auto outname = fmt::format("out_{}", i++);
-        dump[outname] = newDelp2.apply(f);
-        const auto opname = "FCI::Delp2(f)";
-        dump[outname].setAttributes({
-            {"operator", opname},
-            {"a", std::get<0>(func).name},
-            {"f", std::get<1>(func).name},
-            {"inp", std::get<1>(func).name},
-        });
-      }
-      {
-        const auto outname = fmt::format("out_{}", i++);
         dump[outname] = dagp(a, f);
-        const auto opname = "FCI::dagp(f)";
+        const auto opname = "FCI::dagp_fv(f)";
         dump[outname].setAttributes({
             {"operator", opname},
             {"a", std::get<0>(func).name},

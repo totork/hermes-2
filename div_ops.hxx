@@ -89,8 +89,27 @@ private:
   Field3D R;
   CustomStencil ddR, ddZ, delp2;
 };
-}
 
+class dagp_fv {
+public:
+  Field3D operator()(const Field3D &a, const Field3D &f);
+  dagp_fv(Mesh &mesh);
+  dagp_fv &operator*=(BoutReal fac) {
+    volume /= fac * fac;
+    return *this;
+  }
+  dagp_fv &operator/=(BoutReal fac) { return operator*=(1 / fac); }
+
+private:
+  Field3D fac_XX;
+  Field3D fac_XZ;
+  Field3D fac_ZX;
+  Field3D fac_ZZ;
+  Field3D volume;
+  BoutReal xflux(const Field3D &a, const Field3D &f, const Ind3D &i);
+  BoutReal zflux(const Field3D &a, const Field3D &f, const Ind3D &i);
+};
+} // namespace FCI
 Field3D Div_a_Grad_perp_nonorthog(const Field3D& a, const Field3D& f);
 
 #endif //  __DIV_OPS_H__

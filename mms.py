@@ -71,6 +71,7 @@ def doit(path):
             lambda R, Z, a=a: -np.sin(a * R) * np.sin(a * Z) * a * a
         )
     ana["FCI::dagp(f)"] = ana["FCI::Div_a_Grad_perp(a, f)"]
+    ana["FCI::dagp_fv(f)"] = ana["FCI::Div_a_Grad_perp(a, f)"]
 
     def get_ana(method, func):
         try:

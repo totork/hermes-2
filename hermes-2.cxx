@@ -916,7 +916,7 @@ int Hermes::init(bool restarting) {
 
     coord->geometry(); // Calculate other metrics
 
-    _FCIDiv_a_Grad_perp = std::make_unique<FCI::dagp>(*mesh);
+    _FCIDiv_a_Grad_perp = std::make_unique<FCI::dagp_fv>(*mesh);
     *_FCIDiv_a_Grad_perp *= rho_s0;
   }
 

@@ -1304,4 +1304,55 @@ dagp::dagp(Mesh &mesh)
     : R(&mesh), ddR(mesh, "ddR"), ddZ(mesh, "ddZ"), delp2(mesh, "delp2") {
   mesh.get(R, "R");
 };
+
+dagp_fv::dagp_fv(Mesh &mesh)
+    : fac_XX(&mesh), fac_XZ(&mesh), fac_ZX(&mesh), fac_ZZ(&mesh),
+      volume(&mesh) {
+  mesh.get(fac_XX, "dagp_fv_XX");
+  mesh.get(fac_XZ, "dagp_fv_XZ");
+  mesh.get(fac_ZX, "dagp_fv_ZX");
+  mesh.get(fac_ZZ, "dagp_fv_ZZ");
+  mesh.get(volume, "dagp_fv_volume");
+  mesh.addRegion("RGN_dapg_fv_xbndry",
+                 Region<>(mesh.xstart - 1, mesh.xstart - 1, mesh.ystart,
+                          mesh.yend, mesh.zstart, mesh.zend, mesh.LocalNy,
+                          mesh.LocalNz));
+}
+
+Field3D dagp_fv::operator()(const Field3D &a, const Field3D &f) {
+  auto result{zeroFrom(f)};
+  ASSERT1_FIELDS_COMPATIBLE(a, f);
+  BOUT_FOR(i, f.getRegion("RGN_dapg_fv_xbndry")) {
+    result[i.xp()] = xflux(a, f, i);
+  }
+  BOUT_FOR(i, f.getRegion("RGN_NOBNDRY")) {
+    const auto xf = xflux(a, f, i);
+    result[i.xp()] += xf;
+    result[i] -= xf;
+    const auto zf = zflux(a, f, i);
+    result[i.zp()] += zf;
+    result[i] -= zf;
+  }
+  BOUT_FOR(i, f.getRegion("RGN_NOBNDRY")) { result[i] /= volume[i]; }
+  return result;
+}
+
+inline BoutReal dagp_fv::xflux(const Field3D &a, const Field3D &f,
+                               const Ind3D &i) {
+  const auto ixp = i.xp();
+  const auto av = 0.5 * (a[i] + a[ixp]);
+  const auto dx = f[ixp] - f[i];
+  const auto dz =
+      0.5 * (f[i.zp()] - f[i.zm()] + f[i.zp().xp()] - f[i.zm().xp()]);
+  return -(fac_XX[i] * dx + fac_XZ[i] * dz) * av;
+}
+
+inline BoutReal dagp_fv::zflux(const Field3D &a, const Field3D &f,
+                               const Ind3D &i) {
+  const auto izp = i.zp();
+  const auto av = 0.5 * (a[i] + a[izp]);
+  const auto dz = f[izp] - f[i];
+  const auto dx = 0.5 * (f[i.xp()] - f[i.xm()] + f[izp.xp()] - f[izp.xm()]);
+  return -(fac_ZX[i] * dx + fac_ZZ[i] * dz) * av;
+}
 } // namespace FCI
