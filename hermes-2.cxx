@@ -1870,10 +1870,10 @@ int Hermes::rhs(BoutReal t) {
 
 	  // Zero-gradient potential
 	  BoutReal phisheath = phi(x, y, z);
- 	  BoutReal visheath = bndry_par->dir * sqrt(tisheath + tesheath);
-	    
-	  if (sheath_allow_supersonic){
-	    if (bndry_par->dir == 1){
+          BoutReal visheath = bndry_par->dir * sqrt(tisheath + tesheath);
+
+          if (sheath_allow_supersonic) {
+            if (bndry_par->dir == 1){
 	      if (Vi(x, y, z) > visheath){
 		// If plasma is faster, go to plasma velocity
 		visheath = Vi(x, y, z);
@@ -1883,9 +1883,9 @@ int Hermes::rhs(BoutReal t) {
 		visheath = Vi(x, y, z);
 	      }
 	    }
-	  }
+          }
 
-	  // Sheath current
+          // Sheath current
 	  // Note that phi/Te >= 0.0 since for phi < 0
 	  // vesheath is the electron saturation current
 	  BoutReal phi_te =
@@ -2940,6 +2940,7 @@ int Hermes::rhs(BoutReal t) {
             continue;
           }
           // Temperature and density at the sheath entrance
+#if 0
           BoutReal tesheath =
               floor(0.5 * (Te(x, y, z) +
                            Te.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
@@ -2949,7 +2950,15 @@ int Hermes::rhs(BoutReal t) {
                            Ne.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
                     0.0);
           BoutReal vesheath = 0.5 * (Ve(x, y, z) + Ve.ynext(bndry_par->dir)(x, y + bndry_par->dir, z));
-	  // BoutReal tisheath = floor(
+#else
+          BoutReal tesheath =
+              Te.ynext(bndry_par->dir)(x, y + bndry_par->dir, z);
+          BoutReal nesheath =
+              Ne.ynext(bndry_par->dir)(x, y + bndry_par->dir, z);
+          BoutReal vesheath =
+              Ve.ynext(bndry_par->dir)(x, y + bndry_par->dir, z);
+#endif
+          // BoutReal tisheath = floor(
 	  // 			      0.5 * (Ti(x, y, z) + Ti.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
 	  // 			      0.0);
 	  
@@ -2957,8 +2966,9 @@ int Hermes::rhs(BoutReal t) {
 	  // BoutReal Cs =bndry_par->dir* sqrt(tesheath + tisheath);
 
 	  // Heat flux
-	  BoutReal q = (sheath_gamma_e - 1.5) * tesheath * nesheath * vesheath;
-	  // Multiply by cell area to get power
+          BoutReal q = (sheath_gamma_e - 1.5) * tesheath * nesheath * vesheath *
+                       bndry_par->dir;
+          // Multiply by cell area to get power
           BoutReal flux = q * coord->J(x, y, z) / sqrt(coord->g_22(x, y, z));
 
           // Divide by volume of cell, and 2/3 to get pressure
@@ -3268,6 +3278,7 @@ int Hermes::rhs(BoutReal t) {
             continue;
           }
           // Temperature and density at the sheath entrance
+#if 0
           BoutReal tisheath =
               floor(0.5 * (Ti(x, y, z) +
                            Ti.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
@@ -3280,17 +3291,20 @@ int Hermes::rhs(BoutReal t) {
 				    0.5 * (Ne(x, y, z) + Ne.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
 				    0.0);
 	  BoutReal visheath = 0.5 * (Vi(x, y, z) + Vi.ynext(bndry_par->dir)(x, y + bndry_par->dir, z));
+#else
+          BoutReal tesheath = Te(x, y, z);
+          BoutReal tisheath = Te(x, y, z);
+          BoutReal nesheath = Ne(x, y, z);
+          BoutReal visheath = Vi(x, y, z);
+#endif
+          // Sound speed (normalisexd units)
+          // BoutReal Cs = bndry_par->dir * sqrt(tesheath + tisheath);
 
-	  // BoutReal tesheath = floor(Te(x,y,z),0.);
-	  // BoutReal tisheath = floor(Te(x,y,z),0.);
-	  // BoutReal nesheath = floor(Ne(x,y,z), 0.);
-	  // Sound speed (normalised units)
-	  BoutReal Cs = bndry_par->dir * sqrt(tesheath + tisheath);
+          // Heat flux
+          BoutReal q = (sheath_gamma_i - 1.5) * tisheath * nesheath * visheath *
+                       bndry_par->dir;
 
-	  // Heat flux
-	  BoutReal q = (sheath_gamma_i - 1.5) * tisheath * nesheath * visheath;
-
-	  // Multiply by cell area to get power
+          // Multiply by cell area to get power
           BoutReal flux = q * coord->J(x, y, z) / sqrt(coord->g_22(x, y, z));
 
           // Divide by volume of cell, and 2/3 to get pressure
