@@ -824,7 +824,7 @@ BoutReal getflux(Ind3D i, const Field3D &a, const Field3D &f, const Field3D &di,
 } // namespace
 Field3D Div_a_Grad_perp(const Field3D &a, const Field3D &f) {
   ASSERT1_FIELDS_COMPATIBLE(a, f);
-#if 1
+#if 0
   auto coord = a.getCoordinates();
   const auto &g11 = coord->g11;
   const auto &g33 = coord->g33;
@@ -1308,11 +1308,11 @@ dagp::dagp(Mesh &mesh)
 dagp_fv::dagp_fv(Mesh &mesh)
     : fac_XX(&mesh), fac_XZ(&mesh), fac_ZX(&mesh), fac_ZZ(&mesh),
       volume(&mesh) {
-  mesh.get(fac_XX, "dagp_fv_XX");
-  mesh.get(fac_XZ, "dagp_fv_XZ");
-  mesh.get(fac_ZX, "dagp_fv_ZX");
-  mesh.get(fac_ZZ, "dagp_fv_ZZ");
-  mesh.get(volume, "dagp_fv_volume");
+  ASSERT0(mesh.get(fac_XX, "dagp_fv_XX") == 0);
+  ASSERT0(mesh.get(fac_XZ, "dagp_fv_XZ") == 0);
+  ASSERT0(mesh.get(fac_ZX, "dagp_fv_ZX") == 0);
+  ASSERT0(mesh.get(fac_ZZ, "dagp_fv_ZZ") == 0);
+  ASSERT0(mesh.get(volume, "dagp_fv_volume") == 0);
   mesh.addRegion("RGN_dapg_fv_xbndry",
                  Region<>(mesh.xstart - 1, mesh.xstart - 1, mesh.ystart,
                           mesh.yend, mesh.zstart, mesh.zend, mesh.LocalNy,

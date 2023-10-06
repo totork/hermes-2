@@ -586,7 +586,9 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, par_sheath_model, 0);
   OPTION(optsc, par_sheath_ve, true);
   OPTION(optsc, electron_weight, 1.0);
-  
+
+  OPTION(optsc, Div_parP_n_sheath_extra, Div_parP_n_sheath_extra);
+
   sheath_allow_supersonic =
       optsc["sheath_allow_supersonic"]
           .doc("If plasma is faster than sound speed, go to plasma velocity")
@@ -3829,6 +3831,7 @@ Field3D Hermes::Div_parP(const Field3D &f) {
 }
 
 Field3D MinMod(const Field3D &f) {
+  // get gradient in y direction, avoiding numerical issues
   Field3D result;
   result.allocate();
   BOUT_FOR(i, f.getRegion("RGN_NOY")) {
@@ -3893,15 +3896,17 @@ Field3D Hermes::Div_parP_n(const Field3D &n, const Field3D &v,
                     0.5 * amaxp * (niR * viR - npL * vpL);
     BoutReal Gnvm = 0.5 * (nmR * SQ(vmR) + niL * SQ(viL)) +
                     0.5 * amaxm * (nmR * vmR - niL * viL);
-    if (fwd[i]) {
-      const BoutReal vip = 0.5 * (v[i] + v.yup()[ip]);
-      const BoutReal nip = 0.5 * (n[i] + n.yup()[ip]);
-      Gnvp = niR * viR * vip + amaxp * (niR * viR - nip * vip);
-    }
-    if (bwd[i]) {
-      const BoutReal vim = 0.5 * (v[i] + v.ydown()[im]);
-      const BoutReal nim = 0.5 * (n[i] + n.ydown()[im]);
-      Gnvp = niL * viL * vim + amaxm * (niL * viL - nim * vim);
+    if (Div_parP_n_sheath_extra) {
+      if (fwd[i]) {
+	const BoutReal vip = 0.5 * (v[i] + v.yup()[ip]);
+	const BoutReal nip = 0.5 * (n[i] + n.yup()[ip]);
+	Gnvp = niR * viR * vip + amaxp * (niR * viR - nip * vip);
+      }
+      if (bwd[i]) {
+	const BoutReal vim = 0.5 * (v[i] + v.ydown()[im]);
+	const BoutReal nim = 0.5 * (n[i] + n.ydown()[im]);
+	Gnvp = niL * viL * vim + amaxm * (niL * viL - nim * vim);
+      }
     }
     ASSERT1(std::isfinite(Gnvp));
     ASSERT1(std::isfinite(Gnvm));

@@ -169,6 +169,8 @@ private:
   bool radial_inner_averagey_nvi; // Average NVi in Y in inner buffer
   bool radial_inner_zero_nvi; // Damp NVi towards zero in inner buffer
 
+  bool Div_parP_n_sheath_extra{true}; // Use special handling for the sheath
+
   bool phi_smoothing;
   BoutReal phi_sf;
   
