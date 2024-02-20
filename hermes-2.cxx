@@ -3763,7 +3763,7 @@ Field3D MinMod(const Field3D &f) {
       result[i] = gm;
     }
   }
-  result.applyBoundary("neumann_o2");
+  // result.applyBoundary("neumann_o2");
   return result;
 }
 
