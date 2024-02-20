@@ -2927,6 +2927,13 @@ int Hermes::rhs(BoutReal t) {
       ddt(Pe) += (2. / 3) * FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Te);
     }
 
+    // hyper diffusion
+    if (numdiff > 0.0) {
+      BOUT_FOR(i, Pe.getRegion("RGN_NOY")) {
+	ddt(Pe)[i] += numdiff*(Pe.ydown()[i.ym()] - 2.*Pe[i] + Pe.yup()[i.yp()]);
+      }
+    }
+
     //////////////////////
     // Sources
 
@@ -3158,6 +3165,13 @@ int Hermes::rhs(BoutReal t) {
 
     if (anomalous_chi > 0.0) {
       ddt(Pi) += (2. / 3) * FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Ti);
+    }
+
+    // hyper diffusion
+    if (numdiff > 0.0) {
+      BOUT_FOR(i, Pi.getRegion("RGN_NOY")) {
+	ddt(Pi)[i] += numdiff*(Pi.ydown()[i.ym()] - 2.*Pi[i] + Pi.yup()[i.yp()]);
+      }
     }
 
     ///////////////////////////////////
