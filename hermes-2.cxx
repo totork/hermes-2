@@ -1928,111 +1928,12 @@ int Hermes::rhs(BoutReal t) {
       }
       break;
     }
-    case 1:{ //insulating boundary
-      for (const auto &bndry_par : mesh->getBoundariesPar()) {
-        for (bndry_par->first(); !bndry_par->isDone(); bndry_par->next()) {
-#if boutisold
-          int x = bndry_par->x;
-          int y = bndry_par->y;
-          int z = bndry_par->z;
-#else
-          int x = bndry_par->ind().x();
-          int y = bndry_par->ind().y();
-          int z = bndry_par->ind().z();
-#endif
-          if (x < mesh->LocalNx / 2) {
-            continue;
-          }
-          // Zero-gradient density
-          BoutReal nesheath = floor(Ne(x, y, z), 0.0);
-
-          // Temperature at the sheath entrance
-	  BoutReal tesheath = floor(Te(x, y, z), 0.0);
-	  BoutReal tisheath = floor(Ti(x, y, z), 0.0);
-	
-	  // Zero-gradient potential
-	  BoutReal phisheath = phi(x, y, z);
-	
-	  // Ion velocity goes to the sound speed. Note negative since out of the domain
-	  BoutReal visheath = -sqrt(tesheath + tisheath);
-
-	  if (sheath_allow_supersonic && (Vi(x, y, z) < visheath)) {
-	    // If plasma is faster, go to plasma velocity
-	    visheath = Vi(x, y, z);
-	  }
-
-	  if (bndry_par->dir == 1){
-	    visheath = sqrt(tesheath + tisheath);
-
-	    if (sheath_allow_supersonic && (Vi(x, y, z) > visheath)) {
-	      // If plasma is faster, go to plasma velocity
-	      visheath = Vi(x, y, z);
-	    }
-
-	  }
-	
-	
-	  // Sheath current
-	  // Note that phi/Te >= 0.0 since for phi < 0
-	  // vesheath is the electron saturation current
-	  BoutReal phi_te =
-	    floor(phisheath / Te(x, y, z), 0.0);
-	  BoutReal vesheath = visheath;
-	  
-	  // J = n*(Vi - Ve)
-	  BoutReal jsheath = nesheath * (visheath - vesheath);
-
-	  if (bndry_par->dir == 1){
-	    // Apply boundary condition half-way between cells
-	    // Neumann conditions
-	    Ne.yup()(x, y+bndry_par->dir, z) = nesheath;
-	    phi.yup()(x, y+bndry_par->dir, z) = phisheath;
-	    Vort.yup()(x, y+bndry_par->dir, z) = Vort(x, y, z);
-	
-	    // Here zero-gradient Te, heat flux applied later
-	    Te.yup()(x, y+bndry_par->dir, z) = Te(x, y, z);
-	    Ti.yup()(x, y+bndry_par->dir, z) = Ti(x, y, z);
-	
-	    Pe.yup()(x, y+bndry_par->dir, z) = Pe(x, y, z);
-	    Pe.yup()(x, y+bndry_par->dir, z) = Pe(x, y, z);
-	    Pi.yup()(x, y+bndry_par->dir, z) = Pi(x, y, z);
-	    Pi.yup()(x, y+bndry_par->dir, z) = Pi(x, y, z);
-	
-	    // Dirichlet conditions
-	    Vi.yup()(x, y+bndry_par->dir, z) = 2. * visheath - Vi(x, y, z);
-	    Ve.yup()(x, y+bndry_par->dir, z) = 2. * vesheath - Ve(x, y, z);
-	    Jpar.yup()(x, y+bndry_par->dir, z) =
-	      2. * jsheath - Jpar(x, y, z);
-	    NVi.yup()(x, y+bndry_par->dir, z) =
-	      2. * nesheath * visheath - NVi(x, y, z);
-	  } else if (bndry_par->dir == -1) {
-	    // Apply boundary condition half-way between cells
-	    // Neumann conditions
-	    Ne.ydown()(x, y+bndry_par->dir, z) = nesheath;
-	    phi.ydown()(x, y+bndry_par->dir, z) = phisheath;
-	    Vort.ydown()(x, y+bndry_par->dir, z) = Vort(x, y, z);
-	
-	    // Here zero-gradient Te, heat flux applied later
-	    Te.ydown()(x, y+bndry_par->dir, z) = Te(x, y, z);
-	    Ti.ydown()(x, y+bndry_par->dir, z) = Ti(x, y, z);
-	
-	    Pe.ydown()(x, y+bndry_par->dir, z) = Pe(x, y, z);
-	    Pe.ydown()(x, y+bndry_par->dir, z) = Pe(x, y, z);
-	    Pi.ydown()(x, y+bndry_par->dir, z) = Pi(x, y, z);
-	    Pi.ydown()(x, y+bndry_par->dir, z) = Pi(x, y, z);
-	
-	    // Dirichlet conditions
-	    Vi.ydown()(x, y+bndry_par->dir, z) = 2. * visheath - Vi(x, y, z);
-	    Ve.ydown()(x, y+bndry_par->dir, z) = 2. * vesheath - Ve(x, y, z);
-	    Jpar.ydown()(x, y+bndry_par->dir, z) =
-	      2. * jsheath - Jpar(x, y, z);
-	    NVi.ydown()(x, y+bndry_par->dir, z) =
-	      2. * nesheath * visheath - NVi(x, y, z);
-	  } else {
-	    throw BoutException("Unexpected value {:d} for bndry_par->dir", bndry_par->dir);
-	  }
-        }
-      }
+    case 1: { // insulating boundary      break;
+      throw BoutException("Not implemented");
+      break;
+    }
+    default: {
+      throw BoutException("Not implemented");
       break;
     }
     }
