@@ -1815,13 +1815,15 @@ int Hermes::rhs(BoutReal t) {
 
 	Field3D gparpe = Grad_par(Pe);
 	Field3D gparphi = Grad_par(phi);
-	mesh->communicate(gparphi,gparpe);
-	Field3D gparpe_n = div_all(gparpe , Ne);
+        gparpe.applyBoundary("neumann");
+        gparphi.applyBoundary("neumann");
+        mesh->communicate(gparphi, gparpe);
+        Field3D gparpe_n = div_all(gparpe, Ne);
 
-	Field3D gparphi_gparpe_nu = div_all(sub_all(gparphi , gparpe_n),nu);
+        Field3D gparphi_gparpe_nu = div_all(sub_all(gparphi, gparpe_n), nu);
 
-					   // Ve = add_all(Vi,gparphi);
-	Ve = add_all(Vi , gparphi_gparpe_nu);
+        // Ve = add_all(Vi,gparphi);
+        Ve = add_all(Vi, gparphi_gparpe_nu);
         if (thermal_force) {
           Ve -= 0.71 * Grad_parP(Te) / nu;
         }
@@ -3749,7 +3751,7 @@ Field3D MinMod(const Field3D &f) {
   // get gradient in y direction, avoiding numerical issues
   Field3D result;
   result.allocate();
-  BOUT_FOR(i, f.getRegion("RGN_NOY")) {
+  BOUT_FOR(i, f.getRegion("RGN_NOBNDRY")) {
     const BoutReal fp = f.yup()[i.yp()];
     const BoutReal fm = f.ydown()[i.ym()];
     const BoutReal fi = f[i];
@@ -3762,8 +3764,9 @@ Field3D MinMod(const Field3D &f) {
     } else {
       result[i] = gm;
     }
+    ASSERT2(std::isfinite(result[i]));
   }
-  // result.applyBoundary("neumann_o2");
+  result.applyBoundary("neumann_o2");
   return result;
 }
 
