@@ -40,27 +40,17 @@ please cite the relevant papers.
 Installing BOUT++
 =================
 
-This version works with BOUT++ v4.3 or later
+This version works with only some versions of BOUT++
 
     git clone https://github.com/boutproject/BOUT-dev.git
     cd BOUT-dev
+    git checkout db-outer
 
 To run this model, preconditioning is strongly recommended, and requires the CVODE solver, part of [SUNDIALS](http://computation.llnl.gov/projects/sundials).
-Tested with version 2.6.0. To enable CVODE, BOUT++ should be configured using
 
-    ./configure --with-cvode
-
-or
-
-    ./configure --with-sundials
-
-(which then also enables the IDA solver). Compile BOUT++ with
-
-    make
+Make sure to enable 3D metrics and PETSc.
 
 Compiling Hermes
 ================
 
-To compile, run "make" and specify the location of BOUT++
-> $ make BOUT_TOP=/path/to/BOUT/
-
+    cmake -S . -B build
