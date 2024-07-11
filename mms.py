@@ -143,16 +143,27 @@ def doit(path):
             ops, inp = attrs["operator"], attrs["inp"]
             a = get_ana(ops, inp)(Rs[m], Zs[m])
             e = (o - a)[s]
-            if 1:
-                s2 = slice(None), 0, slice(None)
+            if "dagp_fv" in ops:
+                s2 = slice(2, -2, None), 0, slice(None)
                 print([x.shape for x in [Rs[m][s2], Zs[m][s2], o[s2]]])
                 plt.pcolormesh(Rs[m][s2], Zs[m][s2], o[s2])
+                plt.title(f"{inp} {ops} output[s2]")
                 plt.colorbar()
                 plt.figure()
                 plt.pcolormesh(Rs[m][s2], Zs[m][s2], a[s2])
+                plt.title(f"{inp} {ops} analytic[s2]")
                 plt.colorbar()
                 plt.figure()
-                plt.pcolormesh(Rs[m][s2], Zs[m][s2], (o - a)[s2])
+                emax = np.max(np.abs((o - a)[s2]))
+                plt.pcolormesh(
+                    Rs[m][s2],
+                    Zs[m][s2],
+                    (o - a)[s2],
+                    cmap=plt.get_cmap("bwr"),
+                    vmax=emax,
+                    vmin=-emax,
+                )
+                plt.title(f"{inp} {ops} error[s2]")
                 plt.colorbar()
                 plt.show()
 

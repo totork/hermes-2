@@ -10,10 +10,6 @@ ShiftWithoutTwist=false
 MYG=1
 MXG=2
 
-grid = "grids/rotating-ellipse-36x8x32-ix20.fci.nc"
-# grid = "v8/W7X-conf0-132x36x512.fci.nc"
-# grid = "v8/W7X-conf4-132x36x512.fci.nc"
-# grid = "W7X-conf4-68x32x256.fci.nc"
 
 NXPE=1
 
@@ -23,37 +19,38 @@ dump_format = nc
 [mesh]
 symmetricGlobalX = true
 extrapolate_y = false
+file = v17/W7X-conf0-8x36x16.emc3.inner:f.vessel:f.island:f.mfi:15e-1.offt:20.fci.nc
 [mesh:paralleltransform]
 type = fci
 
 
 [mesh_0]
-file = "v13/W7X-conf0-12x36x48.emc3.inner:f.vessel:f.island:f.fci.nc"
+file = v17/W7X-conf0-8x36x16.emc3.inner:f.vessel:f.island:f.mfi:15e-1.offt:20.fci.nc
 symmetricGlobalX = true
 extrapolate_y = false
 
 [mesh_1]
-file = "v13/W7X-conf0-20x36x96.emc3.inner:f.vessel:f.island:f.fci.nc"
+file = v17/W7X-conf0-12x36x32.emc3.inner:f.vessel:f.island:f.mfi:15e-1.offt:20.fci.nc
 symmetricGlobalX = true
 extrapolate_y = false
 
 [mesh_2]
-file = "v13/W7X-conf0-36x36x192.emc3.inner:f.vessel:f.island:f.fci.nc"
+file = v17/W7X-conf0-36x36x128.emc3.inner:f.vessel:f.island:f.mfi:15e-1.offt:20.fci.nc
 symmetricGlobalX = true
 extrapolate_y = false
 
 [mesh_3]
-file = "v13/W7X-conf0-68x36x384.emc3.inner:f.vessel:f.island:f.fci.nc"
+file = v17/W7X-conf0-68x36x256.emc3.inner:f.vessel:f.island:f.mfi:15e-1.offt:20.fci.nc
 symmetricGlobalX = true
 extrapolate_y = false
 
 [mesh_4]
-file = "v13/W7X-conf0-132x36x768.emc3.inner:f.vessel:f.island:f.fci.nc"
+file = v17/W7X-conf0-132x36x512.emc3.inner:f.vessel:f.island:f.mfi:15e-1.offt:20.fci.nc
 symmetricGlobalX = true
 extrapolate_y = false
 
 [mesh_50]
-file = "v13/W7X-conf0-260x36x1536.emc3.inner:f.vessel:f.island:f.fci.nc"
+file = file5
 symmetricGlobalX = true
 extrapolate_y = false
 
