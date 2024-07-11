@@ -25,6 +25,28 @@ def collect(path, var, mesh=0):
     )
 
 
+def r_func(R, Z):
+    R0 = 5
+    theta = np.arctan2(Z, R - R0)
+    beta = R0 * np.cos(2 * theta)
+    gamma = 2 * (np.cos(theta) ** 3) - np.cos(theta)
+    r = np.sqrt((R - R0) ** 2 + Z**2)
+    return (beta + 2 * r * gamma) / (r * beta + r**2 * gamma)
+
+
+def sin_theta(R, Z):
+    R0 = 5
+    theta = np.arctan2(Z, R - R0)
+    r = np.sqrt((R - R0) ** 2 + Z**2)
+    st = np.sin(theta)
+    ct = np.cos(theta)
+    c2t = np.cos(theta * 2)
+    s2t = np.sin(theta * 2)
+    A = st - 6 * c2t * st - 2 * R0 / r * s2t
+    B = r * R0 * c2t + r**2 * (2 * ct**3 - ct)
+    return A / B * ct - st / r**2
+
+
 ana_default = {
     "R": lambda R, Z: 1 / R,
     "R²": lambda R, Z: R * 0 + 4,
@@ -38,6 +60,8 @@ ana_default = {
     "sin(Z*100)": lambda R, Z: -np.sin(Z * 100) * 1e4,
     "sin(Z*1000)": lambda R, Z: -np.sin(Z * 1000) * 1e6,
     "Z": lambda R, Z: Z * 0,
+    "r": r_func,
+    "sin(theta)": sin_theta,
 }
 ana = dict()
 ana["bracket(a, f)"] = {

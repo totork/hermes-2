@@ -33,6 +33,10 @@ public:
 };
 
 const auto functions = {
+    nameandfunc2{"r", [](const Field3D &R,
+			 const Field3D &Z) { return sqrt(Z*Z + (R-5)*(R-5)); }},
+    nameandfunc2{"sin(theta)", [](const Field3D &R,
+				  const Field3D &Z) { return Z / sqrt(Z*Z + (R-5)*(R-5)); }},
     nameandfunc2{"R", [](const Field3D &R, const Field3D &Z) { return R; }},
     nameandfunc2{"R²",
                  [](const Field3D &R, const Field3D &Z) { return R * R; }},
