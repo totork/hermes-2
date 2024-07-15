@@ -143,19 +143,21 @@ def doit(path):
             ops, inp = attrs["operator"], attrs["inp"]
             a = get_ana(ops, inp)(Rs[m], Zs[m])
             e = (o - a)[s]
-            if "dagp_fv" in ops:
+            if "dagp_fv" in ops and 1:
+                f, axs = plt.subplots(1, 3)
                 s2 = slice(2, -2, None), 0, slice(None)
                 print([x.shape for x in [Rs[m][s2], Zs[m][s2], o[s2]]])
-                plt.pcolormesh(Rs[m][s2], Zs[m][s2], o[s2])
-                plt.title(f"{inp} {ops} output[s2]")
-                plt.colorbar()
-                plt.figure()
-                plt.pcolormesh(Rs[m][s2], Zs[m][s2], a[s2])
-                plt.title(f"{inp} {ops} analytic[s2]")
-                plt.colorbar()
-                plt.figure()
+                ax = axs[0]
+                p = ax.pcolormesh(Rs[m][s2], Zs[m][s2], o[s2])
+                ax.set_title(f"{inp} {ops} output[s2]")
+                plt.colorbar(p, ax=ax)
+                ax = axs[1]
+                p = ax.pcolormesh(Rs[m][s2], Zs[m][s2], a[s2])
+                ax.set_title(f"{inp} {ops} analytic[s2]")
+                plt.colorbar(p, ax=ax)
+                ax = axs[2]
                 emax = np.max(np.abs((o - a)[s2]))
-                plt.pcolormesh(
+                p = ax.pcolormesh(
                     Rs[m][s2],
                     Zs[m][s2],
                     (o - a)[s2],
@@ -163,15 +165,15 @@ def doit(path):
                     vmax=emax,
                     vmin=-emax,
                 )
-                plt.title(f"{inp} {ops} error[s2]")
-                plt.colorbar()
-                plt.show()
+                ax.set_title(f"{inp} {ops} error[s2]")
+                plt.colorbar(p, ax=ax)
 
             l2.append(np.sqrt(np.mean(e**2)))
             lst.append(Rs[m].shape[2])
         if not np.any(a):
             print(ops, inp)
             continue
+        plt.show()
 
         ord = []
         for i0 in range(len(l2) - 1):
