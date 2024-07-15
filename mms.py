@@ -185,7 +185,7 @@ def doit(path):
         if not np.isclose(
             ord[-1], get_convergence(attrs["operator"]), atol=0.25, rtol=0
         ):
-            print("F", i, ord, {k: v for k, v in attrs.items() if "_" not in k and v})
+            state = "F"
 
             global success, failed, failed2
             failed[ops].append(inp)
@@ -193,7 +193,14 @@ def doit(path):
                 success = False
                 failed2.add(ops)
         else:
-            print("S", i, ord, {k: v for k, v in attrs.items() if "_" not in k and v})
+            state = "S"
+        print(
+            state,
+            i,
+            np.array(l2),
+            np.array(ord),
+            {k: v for k, v in attrs.items() if "_" not in k and v},
+        )
 
         toplot.append((attrs["inp"], attrs["operator"], lst, l2))
         label = f'{attrs["inp"]} {attrs["operator"]}'
