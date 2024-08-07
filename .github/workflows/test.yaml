@@ -39,7 +39,7 @@ jobs:
         run: |
           cd /home/boutuser/hermes-2
           cmake --version
-          cmake -S . -B build -Dbout++_DIR=/home/boutuser/BOUT-dev/build
+          cmake -S . -B build -Dbout++_DIR=/home/boutuser/BOUT-dev/build -DCMAKE_BUILD_TYPE=RelWithDebInfo
           make -C build -j 2
 
       - name: Run
