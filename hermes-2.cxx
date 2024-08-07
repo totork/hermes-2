@@ -41,12 +41,7 @@
 #include "atomicpp/ImpuritySpecies.hxx"
 #include "atomicpp/Prad.hxx"
 
-#define boutisold 0
-#if boutisold
-std::string parbc{"parallel_neumann"};
-#else
 std::string parbc{"parallel_neumann_o1"};
-#endif
 
 namespace FV {
   template<typename CellEdges = MC>
@@ -238,8 +233,8 @@ const Field3D ceil(const Field3D &var, BoutReal f, REGION rgn = RGN_ALL) {
 Field3D SQ(const Vector3D &v) { return v * v; }
 
 void setRegions(Field3D &f) {
-  // f.yup().setRegion("RGN_YPAR_+1");
-  // f.ydown().setRegion("RGN_YPAR_-1");
+  f.yup().setRegion("RGN_YPAR_+1");
+  f.ydown().setRegion("RGN_YPAR_-1");
 }
 
 const Field3D &yup(const Field3D &f) { return f.yup(); }
@@ -965,8 +960,8 @@ int Hermes::init(bool restarting) {
     }
 
     bout::checkPositive(coord->Bxy, "f", "RGN_NOCORNERS");
-    // bout::checkPositive(coord->Bxy.yup(), "fyup", "RGN_YPAR_+1");
-    // bout::checkPositive(coord->Bxy.ydown(), "fdown", "RGN_YPAR_-1");
+    bout::checkPositive(coord->Bxy.yup(), "fyup", "RGN_YPAR_+1");
+    bout::checkPositive(coord->Bxy.ydown(), "fdown", "RGN_YPAR_-1");
     logB = log(Bxyz);
 
     bracket_factor = sqrt(coord->g_22) / (coord->J * Bxyz);
@@ -1850,27 +1845,18 @@ int Hermes::rhs(BoutReal t) {
   if (parallel_sheaths){
     switch (par_sheath_model) {
     case 0 :{
-      for (const auto &bndry_par : mesh->getBoundariesPar()) {
+      for (const auto &bndry_par :
+           mesh->getBoundariesPar(BoundaryParType::xout)) {
         for (bndry_par->first(); !bndry_par->isDone(); bndry_par->next()) {
-#if boutisold
-          int x = bndry_par->x;
-          int y = bndry_par->y;
-          int z = bndry_par->z;
-#else
           int x = bndry_par->ind().x();
           int y = bndry_par->ind().y();
           int z = bndry_par->ind().z();
-#endif
-          if (x < mesh->LocalNx / 2) {
-            continue;
-          }
-          // output.write("x: {},y: {},z: {}\n", x,y,z);
           // Zero-gradient density
           BoutReal nesheath = floor(Ne(x, y, z), 0.0);
 
           // Temperature at the sheath entrance
-	  BoutReal tesheath = floor(Te(x, y, z), 0.0);
-	  BoutReal tisheath = floor(Ti(x, y, z), 0.0);
+          BoutReal tesheath = floor(Te(x, y, z), 0.0);
+          BoutReal tisheath = floor(Ti(x, y, z), 0.0);
 
 	  // Zero-gradient potential
 	  BoutReal phisheath = phi(x, y, z);
@@ -2830,22 +2816,13 @@ int Hermes::rhs(BoutReal t) {
     if (parallel_sheaths){
       sheath_dpe = 0.;
 
-      for (const auto &bndry_par : mesh->getBoundariesPar()) {
+      for (const auto &bndry_par :
+           mesh->getBoundariesPar(BoundaryParType::xout)) {
         for (bndry_par->first(); !bndry_par->isDone(); bndry_par->next()) {
-#if boutisold
-          int x = bndry_par->x;
-          int y = bndry_par->y;
-          int z = bndry_par->z;
-#else
           int x = bndry_par->ind().x();
           int y = bndry_par->ind().y();
           int z = bndry_par->ind().z();
-#endif
-          if (x < mesh->LocalNx / 2) {
-            continue;
-          }
           // Temperature and density at the sheath entrance
-#if 0
           BoutReal tesheath =
               floor(0.5 * (Te(x, y, z) +
                            Te.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
@@ -2854,23 +2831,19 @@ int Hermes::rhs(BoutReal t) {
               floor(0.5 * (Ne(x, y, z) +
                            Ne.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
                     0.0);
-          BoutReal vesheath = 0.5 * (Ve(x, y, z) + Ve.ynext(bndry_par->dir)(x, y + bndry_par->dir, z));
-#else
-          BoutReal tesheath =
-              Te.ynext(bndry_par->dir)(x, y + bndry_par->dir, z);
-          BoutReal nesheath =
-              Ne.ynext(bndry_par->dir)(x, y + bndry_par->dir, z);
           BoutReal vesheath =
-              Ve.ynext(bndry_par->dir)(x, y + bndry_par->dir, z);
-#endif
+              floor(0.5 * (Ve(x, y, z) +
+                           Ve.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
+                    0.0);
           // BoutReal tisheath = floor(
-	  // 			      0.5 * (Ti(x, y, z) + Ti.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
-	  // 			      0.0);
-	  
-	  // Sound speed (normalised units)
-	  // BoutReal Cs =bndry_par->dir* sqrt(tesheath + tisheath);
+          // 			      0.5 * (Ti(x, y, z) +
+          // Ti.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
+          // 0.0);
 
-	  // Heat flux
+          // Sound speed (normalised units)
+          // BoutReal Cs =bndry_par->dir* sqrt(tesheath + tisheath);
+
+          // Heat flux
           BoutReal q = (sheath_gamma_e - 1.5) * tesheath * nesheath * vesheath *
                        bndry_par->dir;
           // Multiply by cell area to get power
@@ -3181,23 +3154,13 @@ int Hermes::rhs(BoutReal t) {
 
     if (parallel_sheaths){
       sheath_dpi = 0.0;
-
-      for (const auto &bndry_par : mesh->getBoundariesPar()) {
+      for (const auto &bndry_par :
+           mesh->getBoundariesPar(BoundaryParType::xout)) {
         for (bndry_par->first(); !bndry_par->isDone(); bndry_par->next()) {
-#if boutisold
-          int x = bndry_par->x;
-          int y = bndry_par->y;
-          int z = bndry_par->z;
-#else
           int x = bndry_par->ind().x();
           int y = bndry_par->ind().y();
           int z = bndry_par->ind().z();
-#endif
-          if (x < mesh->LocalNx / 2) {
-            continue;
-          }
           // Temperature and density at the sheath entrance
-#if 0
           BoutReal tisheath =
               floor(0.5 * (Ti(x, y, z) +
                            Ti.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
@@ -3206,16 +3169,14 @@ int Hermes::rhs(BoutReal t) {
               floor(0.5 * (Te(x, y, z) +
                            Te.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
                     0.0);
-          BoutReal nesheath = floor(
-				    0.5 * (Ne(x, y, z) + Ne.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
-				    0.0);
-	  BoutReal visheath = 0.5 * (Vi(x, y, z) + Vi.ynext(bndry_par->dir)(x, y + bndry_par->dir, z));
-#else
-          BoutReal tesheath = Te(x, y, z);
-          BoutReal tisheath = Te(x, y, z);
-          BoutReal nesheath = Ne(x, y, z);
-          BoutReal visheath = Vi(x, y, z);
-#endif
+          BoutReal nesheath =
+              floor(0.5 * (Ne(x, y, z) +
+                           Ne.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
+                    0.0);
+          BoutReal visheath =
+              0.5 * (Vi(x, y, z) +
+                     Vi.ynext(bndry_par->dir)(x, y + bndry_par->dir, z));
+
           // Sound speed (normalisexd units)
           // BoutReal Cs = bndry_par->dir * sqrt(tesheath + tisheath);
 

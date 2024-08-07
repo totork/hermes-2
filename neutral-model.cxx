@@ -26,13 +26,16 @@ NeutralModel *NeutralModel::create(Solver *solver, Mesh *mesh,
     return new Diffusion2D(solver, mesh, options);
   } else if (type == "recycling") {
     // Recycling at target, assumes exponential neutral profile
-    return new NeutralRecycling(solver, mesh, options);
+    // return new NeutralRecycling(solver, mesh, options);
+    throw BoutException("not implemented");
   } else if (type == "fullvelocity") {
     // 3D Navier-Stokes
-    return new FullVelocity(solver, mesh, options);
+    throw BoutException("not implemented");
+    // return new FullVelocity(solver, mesh, options);
   } else if (type == "mixed") {
     // Diffusive in X-Z, fluid in Y. Similar to UEDGE
-    return new NeutralMixed(solver, mesh, options);
+    throw BoutException("not implemented");
+    // return new NeutralMixed(solver, mesh, options);
   }
   throw BoutException("Unrecognised neutral model '%s'", type.c_str());
 }

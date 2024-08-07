@@ -5,6 +5,7 @@ import sys
 import os
 import collections
 import glob
+import pickle
 
 
 def get_convergence(method):
@@ -118,8 +119,7 @@ def doit(path):
         try:
             Rs += [collect(path, "R", m)]
             m += 1
-        except OSError as e:
-            # print(e)
+        except OSError:
             break
     mids = range(m)
     Zs = [collect(path, "Z", m) for m in mids]
@@ -130,10 +130,15 @@ def doit(path):
     while 1:
         try:
             collect(path, f"out_{mmax}")
-        except ValueError as e:
+        except ValueError:
             break
         mmax += 1
     print(f"Checking {mmax} variables for {len(Zs)} meshes in dir {path}")
+
+    def defdiclist():
+        return collections.defaultdict(list)
+
+    out = collections.defaultdict(lambda: collections.defaultdict(list))
     for i in list(range(mmax)):
         l2 = []
         lst = []
@@ -143,7 +148,7 @@ def doit(path):
             ops, inp = attrs["operator"], attrs["inp"]
             a = get_ana(ops, inp)(Rs[m], Zs[m])
             e = (o - a)[s]
-            if "dagp_fv" in ops and 1:
+            if "dagp_fv" in ops and 0:
                 f, axs = plt.subplots(1, 3)
                 s2 = slice(2, -2, None), 0, slice(None)
                 print([x.shape for x in [Rs[m][s2], Zs[m][s2], o[s2]]])
@@ -168,7 +173,9 @@ def doit(path):
                 ax.set_title(f"{inp} {ops} error[s2]")
                 plt.colorbar(p, ax=ax)
 
-            l2.append(np.sqrt(np.mean(e**2)))
+            thisl2 = np.sqrt(np.mean(e**2))
+            l2.append(thisl2)
+            out[inp][ops].append(thisl2)
             lst.append(Rs[m].shape[2])
         if not np.any(a):
             print(ops, inp)
@@ -185,7 +192,7 @@ def doit(path):
         if not np.isclose(
             ord[-1], get_convergence(attrs["operator"]), atol=0.25, rtol=0
         ):
-            state = "F"
+            state = "❌"
 
             global success, failed, failed2
             failed[ops].append(inp)
@@ -193,7 +200,7 @@ def doit(path):
                 success = False
                 failed2.add(ops)
         else:
-            state = "S"
+            state = "✅"
         print(
             state,
             i,
@@ -218,6 +225,9 @@ def doit(path):
     for a, b, c, d in toplot:
         toplot2[a].append((b, c, d))
         # toplot2[b].append((a, c, d))
+    out = {k: dict(v) for k, v in out.items()}
+    with open(f"{path}/l2_data.pkl", "wb") as f:
+        pickle.dump(out, f, pickle.HIGHEST_PROTOCOL)
     if 0:
         for k, vs in toplot2.items():
             plt.figure()
