@@ -1,5 +1,5 @@
 /*
-  
+
     Copyright B.Dudson, J.Leddy, University of York, 2016-2019
               email: benjamin.dudson@york.ac.uk
 
@@ -51,7 +51,7 @@ namespace FV {
     ASSERT1(areFieldsCompatible(f_in, v_in));
     ASSERT1(areFieldsCompatible(f_in, wave_speed_in));
     bool use_parallel_slices = (f_in.hasParallelSlices() && v_in.hasParallelSlices()
-  				&& wave_speed_in.hasParallelSlices());
+                                  && wave_speed_in.hasParallelSlices());
 
     Mesh* mesh = f_in.getMesh();
 
@@ -91,34 +91,34 @@ namespace FV {
         ye = mesh->yend;
       }
 
-      for (int j = ys; j <= ye; j++) {        
+      for (int j = ys; j <= ye; j++) {
         for (int k = 0; k < mesh->LocalNz; k++) {
 
-	  // For right cell boundaries
-	  BoutReal common_factor = (coord->J(i, j, k) + coord->J(i, j + 1, k)) /
-	    (sqrt(coord->g_22(i, j, k)) + sqrt(coord->g_22(i, j + 1, k)));
-	  
-	  BoutReal flux_factor_rc = common_factor / (coord->dy(i, j, k) * coord->J(i, j, k));
-	  BoutReal flux_factor_rp = common_factor / (coord->dy(i, j + 1, k) * coord->J(i, j + 1, k));
-	  
-	  // For left cell boundaries
-	  common_factor = (coord->J(i, j, k) + coord->J(i, j - 1, k)) /
-	    (sqrt(coord->g_22(i, j, k)) + sqrt(coord->g_22(i, j - 1, k)));
-	  
-	  BoutReal flux_factor_lc = common_factor / (coord->dy(i, j, k) * coord->J(i, j, k));
-	  BoutReal flux_factor_lm = common_factor / (coord->dy(i, j - 1, k) * coord->J(i, j - 1, k));
-	  
+          // For right cell boundaries
+          BoutReal common_factor = (coord->J(i, j, k) + coord->J(i, j + 1, k)) /
+            (sqrt(coord->g_22(i, j, k)) + sqrt(coord->g_22(i, j + 1, k)));
+
+          BoutReal flux_factor_rc = common_factor / (coord->dy(i, j, k) * coord->J(i, j, k));
+          BoutReal flux_factor_rp = common_factor / (coord->dy(i, j + 1, k) * coord->J(i, j + 1, k));
+
+          // For left cell boundaries
+          common_factor = (coord->J(i, j, k) + coord->J(i, j - 1, k)) /
+            (sqrt(coord->g_22(i, j, k)) + sqrt(coord->g_22(i, j - 1, k)));
+
+          BoutReal flux_factor_lc = common_factor / (coord->dy(i, j, k) * coord->J(i, j, k));
+          BoutReal flux_factor_lm = common_factor / (coord->dy(i, j - 1, k) * coord->J(i, j - 1, k));
+
           ////////////////////////////////////////////
           // Reconstruct f at the cell faces
           // This calculates s.R and s.L for the Right and Left
           // face values on this cell
-          
+
           // Reconstruct f at the cell faces
           Stencil1D s;
           s.c = f(i, j, k);
           s.m = f(i, j - 1, k);
           s.p = f(i, j + 1, k);
-          
+
           cellboundary(s); // Calculate s.R and s.L
 
           // Reconstruct v at the cell faces
@@ -126,9 +126,9 @@ namespace FV {
           sv.c = v(i, j, k);
           sv.m = v(i, j - 1, k);
           sv.p = v(i, j + 1, k);
-          
+
           cellboundary(sv);
-          
+
           ////////////////////////////////////////////
           // Right boundary
 
@@ -148,7 +148,7 @@ namespace FV {
               flux = s.R * vpar * sv.R + wave_speed(i, j, k) * (s.R * sv.R - bndryval * vpar);
             }
           } else {
-            
+
             // Maximum wave speed in the two cells
             BoutReal amax = BOUTMAX(wave_speed(i, j, k), wave_speed(i, j + 1, k));
 
@@ -163,13 +163,13 @@ namespace FV {
               flux = s.R * 0.5 * (vpar + amax) * sv.R;
             }
           }
-          
+
           result(i, j, k) += flux * flux_factor_rc;
           result(i, j + 1, k) -= flux * flux_factor_rp;
 
           ////////////////////////////////////////////
           // Calculate at left boundary
-          
+
           vpar = 0.5 * (v(i, j, k) + v(i, j - 1, k));
 
           if (mesh->firstY(i) && (j == mesh->ystart) && !mesh->periodicY(i)) {
@@ -183,7 +183,7 @@ namespace FV {
               flux = s.L * vpar * sv.L - wave_speed(i, j, k) * (s.L * sv.L - bndryval * vpar);
             }
           } else {
-            
+
             // Maximum wave speed in the two cells
             BoutReal amax = BOUTMAX(wave_speed(i, j, k), wave_speed(i, j - 1, k));
 
@@ -197,10 +197,10 @@ namespace FV {
               flux = s.L * 0.5 * (vpar - amax) * sv.L;
             }
           }
-          
+
           result(i, j, k) -= flux * flux_factor_lc;
           result(i, j - 1, k) += flux * flux_factor_lm;
-          
+
         }
       }
     }
@@ -432,7 +432,7 @@ int Hermes::init(bool restarting) {
   j_diamag = optsc["j_diamag"]
                  .doc("Diamagnetic current: Vort <-> Pe")
                  .withDefault<bool>(true);
-  
+
   j_par = optsc["j_par"]
               .doc("Parallel current:    Vort <-> Psi")
               .withDefault<bool>(true);
@@ -461,7 +461,7 @@ int Hermes::init(bool restarting) {
   thermal_force = optsc["thermal_force"]
                     .doc("Force on electrons due to temperature gradients")
                     .withDefault<bool>(true);
-  
+
   OPTION(optsc, electron_viscosity, true);
   ion_viscosity = optsc["ion_viscosity"].doc("Include ion viscosity?").withDefault<bool>(true);
   ion_viscosity_par = optsc["ion_viscosity_par"].doc("Include parallel diffusion of ion momentum?").withDefault<bool>(ion_viscosity);
@@ -469,7 +469,7 @@ int Hermes::init(bool restarting) {
   electron_neutral = optsc["electron_neutral"]
                        .doc("Include electron-neutral collisions in resistivity?")
                        .withDefault<bool>(true);
-  
+
   ion_neutral = optsc["ion_neutral"]
                   .doc("Include ion-neutral collisions in tau_i?")
                   .withDefault<bool>(false);
@@ -477,7 +477,7 @@ int Hermes::init(bool restarting) {
   poloidal_flows = optsc["poloidal_flows"]
                        .doc("Include ExB flows in X-Y plane")
                        .withDefault(true);
-  
+
   OPTION(optsc, ion_velocity, true);
 
   OPTION(optsc, thermal_conduction, true);
@@ -548,7 +548,7 @@ int Hermes::init(bool restarting) {
   ne_num_hyper = optsc["ne_num_hyper"]
                      .doc("Numerical Ne hyper-diffusion in X-Z plane. < 0 => off.")
                      .withDefault(-1.0);
-  
+
   vi_num_diff = optsc["vi_num_diff"]
                     .doc("Numerical Vi diffusion in X-Z plane. < 0 => off.")
                     .withDefault(-1.0);
@@ -597,7 +597,7 @@ int Hermes::init(bool restarting) {
 
   OPTION(optsc, phi_smoothing, false);
   OPTION(optsc, phi_sf, 0.0);
-  
+
   resistivity_boundary = optsc["resistivity_boundary"]
     .doc("Normalised resistivity in radial boundary region")
     .withDefault(1.0);
@@ -605,7 +605,7 @@ int Hermes::init(bool restarting) {
   resistivity_boundary_width = optsc["resistivity_boundary_width"]
     .doc("Number of grid cells in radial (x) direction")
     .withDefault(0);
-  
+
   // Output additional information
   OPTION(optsc, verbose, false);    // Save additional fields
   OPTION(optsc, output_ddt, false); // Save time derivatives
@@ -722,11 +722,11 @@ int Hermes::init(bool restarting) {
       if (!mesh->periodicY(x)) {
         // Not periodic, so not in core
         for (int y = mesh->ystart; y <= mesh->yend; y++) {
-	  for (int z = 0; z <= mesh->LocalNz; z++) {
-	    Sn(x, y, z) = 0.0;
-	    Spe(x, y, z) = 0.0;
-	    Spi(x, y, z) = 0.0;
-	  }
+          for (int z = 0; z <= mesh->LocalNz; z++) {
+            Sn(x, y, z) = 0.0;
+            Spe(x, y, z) = 0.0;
+            Spi(x, y, z) = 0.0;
+          }
         }
       }
     }
@@ -752,7 +752,7 @@ int Hermes::init(bool restarting) {
   // Evolving n_i instead of n_e
   evolve_ni = optsc["evolve_ni"].doc("Evolve ion density instead?")
     .withDefault<bool>(true);
-  
+
   // Temperature evolution can be turned off
   // so that Pe = Ne and/or Pi = Ne
   evolve_te = optsc["evolve_te"].doc("Evolve electron temperature?")
@@ -950,12 +950,12 @@ int Hermes::init(bool restarting) {
     bwd_bndry_mask = BoutMask(mesh, false);
     for (const auto &bndry_par : mesh->getBoundariesPar(BoundaryParType::fwd)) {
       for (bndry_par->first(); !bndry_par->isDone(); bndry_par->next()) {
-	fwd_bndry_mask[bndry_par->ind()] = true;
+        fwd_bndry_mask[bndry_par->ind()] = true;
       }
     }
     for (const auto &bndry_par : mesh->getBoundariesPar(BoundaryParType::bwd)) {
       for (bndry_par->first(); !bndry_par->isDone(); bndry_par->next()) {
-	bwd_bndry_mask[bndry_par->ind()] = true;
+        bwd_bndry_mask[bndry_par->ind()] = true;
       }
     }
 
@@ -990,7 +990,7 @@ int Hermes::init(bool restarting) {
   /////////////////////////////////////////////////////////
   // Impurities
   TRACE("Impurities");
-  
+
   impurity_adas = optsc["impurity_adas"]
                       .doc("Use Atomic++ interface to ADAS")
                       .withDefault<bool>(false);
@@ -1022,7 +1022,7 @@ int Hermes::init(bool restarting) {
     // Save impurity radiation
     SAVE_REPEAT(Rzrad);
   }
-  
+
   /////////////////////////////////////////////////////////
   // Read profiles from the mesh
   TRACE("Reading profiles");
@@ -1136,7 +1136,7 @@ int Hermes::init(bool restarting) {
       }
     }
   }
-  
+
   if (Options::root()["mesh:paralleltransform"]["type"].as<std::string>() == "shifted") {
     Field2D I;
     mesh->get(I, "sinty");
@@ -1163,7 +1163,7 @@ int Hermes::init(bool restarting) {
     if (relaxation){
       SAVE_REPEAT(phi_1);
     }
-    
+
     if (j_par) {
       SAVE_REPEAT(Ve);
 
@@ -1180,39 +1180,39 @@ int Hermes::init(bool restarting) {
 #endif
     } else {
       if (!relaxation) {
-	if (split_n0) {
-	  // Create an XY solver for n=0 component
-	  laplacexy = new LaplaceXY(mesh);
-	  // Set coefficients for Boussinesq solve
-	  laplacexy->setCoefs(1. / SQ(DC(coord->Bxy)), 0.0);
-	  phi2D = 0.0; // Starting guess
-	}
+        if (split_n0) {
+          // Create an XY solver for n=0 component
+          laplacexy = new LaplaceXY(mesh);
+          // Set coefficients for Boussinesq solve
+          laplacexy->setCoefs(1. / SQ(DC(coord->Bxy)), 0.0);
+          phi2D = 0.0; // Starting guess
+        }
 
-	// Create an XZ solver
-	OPTION(optsc, newXZsolver, false);
-	if (newXZsolver) {
-	  // Test new LaplaceXZ solver
-	  newSolver = LaplaceXZ::create(bout::globals::mesh);
-	  // Set coefficients for Boussinesq solve
-	  newSolver->setCoefs(1. / SQ(coord->Bxy), Field3D(0.0));
-	} else {
-	  // Use older Laplacian solver
-	  phiSolver = Laplacian::create(&opt["phiSolver"]);
-	  // Set coefficients for Boussinesq solve
-	  phiSolver->setCoefC(1./ SQ(coord->Bxy));
-	}
+        // Create an XZ solver
+        OPTION(optsc, newXZsolver, false);
+        if (newXZsolver) {
+          // Test new LaplaceXZ solver
+          newSolver = LaplaceXZ::create(bout::globals::mesh);
+          // Set coefficients for Boussinesq solve
+          newSolver->setCoefs(1. / SQ(coord->Bxy), Field3D(0.0));
+        } else {
+          // Use older Laplacian solver
+          phiSolver = Laplacian::create(&opt["phiSolver"]);
+          // Set coefficients for Boussinesq solve
+          phiSolver->setCoefC(1./ SQ(coord->Bxy));
+        }
       }else{
-	// Relaxation method for steady-state potential
-	phi_1 = 0.;
-	phi_1.setBoundary("phi_1");
+        // Relaxation method for steady-state potential
+        phi_1 = 0.;
+        phi_1.setBoundary("phi_1");
       }
 
       phi = 0.0;
       phi.setBoundary("phi"); // For y boundaries
-    
+
       phi_boundary_relax = optsc["phi_boundary_relax"]
-	.doc("Relax x boundaries of phi towards Neumann?")
-	.withDefault<bool>(false);
+        .doc("Relax x boundaries of phi towards Neumann?")
+        .withDefault<bool>(false);
 
       // Add phi to restart files so that the value in the boundaries
       // is restored on restart. This is done even when phi is not evolving,
@@ -1221,33 +1221,33 @@ int Hermes::init(bool restarting) {
 
       if (phi_boundary_relax) {
 
-	if (!restarting) {
-	  // Start by setting to the sheath current = 0 boundary value
+        if (!restarting) {
+          // Start by setting to the sheath current = 0 boundary value
 
-	  Ne = floor(Ne, 1e-5);
-	  Te = floor(Pe / Ne, 0.1 / Tnorm);
-	  Ti = floor(Pi / Ne, 0.1 / Tnorm);
+          Ne = floor(Ne, 1e-5);
+          Te = floor(Pe / Ne, 0.1 / Tnorm);
+          Ti = floor(Pi / Ne, 0.1 / Tnorm);
 
-	  phi.setBoundaryTo(DC(
-			       (log(0.5 * sqrt(mi_me / PI)) + log(sqrt(Te / (Te + Ti)))) * Te));
-	}
+          phi.setBoundaryTo(DC(
+                               (log(0.5 * sqrt(mi_me / PI)) + log(sqrt(Te / (Te + Ti)))) * Te));
+        }
 
-	// Set the last update time to -1, so it will reset
-	// the first time RHS function is called 
-	phi_boundary_last_update = -1.;
+        // Set the last update time to -1, so it will reset
+        // the first time RHS function is called
+        phi_boundary_last_update = -1.;
 
-	phi_boundary_timescale = optsc["phi_boundary_timescale"]
-	  .doc("Timescale for phi boundary relaxation [seconds]")
-	  .withDefault(1e-4)
-	  * Omega_ci; // Normalise to internal time units
+        phi_boundary_timescale = optsc["phi_boundary_timescale"]
+          .doc("Timescale for phi boundary relaxation [seconds]")
+          .withDefault(1e-4)
+          * Omega_ci; // Normalise to internal time units
       }
-    
+
       // Apar (Psi) solver
       aparSolver = Laplacian::create(&opt["aparSolver"]);
       if (split_n0_psi) {
-	// Use another XY solver for n=0 psi component
-	aparXY = new LaplaceXY(mesh);
-	psi2D = 0.0;
+        // Use another XY solver for n=0 psi component
+        aparXY = new LaplaceXY(mesh);
+        psi2D = 0.0;
       }
 
       Ve.setBoundary("Ve");
@@ -1264,7 +1264,7 @@ int Hermes::init(bool restarting) {
 
   SAVE_REPEAT(a,b,d);
   SAVE_REPEAT(Te, Ti);
-  
+
   if (verbose) {
     // Save additional fields
     SAVE_REPEAT(Jpar); // Parallel current
@@ -1367,15 +1367,15 @@ int Hermes::rhs(BoutReal t) {
             // printf("Ne %d %d %d %e -> %e\n", x, y, z, fac, Ne(mesh->xend, y,
             // z) * fac);
             Ne(x, y, z) = Ne(mesh->xend, y, z) * fac;
-	  }
-	  if (fall_off_Pe > 0) {
+          }
+          if (fall_off_Pe > 0) {
             const auto fac = exp(-xdist(x, y, z) / fall_off_Pe);
             Pe(x, y, z) = Pe(mesh->xend, y, z) * fac;
-	  }
-	  if (fall_off_Pi > 0) {
+          }
+          if (fall_off_Pi > 0) {
             const auto fac = exp(-xdist(x, y, z) / fall_off_Pi);
             Pi(x, y, z) = Pi(mesh->xend, y, z) * fac;
-	  }
+          }
         }
       }
     }
@@ -1503,7 +1503,7 @@ int Hermes::rhs(BoutReal t) {
     }
   }
   sound_speed.applyBoundary("neumann");
-  
+
   //////////////////////////////////////////////////////////////
   // Calculate electrostatic potential phi
   //
@@ -1530,13 +1530,13 @@ int Hermes::rhs(BoutReal t) {
       if (phi_boundary_last_update < 0.0) {
         // First time this has been called.
         phi_boundary_last_update = t;
-        
+
       } else if (t > phi_boundary_last_update) {
         // Only update if time has advanced
         // Uses an exponential decay of the weighting of the value in the boundary
         // so that the solution is well behaved for arbitrary steps
         BoutReal weight = exp(-(t - phi_boundary_last_update) / phi_boundary_timescale);
-	// output.write("weight: {}\n", weight);
+        // output.write("weight: {}\n", weight);
         phi_boundary_last_update = t;
 
         if (mesh->firstX()) {
@@ -1546,18 +1546,18 @@ int Hermes::rhs(BoutReal t) {
               phivalue += phi(mesh->xstart, j, k);
             }
             phivalue /= mesh->LocalNz; // Average in Z of point next to boundary
-	    
-	    for (int k = 0; k < mesh->LocalNz; k++) {
-	      phivalue = phi(mesh->xstart, j, k);
-	      // Old value of phi at boundary
-	      BoutReal oldvalue =  phi(mesh->xstart,j,k);//0.5 * (phi(mesh->xstart - 1, j, k) + phi(mesh->xstart, j, k));
 
-	      // New value of phi at boundary, relaxing towards phivalue
-	      BoutReal newvalue = weight * oldvalue + (1. - weight) * phivalue;
-	    
-	      // Set phi at the boundary to this value
+            for (int k = 0; k < mesh->LocalNz; k++) {
+              phivalue = phi(mesh->xstart, j, k);
+              // Old value of phi at boundary
+              BoutReal oldvalue =  phi(mesh->xstart,j,k);//0.5 * (phi(mesh->xstart - 1, j, k) + phi(mesh->xstart, j, k));
+
+              // New value of phi at boundary, relaxing towards phivalue
+              BoutReal newvalue = weight * oldvalue + (1. - weight) * phivalue;
+
+              // Set phi at the boundary to this value
               phi(mesh->xstart - 1, j, k) = 2.*newvalue - phi(mesh->xstart, j, k);
-	      
+
               // Note: This seems to make a difference, but don't know why.
               // Without this, get convergence failures with no apparent instability
               // (all fields apparently smooth, well behaved)
@@ -1574,17 +1574,17 @@ int Hermes::rhs(BoutReal t) {
             }
             phivalue /= mesh->LocalNz; // Average in Z of point next to boundary
 
-	    for (int k = 0; k < mesh->LocalNz; k++) {
-	      phivalue = phi(mesh->xend, j, k);
+            for (int k = 0; k < mesh->LocalNz; k++) {
+              phivalue = phi(mesh->xend, j, k);
 
 
-	      // Old value of phi at boundary
-	      BoutReal oldvalue = phi(mesh->xend,j,k); //0.5 * (phi(mesh->xend + 1, j, k) + phi(mesh->xend, j, k));
-	      
-	      // New value of phi at boundary, relaxing towards phivalue
-	      BoutReal newvalue = weight * oldvalue + (1. - weight) * phivalue;
-	      
-	      // Set phi at the boundary to this value
+              // Old value of phi at boundary
+              BoutReal oldvalue = phi(mesh->xend,j,k); //0.5 * (phi(mesh->xend + 1, j, k) + phi(mesh->xend, j, k));
+
+              // New value of phi at boundary, relaxing towards phivalue
+              BoutReal newvalue = weight * oldvalue + (1. - weight) * phivalue;
+
+              // Set phi at the boundary to this value
               phi(mesh->xend + 1, j, k) = 2.* newvalue - phi(mesh->xend, j, k);
 
               // Note: This seems to make a difference, but don't know why.
@@ -1600,14 +1600,14 @@ int Hermes::rhs(BoutReal t) {
       // phi_boundary_relax = false
       //
       // Set boundary from temperature, to be consistent with j=0 at sheath
-    
+
       // Sheath multiplier Te -> phi (2.84522 for Deuterium if Ti = 0)
       phi_boundary2d =
           DC((log(0.5 * sqrt(mi_me / PI)) + log(sqrt(Te / (Te + Ti)))) * Te);
-      
+
       phi_boundary3d = phi_boundary2d;
     }
-    
+
     if (phi3d) {
 #ifdef PHISOLVER
       phiSolver3D->setCoefC(Ne / SQ(coord->Bxy));
@@ -1625,7 +1625,7 @@ int Hermes::rhs(BoutReal t) {
       // Phi flags should be set in BOUT.inp
       // phiSolver->setInnerBoundaryFlags(INVERT_DC_GRAD);
       // phiSolver->setOuterBoundaryFlags(INVERT_SET);
-      
+
       if (boussinesq) {
 
         // Update boundary conditions. Two issues:
@@ -1663,59 +1663,59 @@ int Hermes::rhs(BoutReal t) {
             }
           }
         }
-	if (relaxation) {
-	  phi = div_all(phi_1,lambda_2); 
-	} else{
-	  if (split_n0) {
-	    ////////////////////////////////////////////
-	    // Boussinesq, split
-	    // Split into axisymmetric and non-axisymmetric components
-	    Field2D Vort2D = DC(Vort); // n=0 component
+        if (relaxation) {
+          phi = div_all(phi_1,lambda_2);
+        } else{
+          if (split_n0) {
+            ////////////////////////////////////////////
+            // Boussinesq, split
+            // Split into axisymmetric and non-axisymmetric components
+            Field2D Vort2D = DC(Vort); // n=0 component
 
-	    if (!phi_boundary2d.isAllocated()) {
-	      // Make sure that the 2D boundary field is set
-	      phi_boundary2d = DC(phi_boundary3d);
-	    }
-          
-	    // Set the boundary
-	    phi2D.setBoundaryTo(phi_boundary2d);
+            if (!phi_boundary2d.isAllocated()) {
+              // Make sure that the 2D boundary field is set
+              phi_boundary2d = DC(phi_boundary3d);
+            }
 
-	    phi2D = laplacexy->solve(Vort2D, phi2D);
+            // Set the boundary
+            phi2D.setBoundaryTo(phi_boundary2d);
 
-	    // Solve non-axisymmetric part using X-Z solver
-	    if (newXZsolver) {
-	      newSolver->setCoefs(1. / SQ(coord->Bxy), 0.0);
-	      phi = newSolver->solve(Vort - Vort2D,
-				     // Second argument is initial guess. Use current phi, and update boundary
-				     withBoundary(phi + Pi - phi2D, // Value in domain
-						  phi_boundary3d - phi_boundary2d)); // boundary
-	    } else {
-	      phiSolver->setCoefC(div_all(1. , mul_all(coord->Bxy, coord->Bxy)));
-	      phi = phiSolver->solve((Vort - Vort2D) * SQ(coord->Bxy),
-				     phi_boundary3d - phi_boundary2d); // Note: non-zero due to Pi variation
-	    }
-	    phi += phi2D; // Add axisymmetric part
-	  } else {
-	    ////////////////////////////////////////////
-	    // Boussinesq, non-split
-	    // Solve all components using X-Z solver
+            phi2D = laplacexy->solve(Vort2D, phi2D);
 
-	    if (newXZsolver) {
-	      // Use the new LaplaceXZ solver
-	      // newSolver->setCoefs(1./SQ(coord->Bxy), 0.0); // Set when initialised
-	      phi = newSolver->solve(Vort, phi + Pi);
-	    } else {
-	      // Use older Laplacian solver
-	      // phiSolver->setCoefC(1./SQ(coord->Bxy)); // Set when initialised
-	      mesh->communicate(phi_boundary3d);
-	      phi = phiSolver->solve(mul_all(Vort , mul_all(coord->Bxy, coord->Bxy)), phi_boundary3d);//_boundary3d);
-	      //phi = phiSolver->solve(Vort, phi);
-	    }
-	  }
+            // Solve non-axisymmetric part using X-Z solver
+            if (newXZsolver) {
+              newSolver->setCoefs(1. / SQ(coord->Bxy), 0.0);
+              phi = newSolver->solve(Vort - Vort2D,
+                                     // Second argument is initial guess. Use current phi, and update boundary
+                                     withBoundary(phi + Pi - phi2D, // Value in domain
+                                                  phi_boundary3d - phi_boundary2d)); // boundary
+            } else {
+              phiSolver->setCoefC(div_all(1. , mul_all(coord->Bxy, coord->Bxy)));
+              phi = phiSolver->solve((Vort - Vort2D) * SQ(coord->Bxy),
+                                     phi_boundary3d - phi_boundary2d); // Note: non-zero due to Pi variation
+            }
+            phi += phi2D; // Add axisymmetric part
+          } else {
+            ////////////////////////////////////////////
+            // Boussinesq, non-split
+            // Solve all components using X-Z solver
+
+            if (newXZsolver) {
+              // Use the new LaplaceXZ solver
+              // newSolver->setCoefs(1./SQ(coord->Bxy), 0.0); // Set when initialised
+              phi = newSolver->solve(Vort, phi + Pi);
+            } else {
+              // Use older Laplacian solver
+              // phiSolver->setCoefC(1./SQ(coord->Bxy)); // Set when initialised
+              mesh->communicate(phi_boundary3d);
+              phi = phiSolver->solve(mul_all(Vort , mul_all(coord->Bxy, coord->Bxy)), phi_boundary3d);//_boundary3d);
+              //phi = phiSolver->solve(Vort, phi);
+            }
+          }
         }
         // Hot ion term in vorticity
-	mesh->communicate(phi);
-	phi.applyParallelBoundary(parbc);
+        mesh->communicate(phi);
+        phi.applyParallelBoundary(parbc);
         phi = sub_all(phi, Pi);
       } else {
         ////////////////////////////////////////////
@@ -1748,17 +1748,17 @@ int Hermes::rhs(BoutReal t) {
         aparSolver->setCoefA(-Ne*0.5*mi_me*beta_e);
         aparSolver->setCoefC(Field3D(1.0));
         // aparSolver->setCoefs(1.0, -Ne*0.5*mi_me*beta_e);
-	
-	psi = aparSolver->solve(Field3D(-Ne * VePsi), Field3D(psi));
-	// psi = aparSolver->solve(-Ne*VePsi, psi);
-	mesh->communicate(psi);
-	psi.applyParallelBoundary(parbc);
-        
-	// Ve = VePsi - 0.5 * beta_e * mi_me * psi + Vi;
-	Ve = VePsi - 0.5 * beta_e * mi_me * psi + Vi;
-	// Field3D vepsi_betapsi = sub_all(VePsi , 0.5 * beta_e * mi_me * psi);
-	// mesh->communicate(vepsi_betapsi);
-	// vepsi_betapsi.applyParallelBoundary(parbc);
+
+        psi = aparSolver->solve(Field3D(-Ne * VePsi), Field3D(psi));
+        // psi = aparSolver->solve(-Ne*VePsi, psi);
+        mesh->communicate(psi);
+        psi.applyParallelBoundary(parbc);
+
+        // Ve = VePsi - 0.5 * beta_e * mi_me * psi + Vi;
+        Ve = VePsi - 0.5 * beta_e * mi_me * psi + Vi;
+        // Field3D vepsi_betapsi = sub_all(VePsi , 0.5 * beta_e * mi_me * psi);
+        // mesh->communicate(vepsi_betapsi);
+        // vepsi_betapsi.applyParallelBoundary(parbc);
         // Ve = add_all(vepsi_betapsi , Vi);
 
         Ve.applyBoundary(t);
@@ -1768,14 +1768,14 @@ int Hermes::rhs(BoutReal t) {
         Jpar = mul_all(Ne, sub_all(Vi, Ve));
         mesh->communicate(Jpar);
         Jpar.applyParallelBoundary(parbc);
-	// Jpar.applyBoundary();
+        // Jpar.applyBoundary();
       } else {
         // Zero electron mass
         // No Ve term in VePsi, only electromagnetic term
         psi = div_all(VePsi, 0.5 * mi_me * beta_e);
 
         // Ve = (NVi - Delp2(psi)) / Ne;
-	if(fci_transform){
+        if(fci_transform){
           Field3D one;
           set_all(one, 1.0);
           Jpar = FCIDiv_a_Grad_perp(one, psi);
@@ -1801,15 +1801,15 @@ int Hermes::rhs(BoutReal t) {
         // Special case where Ohm's law has no time-derivatives
         // mesh->communicate(phi,Pe);
 
-	// tau_e = (Cs0 / rho_s0) * tau_e0 * pow(Te, 1.5) / Ne;
-	Field3D Te32= pow(Te,1.5);
-	mesh->communicate(Te32, Ne, phi, Pe, Vi);
-	tau_e = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_e0) , Te32) , Ne);
-	nu = resistivity_multiply * (1.96 * tau_e * mi_me);
-	mesh->communicate(nu);
+        // tau_e = (Cs0 / rho_s0) * tau_e0 * pow(Te, 1.5) / Ne;
+        Field3D Te32= pow(Te,1.5);
+        mesh->communicate(Te32, Ne, phi, Pe, Vi);
+        tau_e = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_e0) , Te32) , Ne);
+        nu = resistivity_multiply * (1.96 * tau_e * mi_me);
+        mesh->communicate(nu);
 
-	Field3D gparpe = Grad_par(Pe);
-	Field3D gparphi = Grad_par(phi);
+        Field3D gparpe = Grad_par(Pe);
+        Field3D gparphi = Grad_par(phi);
         gparpe.applyBoundary("neumann");
         gparphi.applyBoundary("neumann");
         mesh->communicate(gparphi, gparpe);
@@ -1858,60 +1858,60 @@ int Hermes::rhs(BoutReal t) {
           BoutReal tesheath = floor(Te(x, y, z), 0.0);
           BoutReal tisheath = floor(Ti(x, y, z), 0.0);
 
-	  // Zero-gradient potential
-	  BoutReal phisheath = phi(x, y, z);
+          // Zero-gradient potential
+          BoutReal phisheath = phi(x, y, z);
           BoutReal visheath = bndry_par->dir * sqrt(tisheath + tesheath);
 
           if (sheath_allow_supersonic) {
             if (bndry_par->dir == 1){
-	      if (Vi(x, y, z) > visheath){
-		// If plasma is faster, go to plasma velocity
-		visheath = Vi(x, y, z);
-	      }
-	    } else {
-	      if (Vi(x, y, z) < visheath){
-		visheath = Vi(x, y, z);
-	      }
-	    }
+              if (Vi(x, y, z) > visheath){
+                // If plasma is faster, go to plasma velocity
+                visheath = Vi(x, y, z);
+              }
+            } else {
+              if (Vi(x, y, z) < visheath){
+                visheath = Vi(x, y, z);
+              }
+            }
           }
 
           // Sheath current
-	  // Note that phi/Te >= 0.0 since for phi < 0
-	  // vesheath is the electron saturation current
-	  BoutReal phi_te =
-	    floor(phisheath / tesheath, 0.0);
-	    
-	  BoutReal vesheath =
-	    bndry_par->dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-phi_te);
+          // Note that phi/Te >= 0.0 since for phi < 0
+          // vesheath is the electron saturation current
+          BoutReal phi_te =
+            floor(phisheath / tesheath, 0.0);
 
-	  // J = n*(Vi - Ve)
-	  BoutReal jsheath = nesheath * (visheath - vesheath);
-	  if (nesheath < 1e-10) {
-	    vesheath = visheath;
-	    jsheath = 0.0;
-	  }
-	    
-	  // Neumann conditions
-	  Ne.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = nesheath;
-	  phi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = phisheath;
-	  Vort.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Vort(x, y, z);
+          BoutReal vesheath =
+            bndry_par->dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-phi_te);
 
-	  // Here zero-gradient Te, heat flux applied later
-	  Te.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Te(x, y, z);
-	  Ti.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Ti(x, y, z);
+          // J = n*(Vi - Ve)
+          BoutReal jsheath = nesheath * (visheath - vesheath);
+          if (nesheath < 1e-10) {
+            vesheath = visheath;
+            jsheath = 0.0;
+          }
 
-	  Pe.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Pe(x, y, z);
-	  Pi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Pi(x, y, z);
-	
-	  // Dirichlet conditions
-	  Vi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = visheath;//2. * visheath - Vi(x, y, z);
-	  if (par_sheath_ve){
-	    Ve.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = vesheath;//2. * vesheath - Ve(x, y, z);
-	  }
-	  Jpar.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = jsheath;
-	    // 2. * jsheath - Jpar(x, y, z);
-	  NVi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = nesheath * visheath;//
-	    // 1. * nesheath * visheath;// - NVi(x, y, z);
+          // Neumann conditions
+          Ne.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = nesheath;
+          phi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = phisheath;
+          Vort.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Vort(x, y, z);
+
+          // Here zero-gradient Te, heat flux applied later
+          Te.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Te(x, y, z);
+          Ti.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Ti(x, y, z);
+
+          Pe.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Pe(x, y, z);
+          Pi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Pi(x, y, z);
+
+          // Dirichlet conditions
+          Vi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = visheath;//2. * visheath - Vi(x, y, z);
+          if (par_sheath_ve){
+            Ve.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = vesheath;//2. * vesheath - Ve(x, y, z);
+          }
+          Jpar.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = jsheath;
+            // 2. * jsheath - Jpar(x, y, z);
+          NVi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = nesheath * visheath;//
+            // 1. * nesheath * visheath;// - NVi(x, y, z);
         }
       }
       break;
@@ -1926,8 +1926,8 @@ int Hermes::rhs(BoutReal t) {
     }
     }
   }
-  
-  
+
+
   if (!currents) {
     // No currents, so reset Ve to be equal to Vi
     // VePsi also reset, so saved in restart file correctly
@@ -1939,14 +1939,14 @@ int Hermes::rhs(BoutReal t) {
   // Plasma quantities calculated.
   // At this point we have calculated all boundary conditions,
   // and auxilliary variables like jpar, phi, psi
-  
+
   // Now can update the neutral gas model, so that we can use neutral
   // gas densities and interaction frequencies in the collision processes.
 
   // Neutral gas
   if (neutrals) {
     TRACE("Neutral gas model update");
-    
+
     // Update neutral gas model
     neutrals->update(Ne, Te, Ti, Vi);
   }
@@ -2007,16 +2007,16 @@ int Hermes::rhs(BoutReal t) {
        * the resistivity at low temperatures (~1eV)
        *
        * This assumes a fixed cross-section, independent of energy
-       * 
+       *
        */
       BoutReal a0 = PI*SQ(5.29e-11); // Cross-section [m^2]
-      
+
       // Electron thermal speed
       Field3D vth_e = sqrt(mi_me*Te);
-      
+
       // Electron-neutral collision rate
       Field3D nu_ne = vth_e * Nnorm * neutrals->getDensity() * a0 * rho_s0;
-      
+
       // Add collision rate to the electron-ion rate
       nu += nu_ne;
     }
@@ -2025,7 +2025,7 @@ int Hermes::rhs(BoutReal t) {
         ((mesh->getGlobalXIndex(mesh->xstart) - mesh->xstart)
          < resistivity_boundary_width)) {
       // A region near the boundary with different resistivity
-      
+
       int imax = mesh->xstart + resistivity_boundary_width - 1 -
         (mesh->getGlobalXIndex(mesh->xstart) - mesh->xstart);
       if (imax > mesh->xend) {
@@ -2043,10 +2043,10 @@ int Hermes::rhs(BoutReal t) {
         }
       }
     }
-    
+
     // Number of points in outer guard cells
     int nguard = mesh->LocalNx - mesh->xend - 1;
-    
+
     if (resistivity_boundary_width > 0 &&
         (mesh->GlobalNx - nguard - mesh->getGlobalXIndex(mesh->xend) <=
          resistivity_boundary_width)) {
@@ -2101,15 +2101,15 @@ int Hermes::rhs(BoutReal t) {
       for (int jz = 0; jz < mesh->LocalNz; jz++) {
         ASSERT0(fci_transform == false);
         kappa_epar(r.ind, mesh->ystart - 1, jz) = kappa_epar(r.ind, mesh->ystart, jz);
-	kappa_ipar(r.ind, mesh->ystart - 1, jz) = kappa_ipar(r.ind, mesh->ystart, jz);
+        kappa_ipar(r.ind, mesh->ystart - 1, jz) = kappa_ipar(r.ind, mesh->ystart, jz);
       }
     }
-    
+
     for (RangeIterator r = mesh->iterateBndryUpperY(); !r.isDone(); r++) {
       for (int jz = 0; jz < mesh->LocalNz; jz++) {
         ASSERT0(fci_transform == false);
         kappa_epar(r.ind, mesh->yend + 1, jz) = kappa_epar(r.ind, mesh->yend, jz);
-	kappa_ipar(r.ind, mesh->yend + 1, jz) = kappa_ipar(r.ind, mesh->yend, jz);
+        kappa_ipar(r.ind, mesh->yend + 1, jz) = kappa_ipar(r.ind, mesh->yend, jz);
       }
     }
   }
@@ -2141,7 +2141,7 @@ int Hermes::rhs(BoutReal t) {
                    FCIDiv_a_Grad_perp(inv_b2, Pi)) -
                   Vort);
   }
-  
+
   ///////////////////////////////////////////////////////////
   // Density
   // This is the electron density equation
@@ -2151,9 +2151,9 @@ int Hermes::rhs(BoutReal t) {
     // ExB drift, only if electric field is evolved
     // ddt(Ne) = bracket(Ne, phi, BRACKET_ARAKAWA) * bracket_factor;
     ddt(Ne) = -Div_n_bxGrad_f_B_XPPM(Ne, phi, ne_bndry_flux, poloidal_flows,
-				     true) * bracket_factor; // ExB drift
+                                     true) * bracket_factor; // ExB drift
     // a += -Div_n_bxGrad_f_B_XPPM(Ne, phi, ne_bndry_flux, poloidal_flows,
-    // 				     true) * bracket_factor; // ExB drift
+    //                                      true) * bracket_factor; // ExB drift
   } else {
     ddt(Ne) = 0.0;
   }
@@ -2162,15 +2162,15 @@ int Hermes::rhs(BoutReal t) {
   if (parallel_flow) {
     // if (!fci_transform){
     //   if (currents) {
-    // 	// Parallel wave speed increased to electron sound speed
-    // 	// since electrostatic & electromagnetic waves are supported
-    // 	ddt(Ne) -= FV::Div_par(Ne, Ve, sqrt(mi_me) * sound_speed);
+    //         // Parallel wave speed increased to electron sound speed
+    //         // since electrostatic & electromagnetic waves are supported
+    //         ddt(Ne) -= FV::Div_par(Ne, Ve, sqrt(mi_me) * sound_speed);
     //   }else {
-    // 	// Parallel wave speed is ion sound speed
-    // 	ddt(Ne) -= FV::Div_par(Ne, Ve, sound_speed);
+    //         // Parallel wave speed is ion sound speed
+    //         ddt(Ne) -= FV::Div_par(Ne, Ve, sound_speed);
     //   }
     // }else{
-    
+
     check_all(Ne);
 
     if (!evolve_ni) {
@@ -2182,9 +2182,9 @@ int Hermes::rhs(BoutReal t) {
       check_all(Vi);
       Field3D nevi = mul_all(Ne, Vi);
       check_all(nevi);
-      ddt(Ne) -= Div_parP(nevi);      
+      ddt(Ne) -= Div_parP(nevi);
     }
-    
+
     //Skew-symmetric form
 
     // Field3D gparne = Grad_par(Ne);
@@ -2278,15 +2278,15 @@ int Hermes::rhs(BoutReal t) {
           continue; // Not periodic, so skip
 
         for (int y = mesh->ystart; y <= mesh->yend; y++) {
-	  for (int z = 0; z <= mesh->LocalNz; z++){
-	    Sn(x, y, z) -= source_p * NeErr(x, y, z);
-	    ddt(Sn)(x, y, z) = -source_i * NeErr(x, y, z);
-	    
-	    if (Sn(x, y, z) < 0.0) {
-	      Sn(x, y, z) = 0.0;
-	      if (ddt(Sn)(x, y, z) < 0.0)
-		ddt(Sn)(x, y, z) = 0.0;
-	    }
+          for (int z = 0; z <= mesh->LocalNz; z++){
+            Sn(x, y, z) -= source_p * NeErr(x, y, z);
+            ddt(Sn)(x, y, z) = -source_i * NeErr(x, y, z);
+
+            if (Sn(x, y, z) < 0.0) {
+              Sn(x, y, z) = 0.0;
+              if (ddt(Sn)(x, y, z) < 0.0)
+                ddt(Sn)(x, y, z) = 0.0;
+            }
           }
         }
       }
@@ -2304,9 +2304,9 @@ int Hermes::rhs(BoutReal t) {
       NeSource *= g11norm;
     }
   }
-  
+
   ddt(Ne) += NeSource;
-  
+
   if (low_n_diffuse) {
     // Diffusion which kicks in at very low density, in order to
     // help prevent negative density regions
@@ -2314,7 +2314,7 @@ int Hermes::rhs(BoutReal t) {
       ddt(Ne) += Div_par_K_Grad_par(SQ(coord->dy) * coord->g_22 * 1e-4 / Ne, Ne);
     }else{
       ddt(Ne) += FV::Div_par_K_Grad_par(SQ(coord->dy) * coord->g_22 * 1e-4 / Ne, Ne);
-    }      
+    }
   }
   if (low_n_diffuse_perp) {
     ddt(Ne) += Div_Perp_Lap_FV_Index(1e-4 / Ne, Ne, ne_bndry_flux);
@@ -2332,7 +2332,7 @@ int Hermes::rhs(BoutReal t) {
   if (ne_num_hyper > 0.0) {
     ddt(Ne) -= ne_num_hyper * (D4DX4_FV_Index(Ne, true) + D4DZ4_Index(Ne));
   }
-  
+
   if (numdiff > 0.0) {
     BOUT_FOR(i, Ne.getRegion("RGN_NOY")) {
       ddt(Ne)[i] += numdiff*(Ne.ydown()[i.ym()] - 2.*Ne[i] + Ne.yup()[i.yp()]);
@@ -2375,43 +2375,43 @@ int Hermes::rhs(BoutReal t) {
       TRACE("Vort:boussinesq");
       // Using the Boussinesq approximation
       if(!fci_transform){
-	ddt(Vort) -= Div_n_bxGrad_f_B_XPPM(0.5 * Vort, phi, vort_bndry_flux,
-					   poloidal_flows, false);
+        ddt(Vort) -= Div_n_bxGrad_f_B_XPPM(0.5 * Vort, phi, vort_bndry_flux,
+                                           poloidal_flows, false);
       }else{//fci used
-	if (j_pol_pi){
-	  ddt(Vort) -= Div_n_bxGrad_f_B_XPPM(0.5 * Vort, phi, vort_bndry_flux,
-					     poloidal_flows, false) * bracket_factor;
+        if (j_pol_pi){
+          ddt(Vort) -= Div_n_bxGrad_f_B_XPPM(0.5 * Vort, phi, vort_bndry_flux,
+                                             poloidal_flows, false) * bracket_factor;
 
-	  // V_ExB dot Grad(Pi)
-	  Field3D vEdotGradPi = bracket(phi, Pi, BRACKET_ARAKAWA) * bracket_factor;
-	  vEdotGradPi.applyBoundary("free_o2");
-	  // delp2(phi) term
-	  Field3D DelpPhi_2B2 = 0.5 * Delp2(phi) / SQ(Bxyz);
-	  DelpPhi_2B2.applyBoundary("free_o2");
-	  
-	  
-	  if(!fci_transform){
+          // V_ExB dot Grad(Pi)
+          Field3D vEdotGradPi = bracket(phi, Pi, BRACKET_ARAKAWA) * bracket_factor;
+          vEdotGradPi.applyBoundary("free_o2");
+          // delp2(phi) term
+          Field3D DelpPhi_2B2 = 0.5 * Delp2(phi) / SQ(Bxyz);
+          DelpPhi_2B2.applyBoundary("free_o2");
+
+
+          if(!fci_transform){
             ddt(Vort) -= FCIDiv_a_Grad_perp(0.5 / SQ(coord->Bxy), vEdotGradPi);
           }else{
-	    Field3D inv_2sqb = 0.5 / SQ(Bxyz);
+            Field3D inv_2sqb = 0.5 / SQ(Bxyz);
             ddt(Vort) -= FCIDiv_a_Grad_perp(inv_2sqb, vEdotGradPi);
           }
 
-	  // delp2 phi v_ExB term
-	  ddt(Vort) -= Div_n_bxGrad_f_B_XPPM(DelpPhi_2B2, phi + Pi, vort_bndry_flux,
-	  				     poloidal_flows) * bracket_factor;
-	  
-	}else if (j_pol_simplified) {
-	  // use simplified polarization term from i.e. GBS
-	  ddt(Vort) -= Div_n_bxGrad_f_B_XPPM(Vort, phi, vort_bndry_flux,
-	  				     poloidal_flows, false) * bracket_factor;
-	  // d += Div_n_bxGrad_f_B_XPPM(Vort, phi, vort_bndry_flux,
-	  // 				     poloidal_flows, false) * bracket_factor;
-	}
+          // delp2 phi v_ExB term
+          ddt(Vort) -= Div_n_bxGrad_f_B_XPPM(DelpPhi_2B2, phi + Pi, vort_bndry_flux,
+                                               poloidal_flows) * bracket_factor;
+
+        }else if (j_pol_simplified) {
+          // use simplified polarization term from i.e. GBS
+          ddt(Vort) -= Div_n_bxGrad_f_B_XPPM(Vort, phi, vort_bndry_flux,
+                                               poloidal_flows, false) * bracket_factor;
+          // d += Div_n_bxGrad_f_B_XPPM(Vort, phi, vort_bndry_flux,
+          //                                      poloidal_flows, false) * bracket_factor;
+        }
       }
 
 
-      
+
     } else {
       // When the Boussinesq approximation is not made,
       // then the changing ion density introduces a number
@@ -2435,7 +2435,7 @@ int Hermes::rhs(BoutReal t) {
       // Ion collisional viscosity.
       // Contains poloidal viscosity
       // if(fci_transform){
-      // 	throw BoutException("Ion viscosity not implemented for FCI yet\n");
+      //         throw BoutException("Ion viscosity not implemented for FCI yet\n");
       // }
       // Vector3D Pi_ciCb_B_2 = 0.5 * Pi_ci * Curlb_B;
       // mesh->communicate(Pi_ciCb_B_2);
@@ -2448,12 +2448,12 @@ int Hermes::rhs(BoutReal t) {
       // Perpendicular anomalous momentum diffusion
       ddt(Vort) += FCIDiv_a_Grad_perp(a_nu3d, Vort);
     }
-    
+
     if (ion_neutral_rate > 0.0) {
       // Sink of vorticity due to ion-neutral friction
       ddt(Vort) -= ion_neutral_rate * Vort;
     }
-    
+
     if (x_hyper_viscos > 0) {
       // Form of hyper-viscosity to suppress zig-zags in X
       ddt(Vort) -= x_hyper_viscos * D4DX4_FV_Index(Vort);
@@ -2469,26 +2469,26 @@ int Hermes::rhs(BoutReal t) {
 
     if (vort_dissipation) {
       if(!fci_transform){
-	// Adds dissipation term like in other equations
-	// Maximum speed either electron sound speed or Alfven speed
-	Field3D max_speed = Bnorm * coord->Bxy /
-	  sqrt(SI::mu0 * AA * SI::Mp * Nnorm * Ne) /
-	  Cs0; // Alfven speed (normalised by Cs0)
-	Field3D elec_sound = sqrt(mi_me) * sound_speed; // Electron sound speed
-	for (auto& i : max_speed.getRegion("RGN_ALL")) {
-	  if (elec_sound[i] > max_speed[i]) {
-	    max_speed[i] = elec_sound[i];
-	  }
-	  
-	  // Limit to 100x reference sound speed or light speed
-	  BoutReal lim = BOUTMIN(100., 3e8/Cs0);
-	  if (max_speed[i] > lim) {
-	    max_speed[i] = lim;
-	  }
-	}
-	ddt(Vort) -= FV::Div_par(Vort, 0.0, max_speed);
+        // Adds dissipation term like in other equations
+        // Maximum speed either electron sound speed or Alfven speed
+        Field3D max_speed = Bnorm * coord->Bxy /
+          sqrt(SI::mu0 * AA * SI::Mp * Nnorm * Ne) /
+          Cs0; // Alfven speed (normalised by Cs0)
+        Field3D elec_sound = sqrt(mi_me) * sound_speed; // Electron sound speed
+        for (auto& i : max_speed.getRegion("RGN_ALL")) {
+          if (elec_sound[i] > max_speed[i]) {
+            max_speed[i] = elec_sound[i];
+          }
+
+          // Limit to 100x reference sound speed or light speed
+          BoutReal lim = BOUTMIN(100., 3e8/Cs0);
+          if (max_speed[i] > lim) {
+            max_speed[i] = lim;
+          }
+        }
+        ddt(Vort) -= FV::Div_par(Vort, 0.0, max_speed);
       }else{
-	ddt(Vort) += mul_all(mul_all(coord->dy,coord->dy),D2DY2(Vort));
+        ddt(Vort) += mul_all(mul_all(coord->dy,coord->dy),D2DY2(Vort));
       }
     }
     if (phi_dissipation) {
@@ -2511,7 +2511,7 @@ int Hermes::rhs(BoutReal t) {
 
     if (resistivity) {
       ddt(VePsi) -= mi_me * nu * (Ve - Vi);
-      // External electric field 
+      // External electric field
       // ddt(VePsi) += mi_me*nu*(Jpar - Jpar0)/NeVe;
     }
 
@@ -2524,7 +2524,7 @@ int Hermes::rhs(BoutReal t) {
     if (pe_par) {
       ddt(VePsi) -= mi_me * Grad_parP(Pe) / Ne;
     }
-    
+
     if (thermal_force) {
       ddt(VePsi) -= mi_me * 0.71 * Grad_parP(Te);
     }
@@ -2532,7 +2532,7 @@ int Hermes::rhs(BoutReal t) {
     if (electron_viscosity) {
       // Electron parallel viscosity (Braginskii)
       Field3D ve_eta = 0.973 * mi_me * tau_e * Te;
-      
+
       if (eta_limit_alpha > 0.) {
         // SOLPS-style flux limiter
         // Values of alpha ~ 0.5 typically
@@ -2550,10 +2550,10 @@ int Hermes::rhs(BoutReal t) {
       if(fci_transform){
         ddt(VePsi) += Div_par_K_Grad_par(ve_eta, Ve);
       }else{
-	ddt(VePsi) += FV::Div_par_K_Grad_par(ve_eta, Ve);
+        ddt(VePsi) += FV::Div_par_K_Grad_par(ve_eta, Ve);
       }
     }
-    
+
     if (FiniteElMass) {
       // Finite Electron Mass. Small correction needed to conserve energy
       Field3D vdiff = sub_all(Ve,Vi);
@@ -2564,7 +2564,7 @@ int Hermes::rhs(BoutReal t) {
       ddt(VePsi) -= bracket(phi, vdiff, BRACKET_ARAKAWA)*bracket_factor;  // ExB advection
       // Should also have ion polarisation advection here
     }
-    
+
     if (numdiff > 0.0) {
       // ddt(VePsi) += sqrt(mi_me) * numdiff * Div_par_diffusion_index(Ve);
       for(auto &i : VePsi.getRegion("RGN_ALL")) {
@@ -2588,7 +2588,7 @@ int Hermes::rhs(BoutReal t) {
     if (ve_num_hyper > 0.0) {
       ddt(VePsi) -= ve_num_hyper * (D4DX4_FV_Index(Ve, true) + D4DZ4_Index(Ve));
     }
-    
+
     if (vepsi_dissipation) {
       // Adds dissipation term like in other equations
       // Maximum speed either electron sound speed or Alfven speed
@@ -2624,7 +2624,7 @@ int Hermes::rhs(BoutReal t) {
       // ddt(NVi) = bracket(NVi, phi, BRACKET_ARAKAWA) * bracket_factor;
       // ExB drift, only if electric field calculated
       ddt(NVi) = -Div_n_bxGrad_f_B_XPPM(NVi, phi, ne_bndry_flux,
-					poloidal_flows) * bracket_factor; // ExB drift
+                                        poloidal_flows) * bracket_factor; // ExB drift
     } else {
       ddt(NVi) = 0.0;
     }
@@ -2641,19 +2641,19 @@ int Hermes::rhs(BoutReal t) {
     // ddt(NVi) -= Div_parP(nvivi);
     // //  Skew-symmetric form
     // ddt(NVi) -= 0.5 * (Div_par(mul_all(NVi, Vi)) + Vi * Grad_par(NVi) + NVi *
-    // 		       Div_par(Vi));
+    //                        Div_par(Vi));
 
     // Ignoring polarisation drift for now
     if (pe_par) {
       Field3D peppi = add_all(Pe, Pi);
       ddt(NVi) -= Grad_parP(peppi);
     }
-    
+
     if (ion_viscosity) {
       TRACE("NVi:ion viscosity");
       // Poloidal flow damping
       if(fci_transform){
-	// The parallel part is solved as a diffusion term
+        // The parallel part is solved as a diffusion term
         Coordinates::FieldMetric sqrtBVi = mul_all(B12, Vi);
         Coordinates::FieldMetric Pitau_i_B =
             div_all(mul_all(Pi, tau_i), (coord->Bxy));
@@ -2661,7 +2661,7 @@ int Hermes::rhs(BoutReal t) {
       }else{
         ddt(NVi) += 1.28 * B12 *
                     FV::Div_par_K_Grad_par(Pi * tau_i / (coord->Bxy), B12 * Vi);
-      }	
+      }
 
       if (currents) {
         // Perpendicular part. B32 = B^{3/2}
@@ -2675,7 +2675,7 @@ int Hermes::rhs(BoutReal t) {
     if (ion_neutral_rate > 0.0) {
       ddt(NVi) -= ion_neutral_rate * NVi;
     }
-    
+
     if (numdiff > 0.0) {
       for(auto &i : NVi.getRegion("RGN_NOY")) {
         ddt(NVi)[i] += numdiff*(Vi.ydown()[i.ym()] - 2.*Vi[i] + Vi.yup()[i.yp()]);
@@ -2703,11 +2703,11 @@ int Hermes::rhs(BoutReal t) {
     if ((anomalous_D > 0.0) && anomalous_D_nvi) {
       ddt(NVi) += FCIDiv_a_Grad_perp(mul_all(Vi, a_d3d), Ne);
     }
-    
+
     if (anomalous_nu > 0.0) {
       ddt(NVi) += FCIDiv_a_Grad_perp(mul_all(Ne, a_nu3d), Vi);
     }
-    
+
     if (hyperpar > 0.0) {
       ddt(NVi) -= hyperpar * FV::D4DY4_Index(Vi) / mi_me;
      }
@@ -2719,8 +2719,8 @@ int Hermes::rhs(BoutReal t) {
         ASSERT0(false);
         ddt(NVi) += Div_par_K_Grad_par(SQ(coord->dy) * coord->g_22 * 1e-4 / Ne, NVi);
       }else{
-	ddt(NVi) += FV::Div_par_K_Grad_par(SQ(coord->dy) * coord->g_22 * 1e-4 / Ne, NVi);
-      }	
+        ddt(NVi) += FV::Div_par_K_Grad_par(SQ(coord->dy) * coord->g_22 * 1e-4 / Ne, NVi);
+      }
     }
     if (low_n_diffuse_perp) {
       ddt(NVi) += Div_Perp_Lap_FV_Index(1e-4 / Ne, NVi, ne_bndry_flux);
@@ -2740,11 +2740,11 @@ int Hermes::rhs(BoutReal t) {
 
     if (currents) {
       if(fci_transform){
-    	// ddt(Pe) = bracket(Pe, phi, BRACKET_ARAKAWA) * bracket_factor;
-    	ddt(Pe) = -Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux, poloidal_flows, true) * bracket_factor;
+            // ddt(Pe) = bracket(Pe, phi, BRACKET_ARAKAWA) * bracket_factor;
+            ddt(Pe) = -Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux, poloidal_flows, true) * bracket_factor;
       }else{
-    	// Divergence of heat flux due to ExB advection
-    	ddt(Pe) = -Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux, poloidal_flows, true);
+            // Divergence of heat flux due to ExB advection
+            ddt(Pe) = -Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux, poloidal_flows, true);
       }
     } else {
       ddt(Pe) = 0.0;
@@ -2753,14 +2753,14 @@ int Hermes::rhs(BoutReal t) {
     if (parallel_flow_p_term) {
       // Parallel flow
       if (fci_transform){
-	check_all(Pe);
-	check_all(Ve);
+        check_all(Pe);
+        check_all(Ve);
         Field3D peve = mul_all(Pe,Ve);
         Field3D tmp = Div_parP(peve);
         tmp.name = "Div_parP(peve)";
         ddt(Pe) -= tmp;
-      } else { 
-	if (currents) {
+      } else {
+        if (currents) {
           ddt(Pe) -= FV::Div_par(Pe, Ve, sqrt(mi_me) * sound_speed);
         } else {
           ddt(Pe) -= FV::Div_par(Pe, Ve, sound_speed);
@@ -2836,7 +2836,7 @@ int Hermes::rhs(BoutReal t) {
                            Ve.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
                     0.0);
           // BoutReal tisheath = floor(
-          // 			      0.5 * (Ti(x, y, z) +
+          //                               0.5 * (Ti(x, y, z) +
           // Ti.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
           // 0.0);
 
@@ -2850,11 +2850,11 @@ int Hermes::rhs(BoutReal t) {
           BoutReal flux = q * coord->J(x, y, z) / sqrt(coord->g_22(x, y, z));
 
           // Divide by volume of cell, and 2/3 to get pressure
-	  BoutReal power =
-	    flux
-	    / (coord->dy(x, y, z) * coord->J(x, y, z));
-	  // ddt(Pe)(x, y, z) -= (2. / 3) * power;
-	  sheath_dpe(x, y, z) -= (2. / 3) * power;
+          BoutReal power =
+            flux
+            / (coord->dy(x, y, z) * coord->J(x, y, z));
+          // ddt(Pe)(x, y, z) -= (2. / 3) * power;
+          sheath_dpe(x, y, z) -= (2. / 3) * power;
         }
       }
       sheath_dpe.name = "sheath physics";
@@ -2905,7 +2905,7 @@ int Hermes::rhs(BoutReal t) {
     // hyper diffusion
     if (numdiff > 0.0) {
       BOUT_FOR(i, Pe.getRegion("RGN_NOY")) {
-	ddt(Pe)[i] += numdiff*(Pe.ydown()[i.ym()] - 2.*Pe[i] + Pe.yup()[i.yp()]);
+        ddt(Pe)[i] += numdiff*(Pe.ydown()[i.ym()] - 2.*Pe[i] + Pe.yup()[i.yp()]);
       }
     }
 
@@ -2925,15 +2925,15 @@ int Hermes::rhs(BoutReal t) {
             continue; // Not periodic, so skip
 
           for (int y = mesh->ystart; y <= mesh->yend; y++) {
-    	    for (int z = 0; z <= mesh->LocalNz; z++) {
-    	      Spe(x, y, z) -= source_p * PeErr(x, y, z);
-    	      ddt(Spe)(x, y, z) = -source_i * PeErr(x, y, z);
+                for (int z = 0; z <= mesh->LocalNz; z++) {
+                  Spe(x, y, z) -= source_p * PeErr(x, y, z);
+                  ddt(Spe)(x, y, z) = -source_i * PeErr(x, y, z);
 
-    	      if (Spe(x, y, z) < 0.0) {
-    		Spe(x, y, z) = 0.0;
-    		if (ddt(Spe)(x, y, z) < 0.0)
-    		  ddt(Spe)(x, y, z) = 0.0;
-    	      }
+                  if (Spe(x, y, z) < 0.0) {
+                    Spe(x, y, z) = 0.0;
+                    if (ddt(Spe)(x, y, z) < 0.0)
+                      ddt(Spe)(x, y, z) = 0.0;
+                  }
             }
           }
         }
@@ -2982,21 +2982,21 @@ int Hermes::rhs(BoutReal t) {
   } else {
     ddt(Pe) = 0.0;
   }
-  
+
   ///////////////////////////////////////////////////////////
   // Ion pressure equation
   // Similar to electron pressure equation
   TRACE("Ion pressure");
-  
+
   if (evolve_ti) {
 
     if (currents) {
       if(fci_transform){
-    	// ddt(Pi) = bracket(Pi, phi, BRACKET_ARAKAWA) * bracket_factor;
-    	ddt(Pi) = -Div_n_bxGrad_f_B_XPPM(Pi, phi, pe_bndry_flux, poloidal_flows, true) * bracket_factor;
+            // ddt(Pi) = bracket(Pi, phi, BRACKET_ARAKAWA) * bracket_factor;
+            ddt(Pi) = -Div_n_bxGrad_f_B_XPPM(Pi, phi, pe_bndry_flux, poloidal_flows, true) * bracket_factor;
       }else{
-    	// Divergence of heat flux due to ExB advection
-    	ddt(Pi) = -Div_n_bxGrad_f_B_XPPM(Pi, phi, pe_bndry_flux, poloidal_flows, true);
+            // Divergence of heat flux due to ExB advection
+            ddt(Pi) = -Div_n_bxGrad_f_B_XPPM(Pi, phi, pe_bndry_flux, poloidal_flows, true);
       }
     } else {
       ddt(Pi) = 0.0;
@@ -3005,8 +3005,8 @@ int Hermes::rhs(BoutReal t) {
     // Parallel flow
     if (parallel_flow_p_term) {
       if (fci_transform) {
-	check_all(Pi);
-	check_all(Vi);
+        check_all(Pi);
+        check_all(Vi);
         Field3D pivi = mul_all(Pi,Vi);
         ddt(Pi) -= Div_parP(pivi);
       } else {
@@ -3145,7 +3145,7 @@ int Hermes::rhs(BoutReal t) {
     // hyper diffusion
     if (numdiff > 0.0) {
       BOUT_FOR(i, Pi.getRegion("RGN_NOY")) {
-	ddt(Pi)[i] += numdiff*(Pi.ydown()[i.ym()] - 2.*Pi[i] + Pi.yup()[i.yp()]);
+        ddt(Pi)[i] += numdiff*(Pi.ydown()[i.ym()] - 2.*Pi[i] + Pi.yup()[i.yp()]);
       }
     }
 
@@ -3188,10 +3188,10 @@ int Hermes::rhs(BoutReal t) {
           BoutReal flux = q * coord->J(x, y, z) / sqrt(coord->g_22(x, y, z));
 
           // Divide by volume of cell, and 2/3 to get pressure
-	  BoutReal power =
-	    flux
-	    / (coord->dy(x, y, z) * coord->J(x, y, z));
-	  sheath_dpi(x, y, z) -= (3. / 2) * power;
+          BoutReal power =
+            flux
+            / (coord->dy(x, y, z) * coord->J(x, y, z));
+          sheath_dpi(x, y, z) -= (3. / 2) * power;
         }
       }
       ddt(Pi) += sheath_dpi;
@@ -3213,15 +3213,15 @@ int Hermes::rhs(BoutReal t) {
             continue; // Not periodic, so skip
 
           for (int y = mesh->ystart; y <= mesh->yend; y++) {
-    	    for (int z = 0; z <= mesh->LocalNz; z++) {
-    	      Spi(x, y, z) -= source_p * PiErr(x, y, z);
-    	      ddt(Spi)(x, y, z) = -source_i * PiErr(x, y, z);
+                for (int z = 0; z <= mesh->LocalNz; z++) {
+                  Spi(x, y, z) -= source_p * PiErr(x, y, z);
+                  ddt(Spi)(x, y, z) = -source_i * PiErr(x, y, z);
 
-    	      if (Spi(x, y, z) < 0.0) {
-    		Spi(x, y, z) = 0.0;
-    		if (ddt(Spi)(x, y, z) < 0.0)
-    		  ddt(Spi)(x, y, z) = 0.0;
-    	      }
+                  if (Spi(x, y, z) < 0.0) {
+                    Spi(x, y, z) = 0.0;
+                    if (ddt(Spi)(x, y, z) < 0.0)
+                      ddt(Spi)(x, y, z) = 0.0;
+                  }
             }
           }
         }
@@ -3400,7 +3400,7 @@ int Hermes::rhs(BoutReal t) {
   // Neutral gas
   if (neutrals) {
     TRACE("Neutral gas model add sources");
-    
+
     // Add sources/sinks to plasma equations
     ddt(Ne) -= neutrals->S;             // Sink of plasma density
     ddt(NVi) -= neutrals->F;            // Plasma momentum
@@ -3449,10 +3449,10 @@ int Hermes::rhs(BoutReal t) {
 
           // Flow of neutrals inwards
           BoutReal flow = frecycle * flux_ion *
-	    (coord->J(r.ind, mesh->ystart, jz) +
-	     coord->J(r.ind, mesh->ystart - 1, jz)) /
-	    (sqrt(coord->g_22(r.ind, mesh->ystart, jz)) +
-	     sqrt(coord->g_22(r.ind, mesh->ystart - 1, jz)));
+            (coord->J(r.ind, mesh->ystart, jz) +
+             coord->J(r.ind, mesh->ystart - 1, jz)) /
+            (sqrt(coord->g_22(r.ind, mesh->ystart, jz)) +
+             sqrt(coord->g_22(r.ind, mesh->ystart - 1, jz)));
 
           // Rate of change of neutrals in final cell
           BoutReal dndt = flow / (coord->J(r.ind, mesh->ystart, jz) *
@@ -3488,12 +3488,12 @@ int Hermes::rhs(BoutReal t) {
           // Flow of neutrals inwards
           BoutReal flow = flux_ion * (coord->J(r.ind, mesh->yend, jz) +
                                       coord->J(r.ind, mesh->yend + 1, jz)) /
-	    (sqrt(coord->g_22(r.ind, mesh->yend, jz)) +
-	     sqrt(coord->g_22(r.ind, mesh->yend + 1, jz)));
+            (sqrt(coord->g_22(r.ind, mesh->yend, jz)) +
+             sqrt(coord->g_22(r.ind, mesh->yend + 1, jz)));
 
           // Rate of change of neutrals in final cell
           BoutReal dndt =
-	    flow / (coord->J(r.ind, mesh->yend, jz) * coord->dy(r.ind, mesh->yend, jz));
+            flow / (coord->J(r.ind, mesh->yend, jz) * coord->dy(r.ind, mesh->yend, jz));
 
           // Add mass, momentum and energy to the neutrals
 
@@ -3514,7 +3514,7 @@ int Hermes::rhs(BoutReal t) {
   // Impurities
 
   if ((carbon_fraction > 0.0) || impurity_adas) {
-    
+
     if (carbon_fraction > 0.0) {
       TRACE("Carbon impurity radiation");
       Rzrad = carbon_rad->power(Te * Tnorm, Ne * Nnorm,
@@ -3526,44 +3526,44 @@ int Hermes::rhs(BoutReal t) {
     if (impurity_adas) {
       for (auto &i : Rzrad.getRegion("RGN_NOY")) {
         // Calculate cell centre (C), left (L) and right (R) values
-        
+
         BoutReal Te_C = Te[i],
           Te_L = 0.5 * (Te[i.ym()] + Te[i]),
           Te_R = 0.5 * (Te[i] + Te[i.yp()]);
         BoutReal Ne_C = Ne[i],
           Ne_L = 0.5 * (Ne[i.ym()] + Ne[i]),
           Ne_R = 0.5 * (Ne[i] + Ne[i.yp()]);
-        
+
         BoutReal Rz_L = computeRadiatedPower(*impurity,
                                              Te_L * Tnorm,        // electron temperature [eV]
                                              Ne_L * Nnorm,        // electron density [m^-3]
                                              fimp * Ne_L * Nnorm, // impurity density [m^-3]
                                              0.0);       // Neutral density [m^-3]
-        
+
         BoutReal Rz_C = computeRadiatedPower(*impurity,
                                              Te_C * Tnorm,        // electron temperature [eV]
                                              Ne_C * Nnorm,        // electron density [m^-3]
                                              fimp * Ne_C * Nnorm, // impurity density [m^-3]
                                              0.0);       // Neutral density [m^-3]
-        
+
         BoutReal Rz_R = computeRadiatedPower(*impurity,
                                              Te_R * Tnorm,        // electron temperature [eV]
                                              Ne_R * Nnorm,        // electron density [m^-3]
                                              fimp * Ne_R * Nnorm, // impurity density [m^-3]
                                              0.0);       // Neutral density [m^-3]
-        
+
         // Jacobian (Cross-sectional area)
         BoutReal J_C = coord->J[i],
           J_L = 0.5 * (coord->J[i.ym()] + coord->J[i]),
           J_R = 0.5 * (coord->J[i] + coord->J[i.yp()]);
-        
+
         // Simpson's rule, calculate average over cell
         Rzrad[i] += (J_L * Rz_L +
                      4. * J_C * Rz_C +
                      J_R * Rz_R) / (6. * J_C);
       }
     }
-    
+
     Rzrad /= SI::qe * Tnorm * Nnorm * Omega_ci;                // Normalise
     ddt(Pe) -= (2. / 3) * Rzrad;
   }
@@ -3777,14 +3777,14 @@ Field3D Hermes::Div_parP_n(const Field3D &n, const Field3D &v,
                     0.5 * amaxm * (nmR * vmR - niL * viL);
     if (Div_parP_n_sheath_extra) {
       if (fwd[i]) {
-	const BoutReal vip = 0.5 * (v[i] + v.yup()[ip]);
-	const BoutReal nip = 0.5 * (n[i] + n.yup()[ip]);
-	Gnvp = niR * viR * vip + amaxp * (niR * viR - nip * vip);
+        const BoutReal vip = 0.5 * (v[i] + v.yup()[ip]);
+        const BoutReal nip = 0.5 * (n[i] + n.yup()[ip]);
+        Gnvp = niR * viR * vip + amaxp * (niR * viR - nip * vip);
       }
       if (bwd[i]) {
-	const BoutReal vim = 0.5 * (v[i] + v.ydown()[im]);
-	const BoutReal nim = 0.5 * (n[i] + n.ydown()[im]);
-	Gnvp = niL * viL * vim + amaxm * (niL * viL - nim * vim);
+        const BoutReal vim = 0.5 * (v[i] + v.ydown()[im]);
+        const BoutReal nim = 0.5 * (n[i] + n.ydown()[im]);
+        Gnvp = niL * viL * vim + amaxm * (niL * viL - nim * vim);
       }
     }
     ASSERT1(std::isfinite(Gnvp));
