@@ -272,7 +272,7 @@ bndry_all = neumann_o2
 bndry_xin = neumann_o2
 bndry_xout = neumann_o2
 # Maybe not documented?
-bndry_par_all = parallel_neumann
+bndry_par_all = parallel_neumann_o1
 
 
 [Ne] # Electron density

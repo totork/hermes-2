@@ -90,8 +90,8 @@ void Diffusion2D::update(const Field3D &Ne, const Field3D &Te, const Field3D &UN
             (Eionize / Tnorm) * R_iz; // Ionisation energy
   }
   mesh->communicate(Dnn, Fperp);
-  Dnn.applyParallelBoundary("parallel_neumann");
-  Fperp.applyParallelBoundary("parallel_neumann");
+  Dnn.applyParallelBoundary("parallel_neumann_o2");
+  Fperp.applyParallelBoundary("parallel_neumann_o2");
   Nn.applyParallelBoundary();
   Pn.applyParallelBoundary();
 

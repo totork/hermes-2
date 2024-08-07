@@ -350,7 +350,7 @@ scale = 0.0
 bndry_all = neumann_o2
 bndry_xin = neumann_o2
 bndry_xout = neumann_o2
-bndry_par_all = parallel_neumann
+bndry_par_all = parallel_neumann_o2
 
 [Ne] # Electron density
 scale = 1
