@@ -880,47 +880,38 @@ int Hermes::init(bool restarting) {
   /////////////////////////////////////////////////////////
   // Load metric tensor from the mesh, passing length and B
   // field normalisations
-  TRACE("Loading metric tensor");
+  Coordinates *coord = mesh->getCoordinates();
+  // To use non-orthogonal metric
+  // Normalise
+  coord->Bxy /= Bnorm;
+  // Metric is in grid file - just need to normalise
+  coord->g11 *= (rho_s0 * rho_s0);
+  coord->g22 *= (rho_s0 * rho_s0);
+  coord->g33 *= (rho_s0 * rho_s0);
+  coord->g12 *= (rho_s0 * rho_s0);
+  coord->g13 *= (rho_s0 * rho_s0);
+  coord->g23 *= (rho_s0 * rho_s0);
 
-  Coordinates *coord = bout::globals::mesh->getCoordinates();
+  coord->J *= rho_s0 * rho_s0 * rho_s0;
 
-  if (optsc["loadmetric"]
-          .doc("Load Rxy, Bpxy etc. to create orthogonal metric?")
-          .withDefault(true)) {
-    LoadMetric(rho_s0, Bnorm);
-  } else {
-    Coordinates *coord = mesh->getCoordinates();
-    // To use non-orthogonal metric
-    // Normalise
-    coord->Bxy /= Bnorm;
-    // Metric is in grid file - just need to normalise
-    coord->g11 *= (rho_s0 * rho_s0);
-    coord->g22 *= (rho_s0 * rho_s0);
-    coord->g33 *= (rho_s0 * rho_s0);
-    coord->g12 *= (rho_s0 * rho_s0);
-    coord->g13 *= (rho_s0 * rho_s0);
-    coord->g23 *= (rho_s0 * rho_s0);
+  coord->g_11 /= rho_s0 * rho_s0;
+  coord->g_22 /= rho_s0 * rho_s0;
+  coord->g_33 /= rho_s0 * rho_s0;
+  coord->g_12 /= rho_s0 * rho_s0;
+  coord->g_13 /= rho_s0 * rho_s0;
+  coord->g_23 /= rho_s0 * rho_s0;
 
-    coord->J *= rho_s0 * rho_s0 * rho_s0;
+  coord->geometry(); // Calculate other metrics
 
-    coord->g_11 /= rho_s0 * rho_s0;
-    coord->g_22 /= rho_s0 * rho_s0;
-    coord->g_33 /= rho_s0 * rho_s0;
-    coord->g_12 /= rho_s0 * rho_s0;
-    coord->g_13 /= rho_s0 * rho_s0;
-    coord->g_23 /= rho_s0 * rho_s0;
-
-    coord->geometry(); // Calculate other metrics
-
-    _FCIDiv_a_Grad_perp = std::make_unique<FCI::dagp_fv>(*mesh);
-    *_FCIDiv_a_Grad_perp *= rho_s0;
-  }
+  _FCIDiv_a_Grad_perp = std::make_unique<FCI::dagp_fv>(*mesh);
+  *_FCIDiv_a_Grad_perp *= rho_s0;
 
   if (Options::root()["mesh:paralleltransform"]["type"].as<std::string>() == "fci") {
     fci_transform = true;
   }else{
     fci_transform = false;
   }
+  ASSERT0(fci_transform);
 
   if(fci_transform){
     poloidal_flows = false;
