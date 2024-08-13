@@ -892,24 +892,23 @@ int Hermes::init(bool restarting) {
     Coordinates *coord = mesh->getCoordinates();
     // To use non-orthogonal metric
     // Normalise
-    coord->dx /= rho_s0 * rho_s0 * Bnorm;
     coord->Bxy /= Bnorm;
     // Metric is in grid file - just need to normalise
-    coord->g11 /= (Bnorm * Bnorm * rho_s0 * rho_s0);
+    coord->g11 *= (rho_s0 * rho_s0);
     coord->g22 *= (rho_s0 * rho_s0);
     coord->g33 *= (rho_s0 * rho_s0);
-    coord->g12 /= Bnorm;
-    coord->g13 /= Bnorm;
+    coord->g12 *= (rho_s0 * rho_s0);
+    coord->g13 *= (rho_s0 * rho_s0);
     coord->g23 *= (rho_s0 * rho_s0);
 
-    coord->J *= Bnorm / rho_s0;
+    coord->J *= rho_s0 * rho_s0 * rho_s0;
 
-    coord->g_11 *= (Bnorm * Bnorm * rho_s0 * rho_s0);
-    coord->g_22 /= (rho_s0 * rho_s0);
-    coord->g_33 /= (rho_s0 * rho_s0);
-    coord->g_12 *= Bnorm;
-    coord->g_13 *= Bnorm;
-    coord->g_23 /= (rho_s0 * rho_s0);
+    coord->g_11 /= rho_s0 * rho_s0;
+    coord->g_22 /= rho_s0 * rho_s0;
+    coord->g_33 /= rho_s0 * rho_s0;
+    coord->g_12 /= rho_s0 * rho_s0;
+    coord->g_13 /= rho_s0 * rho_s0;
+    coord->g_23 /= rho_s0 * rho_s0;
 
     coord->geometry(); // Calculate other metrics
 
