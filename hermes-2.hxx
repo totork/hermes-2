@@ -121,8 +121,10 @@ private:
   bool j_par;       // Parallel current:    Vort <-> Psi
   bool j_pol_pi;       // Polarisation current with explicit Pi dependence
   bool j_pol_simplified;       // Polarisation current with explicit Pi dependence
-  
+
+  bool phi_bndry_after_solve;
   bool parallel_flow;
+  bool parallel_vort_flow;
   bool parallel_flow_p_term; // Vi advection terms in Pe, Pi
   bool pe_par;      // Parallel pressure gradient: Pe <-> Psi
   bool pe_par_p_term; // Includes terms in Pe,Pi equations
@@ -138,7 +140,7 @@ private:
   bool thermal_conduction; // Braginskii electron heat conduction
   bool electron_ion_transfer; // Electron-ion heat transfer
   bool classical_diffusion; // Collisional diffusion, including viscosity
-  
+  bool use_Div_n_bxGrad_f_B_XPPM;
   // Anomalous perpendicular diffusion coefficients
   BoutReal anomalous_D;    // Density diffusion
   BoutReal anomalous_chi;  // Electron thermal diffusion
@@ -215,6 +217,7 @@ private:
   bool low_n_diffuse; // Diffusion in parallel direction at low density
   bool low_n_diffuse_perp; // Diffusion in perpendicular direction at low density
   BoutReal ne_hyper_z, pe_hyper_z; // Hyper-diffusion
+  BoutReal pi_hyper_z;
   BoutReal scale_num_cs; // Scale numerical sound speed
   BoutReal floor_num_cs; // Apply a floor to the numerical sound speed
   bool vepsi_dissipation; // Dissipation term in VePsi equation
