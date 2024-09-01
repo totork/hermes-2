@@ -2827,7 +2827,7 @@ int Hermes::rhs(BoutReal t) {
       if(fci_transform){
          
 	    if (use_Div_n_bxGrad_f_B_XPPM){
-	      ddt(Pe) = -Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux, poloidal_flows, true);
+	      ddt(Pe) = -Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux, poloidal_flows, true) * bracket_factor;
 	    } else {
 	      ddt(Pe) = -bracket(Pe, phi, BRACKET_ARAKAWA) * bracket_factor;
 	    }
@@ -2836,7 +2836,7 @@ int Hermes::rhs(BoutReal t) {
 	    
       }else{
 	if (use_Div_n_bxGrad_f_B_XPPM){
-	  ddt(Pe) = -Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux, poloidal_flows, true);
+	  ddt(Pe) = -Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux, poloidal_flows, true) * bracket_factor;
 	} else {
 	  ddt(Pe) = -bracket(Pe, phi, BRACKET_ARAKAWA) * bracket_factor;
 	}
