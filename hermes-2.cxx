@@ -3876,7 +3876,7 @@ Field3D Hermes::fci_curvature(const Field3D &f, const bool &bool_bracket) {
     //
     // !!!!!!! NOT SURE IF I NEED THE BRACKET_FACTOR
     
-    return FV::Div_f_v(f,bxcv,false);
+    return FV::Div_f_v(f,bxcv,false) * bracket_factor;
   }
   
 }
