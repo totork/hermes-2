@@ -143,7 +143,9 @@ private:
   bool thermal_conduction; // Braginskii electron heat conduction
   bool electron_ion_transfer; // Electron-ion heat transfer
   bool classical_diffusion; // Collisional diffusion, including viscosity
-  bool use_Div_n_bxGrad_f_B_XPPM;
+  bool use_Div_n_bxGrad_f_B_XPPM; //Use stencil operator for ExB
+  bool use_bracket;                 //Use the bracket for the curvature drifts
+
   // Anomalous perpendicular diffusion coefficients
   BoutReal anomalous_D;    // Density diffusion
   BoutReal anomalous_chi;  // Electron thermal diffusion
@@ -263,6 +265,8 @@ private:
   
   // Curvature, Grad-B drift
   Vector3D Curlb_B; // Curl(b/B)
+
+  Field3D bxcvx,bxcvy,bxcvz;
   
   // Perturbed parallel gradient operators
   Field3D Grad_parP(const Field3D &f);

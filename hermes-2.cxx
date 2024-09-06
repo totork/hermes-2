@@ -459,7 +459,7 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, resistivity, true);
   OPTION(optsc, thermal_flux, true);
   OPTION(optsc, use_Div_n_bxGrad_f_B_XPPM, true);
-
+  OPTION(optsc, use_bracket, true);
 
   
   thermal_force = optsc["thermal_force"]
@@ -1151,6 +1151,30 @@ int Hermes::init(bool restarting) {
       }
     }
   }
+
+  if (use_bracket){
+    TRACE("Reading curvature for the curvature drifts");
+    try{
+      mesh->(bxcvx,"bxcvx");
+      mesh->(bxcvy,"bxcvy");
+      mesh->(bxcvz,"bxcvz");
+
+      //Normalize
+
+      bxcvx /= Bnorm;
+      bxcvy /= Bnorm;
+      bxcvz /= Bnorm;
+
+      bxcvx *= rho_s0;
+      bxcvy *= rho_s0;
+      bxcvz *= rho_s0;
+    } catch(BoutException &e) {
+      throw;
+    }
+    
+
+  }
+  
 
   if (Options::root()["mesh:paralleltransform"]["type"].as<std::string>() == "shifted") {
     Field2D I;
@@ -3830,10 +3854,15 @@ int Hermes::precon(BoutReal t, BoutReal gamma, BoutReal delta) {
   return 0;
 }
 
-Field3D Hermes::fci_curvature(const Field3D &f) {
+Field3D Hermes::fci_curvature(const Field3D &f, bool use_bracket=true) {
   // Field3D result = mul_all(bracket(logB, f, BRACKET_ARAKAWA), bracket_factor);
   // mesh->communicate(result);
-  return 2 * bracket(logB, f, BRACKET_ARAKAWA) * bracket_factor;
+  if (use_bracket){
+    return 2 * bracket(logB, f, BRACKET_ARAKAWA) * bracket_factor;
+  } else {
+    
+  }
+  
 }
 
 Field3D Hermes::Grad_parP(const Field3D &f) {
