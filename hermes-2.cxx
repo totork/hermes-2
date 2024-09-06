@@ -1155,9 +1155,9 @@ int Hermes::init(bool restarting) {
   if (use_bracket){
     TRACE("Reading curvature for the curvature drifts");
     try{
-      mesh->(bxcvx,"bxcvx");
-      mesh->(bxcvy,"bxcvy");
-      mesh->(bxcvz,"bxcvz");
+      mesh->get(bxcvx,"bxcvx");
+      mesh->get(bxcvy,"bxcvy");
+      mesh->get(bxcvz,"bxcvz");
 
       //Normalize
 
@@ -2332,10 +2332,10 @@ int Hermes::rhs(BoutReal t) {
     // i.e Grad-B + curvature drift
     if (!evolve_ni) {
       mesh->communicate(Pe);
-      ddt(Ne) -= fci_curvature(Pe);
+      ddt(Ne) -= fci_curvature(Pe,use_bracket);
     } else {
       mesh->communicate(Pi);
-      ddt(Ne) += fci_curvature(Pi);
+      ddt(Ne) += fci_curvature(Pi,use_bracket);
     }
   }
 
@@ -2479,7 +2479,7 @@ int Hermes::rhs(BoutReal t) {
 
       // Note: This term is central differencing so that it balances
       // the corresponding compression term in the pressure equation
-      vort_dia = fci_curvature(add_all(Pi , Pe));
+      vort_dia = fci_curvature(add_all(Pi , Pe),use_bracket);
       ddt(Vort) += vort_dia;
       // b += fci_curvature(add_all(Pi , Pe));
     }
@@ -2584,7 +2584,7 @@ int Hermes::rhs(BoutReal t) {
       // }
       // Vector3D Pi_ciCb_B_2 = 0.5 * Pi_ci * Curlb_B;
       // mesh->communicate(Pi_ciCb_B_2);
-      ddt(Vort) += 0.5*fci_curvature(Pi_ci) -
+      ddt(Vort) += 0.5*fci_curvature(Pi_ci,use_bracket) -
                    Div_n_bxGrad_f_B_XPPM(1. / 3, Pi_ci, vort_bndry_flux);
     }
 
@@ -2782,7 +2782,7 @@ int Hermes::rhs(BoutReal t) {
 
     if (j_diamag) {
       // Magnetic drift
-      ddt(NVi) -= fci_curvature(mul_all(NVi , Ti));
+      ddt(NVi) -= fci_curvature(mul_all(NVi , Ti),use_bracket);
     }
 
     // FV with added dissipation
@@ -2934,12 +2934,12 @@ int Hermes::rhs(BoutReal t) {
 
     if (j_diamag) { // Diamagnetic flow
       // Magnetic drift (curvature) divergence.
-      ddt(Pe) += (5. / 3) * fci_curvature(mul_all(Pe , Te));
+      ddt(Pe) += (5. / 3) * fci_curvature(mul_all(Pe , Te),use_bracket);
 
       // This term energetically balances diamagnetic term
       // in the vorticity equation
       // ddt(Pe) -= (2. / 3) * Pe * (Curlb_B * Grad(phi));
-      ddt(Pe) -= (2. / 3) * Pe * fci_curvature(phi);
+      ddt(Pe) -= (2. / 3) * Pe * fci_curvature(phi,use_bracket);
     }
 
     // Parallel heat conduction
@@ -3184,17 +3184,17 @@ int Hermes::rhs(BoutReal t) {
 
     if (j_diamag) { // Diamagnetic flow
       // Magnetic drift (curvature) divergence
-      ddt(Pi) -= (5. / 3) * fci_curvature(mul_all(Pi , Ti));
+      ddt(Pi) -= (5. / 3) * fci_curvature(mul_all(Pi , Ti),use_bracket);
 
 
       // Compression of ExB flow
       // These terms energetically balances diamagnetic term
       // in the vorticity equation
       // ddt(Pi) -= (2. / 3) * Pi * (Curlb_B * Grad(phi));
-      ddt(Pi) -= (2. / 3) * Pi * fci_curvature(phi);
+      ddt(Pi) -= (2. / 3) * Pi * fci_curvature(phi,use_bracket);
 
       if (fci_transform) {
-        ddt(Pi) += Pi * fci_curvature(Pi + Pe);
+        ddt(Pi) += Pi * fci_curvature(Pi + Pe,use_bracket);
       } else {
         ddt(Pi) += Pi * Div((Pe + Pi) * Curlb_B);
       }
@@ -3300,7 +3300,7 @@ int Hermes::rhs(BoutReal t) {
         ddt(Pi) -= (4. / 9) * Pi_ciperp * Div_parP(Vi);
         //(4. / 9) * Vi * B32 * Grad_par(Pi_ciperp / B32);
         Field3D phiPi = add_all(phi, Pi);
-        ddt(Pi) -= (2. / 6) * Pi_ci * fci_curvature(phiPi);//Curlb_B * Grad(phiPi);
+        ddt(Pi) -= (2. / 6) * Pi_ci * fci_curvature(phiPi,use_bracket);//Curlb_B * Grad(phiPi);
         ddt(Pi) += (2. / 9) * bracket(Pi_ci, phiPi, BRACKET_ARAKAWA) * bracket_factor;
       }
     }
@@ -3854,13 +3854,13 @@ int Hermes::precon(BoutReal t, BoutReal gamma, BoutReal delta) {
   return 0;
 }
 
-Field3D Hermes::fci_curvature(const Field3D &f, bool use_bracket=true) {
+Field3D Hermes::fci_curvature(const Field3D &f, const bool &bool_bracket) {
   // Field3D result = mul_all(bracket(logB, f, BRACKET_ARAKAWA), bracket_factor);
   // mesh->communicate(result);
-  if (use_bracket){
+  if (bool_bracket){
     return 2 * bracket(logB, f, BRACKET_ARAKAWA) * bracket_factor;
   } else {
-    
+    throw;
   }
   
 }
