@@ -75,6 +75,9 @@ private:
   Field3D a;
   Field3D b;
   Field3D d;
+
+  //Debug variables for the vorticity time evolution
+  Field3D vort_dia,vort_ExB,vort_jpar,vort_parflow;
   
   // Limited variables
   Field3D Telim, Tilim;

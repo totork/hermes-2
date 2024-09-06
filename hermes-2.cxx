@@ -1276,7 +1276,11 @@ int Hermes::init(bool restarting) {
   kappa_epar = 0.0;
   kappa_ipar = 0.0;
   Dn = 0.0;
-
+  vort_dia = 0.0;
+  vort_ExB = 0.0;
+  vort_jpar = 0.0;
+  vort_parflow = 0.0;
+  
   SAVE_REPEAT(a,b,d);
   SAVE_REPEAT(Te, Ti);
 
@@ -1290,7 +1294,7 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(kappa_ipar); // Parallel ion heat conductivity
 
     SAVE_REPEAT(nu);
-
+    SAVE_REPEAT(vort_dia,vort_ExB,vort_jpar,vort_parflow);
     /*
     if (resistivity) {
       SAVE_REPEAT(nu); // Parallel resistivity
@@ -2441,7 +2445,8 @@ int Hermes::rhs(BoutReal t) {
       // This term is central differencing so that it balances the parallel gradient
       // of the potential in Ohm's law
       // Jpar.applyParallelBoundary(parbc);
-      ddt(Vort) += Div_parP(Jpar);
+      vort_jpar = Div_parP(Jpar);
+      ddt(Vort) += vort_jpar;
       // a += Div_parP(Jpar);
     }
 
@@ -2450,7 +2455,8 @@ int Hermes::rhs(BoutReal t) {
 
       // Note: This term is central differencing so that it balances
       // the corresponding compression term in the pressure equation
-      ddt(Vort) += fci_curvature(add_all(Pi , Pe));
+      vort_dia = fci_curvature(add_all(Pi , Pe));
+      ddt(Vort) += vort_dia;
       // b += fci_curvature(add_all(Pi , Pe));
     }
 
@@ -2509,10 +2515,16 @@ int Hermes::rhs(BoutReal t) {
         }else if (j_pol_simplified) {
           // use simplified polarization term from i.e. GBS
 	  if (use_Div_n_bxGrad_f_B_XPPM){
-	    ddt(Vort) -= Div_n_bxGrad_f_B_XPPM(Vort, phi, vort_bndry_flux,
+	    vort_ExB = Div_n_bxGrad_f_B_XPPM(Vort, phi, vort_bndry_flux,
                                                poloidal_flows, false) * bracket_factor;
+
+	    
+	    ddt(Vort) -= vort_ExB;
+
 	  } else {
-	    ddt(Vort) -= bracket(Vort, phi, BRACKET_ARAKAWA) * bracket_factor;
+	    vort_ExB = bracket(Vort, phi, BRACKET_ARAKAWA) * bracket_factor;
+
+	    ddt(Vort) -= vort_ExB;
 	  }
 
 	  
