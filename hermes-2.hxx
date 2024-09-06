@@ -266,6 +266,7 @@ private:
   // Curvature, Grad-B drift
   Vector3D Curlb_B; // Curl(b/B)
 
+  Vector3D bxcv;
   Field3D bxcvx,bxcvy,bxcvz;
   
   // Perturbed parallel gradient operators

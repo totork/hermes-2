@@ -1168,6 +1168,15 @@ int Hermes::init(bool restarting) {
       bxcvx *= rho_s0;
       bxcvy *= rho_s0;
       bxcvz *= rho_s0;
+
+      bxcv = 0.0;
+      bxcv.covariant = false;
+      bxcv.x = bxcvx;
+      bxcv.y = bxcvy;
+      bxcv.z = bxcvz;
+
+      SAVE_ONCE(bxcvx,bxcvy,bxcvz);
+      
     } catch(BoutException &e) {
       throw;
     }
@@ -3860,7 +3869,14 @@ Field3D Hermes::fci_curvature(const Field3D &f, const bool &bool_bracket) {
   if (bool_bracket){
     return 2 * bracket(logB, f, BRACKET_ARAKAWA) * bracket_factor;
   } else {
-    throw;
+    //throw;
+    // nabla (f nabla x (b/B)) = (dx,dy,dy)*(f*(bxcvx,bxcvy,bxcvz))
+    //
+    //                         = dx(f*bxcvx) + dz(f*bxcvz)
+    //
+    // !!!!!!! NOT SURE IF I NEED THE BRACKET_FACTOR
+    
+    return FV::Div_f_v(f,bxcv,false);
   }
   
 }
