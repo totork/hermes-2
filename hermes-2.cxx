@@ -1152,7 +1152,7 @@ int Hermes::init(bool restarting) {
     }
   }
 
-  if (use_bracket){
+  if (!use_bracket){
     TRACE("Reading curvature for the curvature drifts");
     try{
       mesh->get(bxcvx,"bxcvx");
@@ -1174,7 +1174,7 @@ int Hermes::init(bool restarting) {
       bxcv.x = bxcvx;
       bxcv.y = bxcvy;
       bxcv.z = bxcvz;
-
+      bxcv.covariant = false;
       SAVE_ONCE(bxcvx,bxcvy,bxcvz);
       
     } catch(BoutException &e) {
@@ -1183,7 +1183,7 @@ int Hermes::init(bool restarting) {
     
 
   }
-  
+
 
   if (Options::root()["mesh:paralleltransform"]["type"].as<std::string>() == "shifted") {
     Field2D I;
@@ -3875,11 +3875,16 @@ Field3D Hermes::fci_curvature(const Field3D &f, const bool &bool_bracket) {
     //                         = dx(f*bxcvx) + dz(f*bxcvz)
     //
     // !!!!!!! NOT SURE IF I NEED THE BRACKET_FACTOR
-    
-    return FV::Div_f_v(f,bxcv,false) * bracket_factor;
+
+    return Div_f_v_no_y(f,bxcvx,bxcvz,false) * bracket_factor;
+    //return FV::Div_f_v(f,bxcv,false) * bracket_factor;
   }
   
 }
+
+
+
+
 
 Field3D Hermes::Grad_parP(const Field3D &f) {
   return Grad_par(f); //+ 0.5*beta_e*bracket(psi, f, BRACKET_ARAKAWA);
@@ -3992,3 +3997,4 @@ Field3D Hermes::Div_parP_n(const Field3D &n, const Field3D &v,
 Field3D Hermes::FCIDiv_a_Grad_perp(const Field3D &a, const Field3D &f) {
   return (*_FCIDiv_a_Grad_perp)(a, f);
 }
+

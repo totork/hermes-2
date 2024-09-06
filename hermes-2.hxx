@@ -313,6 +313,8 @@ private:
   Field3D Bxyz, logB;
   Field3D bracket_factor;
   Field3D fci_curvature(const Field3D &f, const bool &bool_bracket);
+
+  
   BoutMask fwd_bndry_mask, bwd_bndry_mask;
 
   // perp boundary
