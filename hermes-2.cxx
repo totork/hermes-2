@@ -2061,16 +2061,7 @@ int Hermes::rhs(BoutReal t) {
   // At this point we have calculated all boundary conditions,
   // and auxilliary variables like jpar, phi, psi
 
-  // Now can update the neutral gas model, so that we can use neutral
-  // gas densities and interaction frequencies in the collision processes.
-
-  // Neutral gas
-  if (neutrals) {
-    TRACE("Neutral gas model update");
-
-    // Update neutral gas model
-    neutrals->update(Ne, Te, Ti, Vi);
-  }
+  
 
   //////////////////////////////////////////////////////////////
   // Collisions and stress tensor
@@ -2083,10 +2074,8 @@ int Hermes::rhs(BoutReal t) {
   const BoutReal tau_i1 = (Cs0 / rho_s0 ) * tau_i0;
 
   Field3D neutral_rate;
-  if (ion_neutral && ( neutrals || (ion_neutral_rate > 0.0))) {
-    // Include ion-neutral collisions in collision time
-    neutral_rate = neutrals ? neutrals->Fperp : ion_neutral_rate;
-  }
+
+  
   alloc_all(tau_e);
   alloc_all(tau_i);
   BOUT_FOR(i, Te.getRegion("RGN_ALL")) {
@@ -2121,76 +2110,7 @@ int Hermes::rhs(BoutReal t) {
   //   tau_i = div_all(tau_i, add_all(1, mul_all(tau_i, neutral_rate)));
   // }
 
-  // Collisional damping (normalised)
-  if (resistivity || (!electromagnetic && !FiniteElMass)) {
-    // Need to calculate nu if electrostatic and zero electron mass
-    nu = resistivity_multiply / (1.96 * tau_e * mi_me);
-
-    if (electron_neutral && neutrals) {
-      /*
-       * Include electron-neutral collisions. These can dominate
-       * the resistivity at low temperatures (~1eV)
-       *
-       * This assumes a fixed cross-section, independent of energy
-       *
-       */
-      BoutReal a0 = PI*SQ(5.29e-11); // Cross-section [m^2]
-
-      // Electron thermal speed
-      Field3D vth_e = sqrt(mi_me*Te);
-
-      // Electron-neutral collision rate
-      Field3D nu_ne = vth_e * Nnorm * neutrals->getDensity() * a0 * rho_s0;
-
-      // Add collision rate to the electron-ion rate
-      nu += nu_ne;
-    }
-
-    if (resistivity_boundary_width > 0 &&
-        ((mesh->getGlobalXIndex(mesh->xstart) - mesh->xstart)
-         < resistivity_boundary_width)) {
-      // A region near the boundary with different resistivity
-
-      int imax = mesh->xstart + resistivity_boundary_width - 1 -
-        (mesh->getGlobalXIndex(mesh->xstart) - mesh->xstart);
-      if (imax > mesh->xend) {
-        imax = mesh->xend;
-      }
-      int imin = mesh->xstart;
-      if (!mesh->firstX()) {
-        --imin; // Calculate in guard cells, for radial fluxes
-      }
-      for (int i = imin; i <= imax; ++i) {
-        for (int j = mesh->ystart; j <= mesh->yend; ++j) {
-          for (int k = 0; k < mesh->LocalNz; ++k) {
-            nu(i, j, k) = resistivity_boundary;
-          }
-        }
-      }
-    }
-
-    // Number of points in outer guard cells
-    int nguard = mesh->LocalNx - mesh->xend - 1;
-
-    if (resistivity_boundary_width > 0 &&
-        (mesh->GlobalNx - nguard - mesh->getGlobalXIndex(mesh->xend) <=
-         resistivity_boundary_width)) {
-      // Outer boundary
-      int imin =
-        mesh->GlobalNx - nguard - resistivity_boundary_width - mesh->getGlobalXIndex(0);
-      if (imin < mesh->xstart) {
-        imin = mesh->xstart;
-      }
-      for (int i = imin; i <= mesh->xend; ++i) {
-        for (int j = mesh->ystart; j <= mesh->yend; ++j) {
-          for (int k = 0; k < mesh->LocalNz; ++k) {
-            nu(i, j, k) = resistivity_boundary;
-          }
-        }
-      }
-    }
-  }
-
+  
   if (thermal_conduction || sinks) {
     // Braginskii expression for electron parallel conduction
     // kappa ~ n * v_th^2 * tau
@@ -2241,32 +2161,7 @@ int Hermes::rhs(BoutReal t) {
 
   if(currents){ nu.applyBoundary(t); }
 
-  if (ion_viscosity) {
-    ///////////////////////////////////////////////////////////
-    // Ion stress tensor. Split into
-    // Pi_ci = Pi_ciperp + Pi_cipar
-    //
-    // In the parallel ion momentum equation the Pi_cipar term
-    // is solved as a parallel diffusion, so is treated separately
-    // All other terms are added to Pi_ciperp, even if they are
-    // not really parallel parts
-    throw BoutException("Non-Boussinesq not implemented yet");
-
-    ASSERT0(false); // not implemented - ask Brendan
-  } // ion visocsity
-
-  ///////////////////////////////////////////////////////////
-  // Relaxation potential
-  //
-  if (relaxation) {
-    TRACE("relaxation");
-    Field3D inv_b2 = div_all(1 , mul_all(coord->Bxy , coord->Bxy));
-    ddt(phi_1) = lambda_0 * lambda_2 *
-                 ((1 / lambda_2 * FCIDiv_a_Grad_perp(inv_b2, phi_1) +
-                   FCIDiv_a_Grad_perp(inv_b2, Pi)) -
-                  Vort);
-  }
-
+  
   ///////////////////////////////////////////////////////////
   // Density
   // This is the electron density equation
@@ -2312,34 +2207,6 @@ int Hermes::rhs(BoutReal t) {
       ddt(Ne) -= Div_parP(nevi);
     }
 
-    //Skew-symmetric form
-
-    // Field3D gparne = Grad_par(Ne);
-    // Field3D dparve = Div_parP(Ve);
-    // gparne.applyBoundary("neumann");
-    // dparve.applyBoundary("neumann");
-    // mesh->communicate(gparne,dparve);
-    // gparne.applyParallelBoundary(parbc);
-    // dparve.applyParallelBoundary(parbc);
-
-    // check_all(gparne);
-    // check_all(dparve);
-
-    // ddt(Ne) -= 0.5 * (Div_par(neve) + mul_all(Ve,gparne) + mul_all(Ne,
-    // dparve));
-    // b -= 0.5 * (Div_par(neve) + mul_all(Ve,gparne) + mul_all(Ne,
-    // dparve));
-    // //ddt(Ne) -= 0.5 * (Div_par(neve) + Ve * Grad_par(Ne) + Ne *
-    // Div_par(Ve)); a = -0.5 * (Div_parP(neve) + Ve * Grad_par(Ne) + Ne *
-    // Div_par(Ve));
-    // auto* coords = mesh->getCoordinates();
-    // for(auto &i :Ne.getRegion("RGN_NOBNDRY")) {
-    //   ddt(Ne)[i] -= (Ne.yup()[i.yp()] * Ve.yup()[i.yp()] /
-    //   coords->Bxy[i.yp()]
-    //               - Ne.ydown()[i.ym()] * Ve.ydown()[i.ym()] /
-    //               coords->Bxy[i.ym()])
-    //     * coords->Bxy[i] / (coords->dy[i] * sqrt(coords->g_22[i]));
-    // }
   }
 
   if (j_diamag) {
@@ -2354,10 +2221,7 @@ int Hermes::rhs(BoutReal t) {
     }
   }
 
-  if (ramp_mesh && (t < ramp_timescale)) {
-    ddt(Ne) += NeTarget / ramp_timescale;
-  }
-
+  
   Field3D TiTediff, tauemimeSQB;
   if (classical_diffusion) {
     // Classical perpendicular diffusion
@@ -2390,48 +2254,7 @@ int Hermes::rhs(BoutReal t) {
     ddt(Ne) += FCIDiv_a_Grad_perp(a_d3d, Ne);
   }
 
-  // Source
-  if (adapt_source) {
-    // Add source. Ensure that sink will go to zero as Ne -> 0
-    Field3D NeErr = averageY(DC(Ne) - NeTarget);
-
-    if (core_sources) {
-      // Sources only in core (periodic Y) domain
-      // Try to keep NeTarget
-
-      ddt(Sn) = 0.0;
-      for (int x = mesh->xstart; x <= mesh->xend; x++) {
-        if (!mesh->periodicY(x))
-          continue; // Not periodic, so skip
-
-        for (int y = mesh->ystart; y <= mesh->yend; y++) {
-          for (int z = 0; z <= mesh->LocalNz; z++){
-            Sn(x, y, z) -= source_p * NeErr(x, y, z);
-            ddt(Sn)(x, y, z) = -source_i * NeErr(x, y, z);
-
-            if (Sn(x, y, z) < 0.0) {
-              Sn(x, y, z) = 0.0;
-              if (ddt(Sn)(x, y, z) < 0.0)
-                ddt(Sn)(x, y, z) = 0.0;
-            }
-          }
-        }
-      }
-
-      NeSource = Sn;
-    } else {
-      // core_sources = false
-      NeSource = Sn * where(Sn, NeTarget, Ne);
-      NeSource -= source_p * NeErr / NeTarget;
-
-      ddt(Sn) = -source_i * NeErr;
-    }
-
-    if (source_vary_g11) {
-      NeSource *= g11norm;
-    }
-  }
-
+  
   ddt(Ne) += NeSource;
 
   if (low_n_diffuse) {
@@ -2590,19 +2413,7 @@ int Hermes::rhs(BoutReal t) {
       ddt(Vort) += FCIDiv_a_Grad_perp(mu, Vort);
     }
 
-    if (ion_viscosity) {
-      TRACE("Vort:ion_viscosity");
-      // Ion collisional viscosity.
-      // Contains poloidal viscosity
-      // if(fci_transform){
-      //         throw BoutException("Ion viscosity not implemented for FCI yet\n");
-      // }
-      // Vector3D Pi_ciCb_B_2 = 0.5 * Pi_ci * Curlb_B;
-      // mesh->communicate(Pi_ciCb_B_2);
-      ddt(Vort) += 0.5*fci_curvature(Pi_ci,use_bracket) -
-                   Div_n_bxGrad_f_B_XPPM(1. / 3, Pi_ci, vort_bndry_flux);
-    }
-
+  
     if (anomalous_nu > 0.0) {
       TRACE("Vort:anomalous_nu");
       // Perpendicular anomalous momentum diffusion
@@ -2689,31 +2500,7 @@ int Hermes::rhs(BoutReal t) {
       ddt(VePsi) -= mi_me * 0.71 * Grad_parP(Te);
     }
 
-    if (electron_viscosity) {
-      // Electron parallel viscosity (Braginskii)
-      Field3D ve_eta = 0.973 * mi_me * tau_e * Te;
-
-      if (eta_limit_alpha > 0.) {
-        // SOLPS-style flux limiter
-        // Values of alpha ~ 0.5 typically
-        Field3D q_cl = ve_eta * Grad_par(Ve);           // Collisional value
-        Field3D q_fl = eta_limit_alpha * Pe * mi_me; // Flux limit
-
-        ve_eta = ve_eta / (1. + abs(q_cl / q_fl));
-
-        if (fci_transform) {
-          ASSERT0("not implemented: FCI comm" == nullptr);
-        }
-        mesh->communicate(ve_eta);
-        ve_eta.applyBoundary("neumann");
-      }
-      if(fci_transform){
-        ddt(VePsi) += Div_par_K_Grad_par(ve_eta, Ve);
-      }else{
-        ddt(VePsi) += FV::Div_par_K_Grad_par(ve_eta, Ve);
-      }
-    }
-
+    
     if (FiniteElMass) {
       // Finite Electron Mass. Small correction needed to conserve energy
       Field3D vdiff = sub_all(Ve,Vi);
@@ -2838,18 +2625,7 @@ int Hermes::rhs(BoutReal t) {
     }
 
     // Ion-neutral friction
-    if (ion_neutral_rate > 0.0) {
-      ddt(NVi) -= ion_neutral_rate * NVi;
-    }
-
-    if (numdiff > 0.0) {
-      for(auto &i : NVi.getRegion("RGN_NOY")) {
-        ddt(NVi)[i] += numdiff*(Vi.ydown()[i.ym()] - 2.*Vi[i] + Vi.yup()[i.yp()]);
-      }
-      // ddt(NVi) += numdiff * Div_par_diffusion_index(NVi);
-
-    }
-
+    
     if (density_inflow) {
       // Particles arrive in cell at rate NeSource
       // This should come from a flow through the cell edge
