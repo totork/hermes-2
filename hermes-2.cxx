@@ -1916,23 +1916,26 @@ int Hermes::rhs(BoutReal t) {
         // tau_e = (Cs0 / rho_s0) * tau_e0 * pow(Te, 1.5) / Ne;
         Field3D Te32= pow(Te,1.5);
         mesh->communicate(Te32, Ne, phi, Pe, Vi);
-        //tau_e = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_e0) , Te32) , Ne);
-	tau_e = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_e0) , Te32) , Ne);
-	nu = resistivity_multiply / (1.96 * tau_e * mi_me);
-        mesh->communicate(nu);
 
-        Field3D gparpe = Grad_par(Pe);
-        Field3D gparphi = Grad_par(phi);
+	tau_e = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_e0) , Te32) , Ne);
+	
+	nu = resistivity_multiply / (1.96 * tau_e * mi_me);
+
+	mesh->communicate(nu);
+
+        Field3D gparpe = Grad_parP(Pe);
+        Field3D gparphi = Grad_parP(phi);
         gparpe.applyBoundary("neumann");
         gparphi.applyBoundary("neumann");
         mesh->communicate(gparphi, gparpe);
-        Field3D gparpe_n = div_all(gparpe, Ne);
-
+	
+	Field3D gparpe_n = div_all(gparpe, Ne);
+	
         Field3D gparphi_gparpe_nu = div_all(sub_all(gparphi, gparpe_n), nu);
-
-        // Ve = add_all(Vi,gparphi);
+	
         Ve = add_all(Vi, gparphi_gparpe_nu);
-        if (thermal_force) {
+
+	if (thermal_force) {
           Ve -= 0.71 * Grad_parP(Te) / nu;
         }
       }
@@ -1940,10 +1943,12 @@ int Hermes::rhs(BoutReal t) {
       Ve.applyBoundary(t);
       // Communicate auxilliary variables
       mesh->communicate(Ve);
-      Field3D neve = mul_all(Ne,Ve);
-      mesh->communicate(NVi,neve);
-      Jpar = sub_all(NVi, neve);
 
+      Field3D neve = mul_all(Ne,Ve);
+      
+      mesh->communicate(NVi,neve);
+
+      Jpar = sub_all(NVi, neve);
     }
     // Ve -= Jpar0 / Ne; // Equilibrium current density
   }
