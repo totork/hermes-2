@@ -489,7 +489,7 @@ int Hermes::init(bool restarting) {
 
   OPTION(optsc, neutral_friction, false);
   OPTION(optsc, frecycle, 0.9);
-  OPTION(optsc, VePsi_hyperXZ, -1.0)
+  OPTION(optsc, VePsi_hyperXZ, -1.0);
   OPTION(optsc, phi3d, false);
   OPTION(optsc,phi_bndry_after_solve,false);
   OPTION(optsc, ne_bndry_flux, true);
@@ -2525,7 +2525,7 @@ int Hermes::rhs(BoutReal t) {
       // Comm breaks sheath par BCs!
       //mesh->communicate(vdiff);
       //vdiff.applyParallelBoundary(parbc);
-      ddt(VePsi) += Ve * Grad_par(vdiff); // Parallel advection
+      ddt(VePsi) += Vi * Grad_par(vdiff); // Parallel advection
       //ddt(VePsi) -= bracket(phi, vdiff, BRACKET_ARAKAWA)*bracket_factor;  // ExB advection
       ddt(VePsi) += Div_n_bxGrad_f_B_XPPM(VePsi, phi, false,
                                         poloidal_flows) * bracket_factor;
@@ -2546,7 +2546,7 @@ int Hermes::rhs(BoutReal t) {
     }
 
     if (VePsi_hyperXZ>0.0){
-      ddt(VePsi) -= VePsi_hyperXZ * D4DZ4(VePsi) - VePsi_hyperXZ * D4DX4(VePsi);
+      ddt(VePsi) -= ( VePsi_hyperXZ * D4DX4(VePsi));
     }
     
     if (ve_num_diff > 0.0) {
