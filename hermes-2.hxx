@@ -229,6 +229,8 @@ private:
   bool vort_dissipation; // Dissipation term in Vorticity equation
   bool phi_dissipation; // Dissipation term in Vorticity equation
 
+  BoutReal VePsi_hyperXZ;
+  
   BoutReal ne_num_diff;
   BoutReal ne_num_hyper;
   BoutReal vi_num_diff; // Numerical perpendicular diffusion

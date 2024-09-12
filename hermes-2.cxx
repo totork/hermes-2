@@ -489,7 +489,7 @@ int Hermes::init(bool restarting) {
 
   OPTION(optsc, neutral_friction, false);
   OPTION(optsc, frecycle, 0.9);
-
+  OPTION(optsc, VePsi_hyperXZ, -1.0)
   OPTION(optsc, phi3d, false);
   OPTION(optsc,phi_bndry_after_solve,false);
   OPTION(optsc, ne_bndry_flux, true);
@@ -657,6 +657,7 @@ int Hermes::init(bool restarting) {
     a_d3d.yup() = anomalous_D;
     a_d3d.ydown() = anomalous_D;
   }
+  
   if (anomalous_chi > 0.0) {
     // Normalise
     anomalous_chi /= rho_s0 * rho_s0 * Omega_ci; // m^2/s
@@ -1842,6 +1843,16 @@ int Hermes::rhs(BoutReal t) {
   // Calculate perturbed magnetic field psi
   TRACE("Calculating psi");
 
+
+  // Calculate the resistivity
+  
+  Field3D Te32= pow(Te,1.5);
+  mesh->communicate(Te32, Ne, phi, Pe, Vi);
+  tau_e = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_e0) , Te32) , Ne);
+  nu = resistivity_multiply / (1.96 * tau_e * mi_me);
+
+
+  
   if (!currents) {
     // No magnetic fields or currents
     zero_all(psi);
@@ -2007,7 +2018,8 @@ int Hermes::rhs(BoutReal t) {
 
           // J = n*(Vi - Ve)
           BoutReal jsheath = nesheath * (visheath - vesheath);
-          if (nesheath < 1e-10) {
+	  BoutReal VePsisheath= vesheath-visheath;
+	  if (nesheath < 1e-10) {
             vesheath = visheath;
             jsheath = 0.0;
           }
@@ -2025,6 +2037,12 @@ int Hermes::rhs(BoutReal t) {
           Pi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Pi(x, y, z);
 
           // Dirichlet conditions
+
+	  if (electromagnetic || FiniteElMass){
+	    VePsi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = VePsisheath;
+	  }
+
+	  
           Vi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = visheath;//2. * visheath - Vi(x, y, z);
           if (par_sheath_ve){
             Ve.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = vesheath;//2. * vesheath - Ve(x, y, z);
@@ -2507,7 +2525,7 @@ int Hermes::rhs(BoutReal t) {
       // Comm breaks sheath par BCs!
       //mesh->communicate(vdiff);
       //vdiff.applyParallelBoundary(parbc);
-      ddt(VePsi) += Vi * Grad_par(vdiff); // Parallel advection
+      ddt(VePsi) += Ve * Grad_par(vdiff); // Parallel advection
       //ddt(VePsi) -= bracket(phi, vdiff, BRACKET_ARAKAWA)*bracket_factor;  // ExB advection
       ddt(VePsi) += Div_n_bxGrad_f_B_XPPM(VePsi, phi, false,
                                         poloidal_flows) * bracket_factor;
@@ -2527,10 +2545,10 @@ int Hermes::rhs(BoutReal t) {
       ddt(VePsi) -= hyper * mi_me * nu * Delp2(Jpar) / Ne;
     }
 
-    if (hyperpar > 0.0) {
-      ddt(VePsi) -= hyperpar * FV::D4DY4_Index(Ve - Vi);
+    if (VePsi_hyperXZ>0.0){
+      ddt(VePsi) -= VePsi_hyperXZ * D4DZ4(VePsi) - VePsi_hyperXZ * D4DX4(VePsi);
     }
-
+    
     if (ve_num_diff > 0.0) {
       // Numerical perpendicular diffusion
       ddt(VePsi) += Div_Perp_Lap_FV_Index(ve_num_diff, Ve, ne_bndry_flux);
