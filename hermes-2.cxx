@@ -1981,11 +1981,11 @@ int Hermes::rhs(BoutReal t) {
           int y = bndry_par->ind().y();
           int z = bndry_par->ind().z();
           // Zero-gradient density
-          BoutReal nesheath = floor(Ne(x, y, z), 0.0);
+          BoutReal nesheath = floor(Ne(x, y, z), 0.1);
 
           // Temperature at the sheath entrance
-          BoutReal tesheath = floor(Te(x, y, z), 0.0);
-          BoutReal tisheath = floor(Ti(x, y, z), 0.0);
+          BoutReal tesheath = floor(Te(x, y, z), 0.1);
+          BoutReal tisheath = floor(Ti(x, y, z), 0.1);
 
           // Zero-gradient potential
           BoutReal phisheath = phi(x, y, z);
@@ -2546,7 +2546,7 @@ int Hermes::rhs(BoutReal t) {
     }
 
     if (VePsi_hyperXZ>0.0){
-      ddt(VePsi) -= ( VePsi_hyperXZ * D4DX4(VePsi));
+      ddt(VePsi) -= ( VePsi_hyperXZ * (SQ(SQ(coord->dx)))  * D4DX4(VePsi));
     }
     
     if (ve_num_diff > 0.0) {
@@ -2802,11 +2802,11 @@ int Hermes::rhs(BoutReal t) {
           BoutReal tesheath =
               floor(0.5 * (Te(x, y, z) +
                            Te.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
-                    0.0);
+                    0.1);
           BoutReal nesheath =
               floor(0.5 * (Ne(x, y, z) +
                            Ne.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
-                    0.0);
+                    0.1);
           BoutReal vesheath =
 	    0.5 * (Ve(x, y, z) +
                            Ve.ynext(bndry_par->dir)(x, y + bndry_par->dir, z));
