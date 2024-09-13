@@ -2313,7 +2313,7 @@ int Hermes::rhs(BoutReal t) {
   }
 
   if (numdiff > 0.0) {
-    BOUT_FOR(i, Ne.getRegion("RGN_NOY")) {
+    BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")) {
       ddt(Ne)[i] += numdiff*(Ne.ydown()[i.ym()] - 2.*Ne[i] + Ne.yup()[i.yp()]);
     }
   }
@@ -2553,7 +2553,7 @@ int Hermes::rhs(BoutReal t) {
 
     if (numdiff > 0.0) {
       // ddt(VePsi) += sqrt(mi_me) * numdiff * Div_par_diffusion_index(Ve);
-      for(auto &i : VePsi.getRegion("RGN_NOY")) {
+      for(auto &i : VePsi.getRegion("RGN_NOBNDRY")) {
         ddt(VePsi)[i] +=  numdiff*(VePsi.ydown()[i.ym()] - 2.*VePsi[i] + VePsi.yup()[i.yp()]);
       }
 
@@ -2675,7 +2675,7 @@ int Hermes::rhs(BoutReal t) {
     // Ion-neutral friction
 
     if (numdiff > 0.0) {
-      for(auto &i : NVi.getRegion("RGN_NOY")) {
+      for(auto &i : NVi.getRegion("RGN_NOBNDRY")) {
         ddt(NVi)[i] += numdiff*(NVi.ydown()[i.ym()] - 2.*NVi[i] + NVi.yup()[i.yp()]);
       }
       // ddt(NVi) += numdiff * Div_par_diffusion_index(NVi);
@@ -2922,7 +2922,7 @@ int Hermes::rhs(BoutReal t) {
 
     // hyper diffusion
     if (numdiff > 0.0) {
-      BOUT_FOR(i, Pe.getRegion("RGN_NOY")) {
+      BOUT_FOR(i, Pe.getRegion("RGN_NOBNDRY")) {
         ddt(Pe)[i] += numdiff*(Pe.ydown()[i.ym()] - 2.*Pe[i] + Pe.yup()[i.yp()]);
       }
     }
@@ -3176,7 +3176,7 @@ int Hermes::rhs(BoutReal t) {
 
     // hyper diffusion
     if (numdiff > 0.0) {
-      BOUT_FOR(i, Pi.getRegion("RGN_NOY")) {
+      BOUT_FOR(i, Pi.getRegion("RGN_NOBNDRY")) {
         ddt(Pi)[i] += numdiff*(Pi.ydown()[i.ym()] - 2.*Pi[i] + Pi.yup()[i.yp()]);
       }
     }
@@ -3613,12 +3613,8 @@ int Hermes::rhs(BoutReal t) {
 
     ddt(Ne) -= nsink;
 
-    ASSERT0(not fci_transform);
-    Field3D conduct = (2. / 3) * kappa_epar * Te * SQ(sink_invlpar);
-    conduct = floor(conduct, 0.0);
-    ddt(Pe) -= conduct      // Heat conduction
-               + Te * nsink // Advection
-        ;
+    ddt(Pe) -=  Te * nsink; // Advection
+        
 
     if (sheath_closure) {
       ///////////////////////////
