@@ -71,6 +71,15 @@ const Field3D D4DZ4_Index(const Field3D &f);
 // Div ( k * Grad(f) )
 const Field2D Laplace_FV(const Field2D &k, const Field2D &f);
 
+namespace NEWOPS {
+  Field3D D2DY2(const Field3D &f, CELL_LOC outloc, const std::string &method, const std::string& region);
+  Field3D DDY(const Field3D &f, CELL_LOC outloc, const std::string &method, const std::string& region);
+  Field3D Grad_par(const Field3D& var, CELL_LOC outloc, const std::string& method,const std::string& region);
+  Field3D Grad2_par2(const Field3D& f, CELL_LOC outloc,const std::string& method,const std::string& region);
+  Field3D Div_par(const Field3D& f, CELL_LOC outloc, const std::string& method, const std::string& region);
+}
+
+
 namespace FCI {
 Field3D Div_a_Grad_perp(const Field3D &a, const Field3D &f);
 

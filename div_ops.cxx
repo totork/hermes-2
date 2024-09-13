@@ -933,6 +933,65 @@ const Field2D Laplace_FV(const Field2D &k, const Field2D &f) {
   return result;
 }
 
+
+namespace NEWOPS{
+
+  Field3D D2DY2(const Field3D &f, CELL_LOC outloc, const std::string &method,
+    const std::string& region) {
+    Coordinates *coords = f.getCoordinates(outloc);
+    Field3D result = bout::derivatives::index::D2DY2(f, outloc, method, region) / SQ(coords->dy);
+    return result;
+  }
+
+  Field3D DDY(const Field3D &f, CELL_LOC outloc, const std::string &method,
+    const std::string& region) {
+    Coordinates *coords = f.getCoordinates(outloc);
+    Field3D result = bout::derivatives::index::DDY(f, outloc, method, region) / SQ(coords->dy);
+    return result;
+  }
+
+  Field3D Grad_par(const Field3D& var, CELL_LOC outloc, const std::string& method,const std::string& region) {
+    ASSERT1(location == outloc || outloc == CELL_DEFAULT);
+    return setName(NEWOPS::DDY(var, outloc, method,region), "Grad_par({:s})", var.name);
+  }
+
+  Field3D Grad2_par2(const Field3D& f, CELL_LOC outloc,const std::string& method,const std::string& region){
+    if (outloc == CELL_DEFAULT) {
+      outloc = f.getLocation();
+    }
+    Field3D result = NEWOPS::D2DY2(f, outloc, method,region);
+    return result;    
+
+  }
+
+  Field3D Div_par(const Field3D& f, CELL_LOC outloc, const std::string& method, const std::string& region) {
+    Coordinates *coord = mesh->getCoordinates();
+    Field3D Bxy = coord->Bxy;
+    auto Bxy_floc = f.getCoordinates()->Bxy;
+
+    if (!f.hasParallelSlices()) {
+      // No yup/ydown fields. The Grad_par operator will
+      // shift to field aligned coordinates
+      return Bxy * NEWOPS::Grad_par(f / Bxy_floc, outloc, method,region);
+    }
+
+    // Need to modify yup and ydown fields
+    Field3D f_B = f / Bxy_floc;
+    f_B.splitParallelSlices();
+    for (int i = 0; i < f.getMesh()->ystart; ++i) {
+      f_B.yup(i) = f.yup(i) / Bxy_floc.yup(i);
+      f_B.ydown(i) = f.ydown(i) / Bxy_floc.ydown(i);
+    }
+    return setName(Bxy * NEWOPS::Grad_par(f_B, outloc, method,region), "Grad_par({:s})", f.name);
+  }
+
+  
+
+  
+}// namespace NEWOPS
+
+
+
 namespace FCI {
 namespace {
 template <DIRECTION dir> BoutReal getderiv(Ind3D i, const Field3D &f) {
