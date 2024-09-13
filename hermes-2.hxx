@@ -145,7 +145,7 @@ private:
   bool classical_diffusion; // Collisional diffusion, including viscosity
   bool use_Div_n_bxGrad_f_B_XPPM; //Use stencil operator for ExB
   bool use_bracket;                 //Use the bracket for the curvature drifts
-
+  bool norm_dxdydz;
   // Anomalous perpendicular diffusion coefficients
   BoutReal anomalous_D;    // Density diffusion
   BoutReal anomalous_chi;  // Electron thermal diffusion
@@ -177,7 +177,7 @@ private:
   bool radial_inner_zero_nvi; // Damp NVi towards zero in inner buffer
 
   bool Div_parP_n_sheath_extra{true}; // Use special handling for the sheath
-
+  bool VePsi_perp;
   bool phi_smoothing;
   BoutReal phi_sf;
   

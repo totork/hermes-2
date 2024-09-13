@@ -461,7 +461,7 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, use_Div_n_bxGrad_f_B_XPPM, true);
   OPTION(optsc, use_bracket, true);
 
-  
+  OPTION(optsc, VePsi_perp, true);
   thermal_force = optsc["thermal_force"]
                     .doc("Force on electrons due to temperature gradients")
                     .withDefault<bool>(true);
@@ -480,7 +480,7 @@ int Hermes::init(bool restarting) {
 
   poloidal_flows = optsc["poloidal_flows"]
                        .doc("Include ExB flows in X-Y plane")
-                       .withDefault(true);
+                       .withDefault(false);
 
   OPTION(optsc, ion_velocity, true);
 
@@ -492,11 +492,11 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, VePsi_hyperXZ, -1.0);
   OPTION(optsc, phi3d, false);
   OPTION(optsc,phi_bndry_after_solve,false);
-  OPTION(optsc, ne_bndry_flux, true);
-  OPTION(optsc, pe_bndry_flux, true);
+  OPTION(optsc, ne_bndry_flux, false);
+  OPTION(optsc, pe_bndry_flux, false);
   OPTION(optsc, vort_bndry_flux, false);
 
-  OPTION(optsc, ramp_mesh, true);
+  OPTION(optsc, ramp_mesh, false);
   OPTION(optsc, ramp_timescale, 1e4);
 
   OPTION(optsc, energy_source, false);
@@ -510,9 +510,9 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, boussinesq, false);
 
   OPTION(optsc, sinks, false);
-  OPTION(optsc, sheath_closure, true);
+  OPTION(optsc, sheath_closure, false);
   OPTION(optsc, drift_wave, false);
-
+  OPTION(optsc, norm_dxdydz, false);
   // Cross-field transport
   classical_diffusion = optsc["classical_diffusion"]
                           .doc("Collisional cross-field diffusion, including viscosity")
@@ -890,11 +890,10 @@ int Hermes::init(bool restarting) {
   // Normalise
   coord->Bxy /= Bnorm;
   // Metric is in grid file - just need to normalise
-
-  //coord->dx /= rho_s0;
-  //coord->dy /= rho_s0;
-  //coord->dz /= rho_s0;
-
+  if (norm_dxdydz){
+    coord->dx /= rho_s0;                                                                                                                                                                                              coord->dy /= rho_s0;                                                                                                                                                                                      
+    coord->dz /= rho_s0;
+  }
   //CONTRAVARIANT
 
   coord->g11 *= (rho_s0 * rho_s0);
@@ -1275,8 +1274,8 @@ int Hermes::init(bool restarting) {
           // Start by setting to the sheath current = 0 boundary value
 
           Ne = floor(Ne, 1e-5);
-          Te = floor(Pe / Ne, 0.1 / Tnorm);
-          Ti = floor(Pi / Ne, 0.1 / Tnorm);
+          Te = floor(Pe / Ne, 1e-3);
+          Ti = floor(Pi / Ne, 1e-3);
 
           phi.setBoundaryTo(DC(
                                (log(0.5 * sqrt(mi_me / PI)) + log(sqrt(Te / (Te + Ti)))) * Te));
@@ -1356,9 +1355,16 @@ int Hermes::init(bool restarting) {
   // Preconditioner
   setPrecon((preconfunc)&Hermes::precon);
 
-  if (evolve_te && evolve_ti && parallel_sheaths){
-    SAVE_REPEAT(sheath_dpe, sheath_dpi);
+  
+  if (evolve_te && parallel_sheaths){
+    SAVE_REPEAT(sheath_dpe);
   }
+
+  if (evolve_ti && parallel_sheaths){
+    SAVE_REPEAT(sheath_dpi);
+  }
+  
+  
   // Magnetic field in boundary
   auto& Bxy = mesh->getCoordinates()->Bxy;
 
@@ -1483,7 +1489,7 @@ int Hermes::rhs(BoutReal t) {
     /// printf("%f\n", Te[i]);
     div_all(Vi, NVi, Ne, i);
 
-    floor_all(Te, 0.1 / Tnorm, i);
+    floor_all(Te, 0.01, i);
     // ASSERT0(Te[i] > 1e-10);
 
     mul_all(Pe, Te, Ne, i);
@@ -1493,7 +1499,7 @@ int Hermes::rhs(BoutReal t) {
     }
 
     div_all(Ti, Pi, Ne, i);
-    floor_all(Ti, 0.1 / Tnorm, i);
+    floor_all(Ti, 0.01, i);
     mul_all(Pi, Ti, Ne, i);
     div_all(Te, Pe, Ne, i);
     // ASSERT0(Te[i] > 1e-10);
@@ -1981,11 +1987,11 @@ int Hermes::rhs(BoutReal t) {
           int y = bndry_par->ind().y();
           int z = bndry_par->ind().z();
           // Zero-gradient density
-          BoutReal nesheath = floor(Ne(x, y, z), 0.1);
+          BoutReal nesheath = floor(Ne(x, y, z), 0.0);
 
           // Temperature at the sheath entrance
-          BoutReal tesheath = floor(Te(x, y, z), 0.1);
-          BoutReal tisheath = floor(Ti(x, y, z), 0.1);
+          BoutReal tesheath = floor(Te(x, y, z), 0.0);
+          BoutReal tisheath = floor(Ti(x, y, z), 0.0);
 
           // Zero-gradient potential
           BoutReal phisheath = phi(x, y, z);
@@ -2288,10 +2294,15 @@ int Hermes::rhs(BoutReal t) {
     ddt(Ne) += Div_Perp_Lap_FV_Index(1e-4 / Ne, Ne, ne_bndry_flux);
   }
 
-  if (ne_hyper_z > 0.) {
-    ddt(Ne) -= ne_hyper_z * SQ(SQ(coord->dz)) * D4DZ4(Ne);
+  if (ne_hyper_z > 0.0) {
+    if (norm_dxdydz){
+      ddt(Ne) -= ne_hyper_z * D4DZ4(Ne);
+    } else {
+      ddt(Ne) -= ne_hyper_z * (SQ(SQ(coord->dz)))  * D4DZ4(Ne);
+    }
   }
 
+  
   if (ne_num_diff > 0.0) {
     // Numerical perpendicular diffusion
     ddt(Ne) += Div_Perp_Lap_FV_Index(ne_num_diff, Ne, ne_bndry_flux);
@@ -2504,6 +2515,10 @@ int Hermes::rhs(BoutReal t) {
       // ddt(VePsi) += mi_me*nu*(Jpar - Jpar0)/NeVe;
     }
 
+    if (anomalous_nu>0.0){
+      ddt(VePsi) += FCIDiv_a_Grad_perp( a_nu3d, VePsi);
+    }
+
     // Parallel electric field
     if (j_par) {
       ddt(VePsi) += mi_me * Grad_parP(phi);
@@ -2527,16 +2542,19 @@ int Hermes::rhs(BoutReal t) {
       //vdiff.applyParallelBoundary(parbc);
       ddt(VePsi) += Vi * Grad_par(vdiff); // Parallel advection
       //ddt(VePsi) -= bracket(phi, vdiff, BRACKET_ARAKAWA)*bracket_factor;  // ExB advection
-      ddt(VePsi) += Div_n_bxGrad_f_B_XPPM(VePsi, phi, false,
+
+      if (VePsi_perp){
+	ddt(VePsi) += Div_n_bxGrad_f_B_XPPM(VePsi, phi, false,
                                         poloidal_flows) * bracket_factor;
+      }
 
       // Should also have ion polarisation advection here
     }
 
     if (numdiff > 0.0) {
       // ddt(VePsi) += sqrt(mi_me) * numdiff * Div_par_diffusion_index(Ve);
-      for(auto &i : VePsi.getRegion("RGN_ALL")) {
-        ddt(VePsi)[i] += sqrt(mi_me) * numdiff*(Ve.ydown()[i.ym()] - 2.*Ve[i] + Ve.yup()[i.yp()]);
+      for(auto &i : VePsi.getRegion("RGN_NOY")) {
+        ddt(VePsi)[i] +=  numdiff*(VePsi.ydown()[i.ym()] - 2.*VePsi[i] + VePsi.yup()[i.yp()]);
       }
 
     }
@@ -2548,6 +2566,15 @@ int Hermes::rhs(BoutReal t) {
     if (VePsi_hyperXZ>0.0){
       ddt(VePsi) -= ( VePsi_hyperXZ * (SQ(SQ(coord->dx)))  * D4DX4(VePsi));
     }
+
+    if (VePsi_hyperXZ > 0.0) {
+      if (norm_dxdydz){
+        ddt(VePsi) -= VePsi_hyperXZ * D4DZ4(VePsi);
+      } else {
+	ddt(VePsi) -= VePsi_hyperXZ * (SQ(SQ(coord->dz)))  * D4DZ4(VePsi);
+      }
+    }
+
     
     if (ve_num_diff > 0.0) {
       // Numerical perpendicular diffusion
@@ -2646,6 +2673,14 @@ int Hermes::rhs(BoutReal t) {
     }
 
     // Ion-neutral friction
+
+    if (numdiff > 0.0) {
+      for(auto &i : NVi.getRegion("RGN_NOY")) {
+        ddt(NVi)[i] += numdiff*(NVi.ydown()[i.ym()] - 2.*NVi[i] + NVi.yup()[i.yp()]);
+      }
+      // ddt(NVi) += numdiff * Div_par_diffusion_index(NVi);
+
+    }
     
     if (density_inflow) {
       // Particles arrive in cell at rate NeSource
@@ -2734,6 +2769,7 @@ int Hermes::rhs(BoutReal t) {
         Field3D peve = mul_all(Pe,Ve);
         Field3D tmp = Div_parP(peve);
         tmp.name = "Div_parP(peve)";
+	d = -tmp;
         ddt(Pe) -= tmp;
       } else {
         if (currents) {
@@ -2760,7 +2796,8 @@ int Hermes::rhs(BoutReal t) {
         check_all(kappa_epar);
         auto tmp = (2. / 3) * Div_par_K_Grad_par(kappa_epar, Te);
         tmp.name = "(2. / 3) * Div_par_K_Grad_par(kappa_epar, Te);";
-        ddt(Pe) += tmp;
+	a = tmp;
+	ddt(Pe) += tmp;
       } else {
         ddt(Pe) += (2. / 3) * FV::Div_par_K_Grad_par(kappa_epar, Te);
       }
@@ -2782,7 +2819,11 @@ int Hermes::rhs(BoutReal t) {
     }
 
     if (pe_hyper_z > 0.0) {
-      ddt(Pe) -= pe_hyper_z * SQ(SQ(coord->dz)) * D4DZ4(Pe);
+      if (norm_dxdydz){
+	ddt(Pe) -= pe_hyper_z * D4DZ4(Pe);
+      } else {
+	ddt(Pe) -= pe_hyper_z * (SQ(SQ(coord->dz)))  * D4DZ4(Pe);
+      }
     }
 
     ///////////////////////////////////
@@ -2802,11 +2843,11 @@ int Hermes::rhs(BoutReal t) {
           BoutReal tesheath =
               floor(0.5 * (Te(x, y, z) +
                            Te.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
-                    0.1);
+                    0.0);
           BoutReal nesheath =
               floor(0.5 * (Ne(x, y, z) +
                            Ne.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
-                    0.1);
+                    0.0);
           BoutReal vesheath =
 	    0.5 * (Ve(x, y, z) +
                            Ve.ynext(bndry_par->dir)(x, y + bndry_par->dir, z));
@@ -2847,7 +2888,9 @@ int Hermes::rhs(BoutReal t) {
     if (pe_par_p_term) {
       // This term balances energetically the pressure term
       // in Ohm's law
-      ddt(Pe) -= (2. / 3) * Pe * Div_parP(Ve);
+      auto tmp = (2. / 3) * Pe * Div_parP(Ve);
+      b = -tmp;
+      ddt(Pe) -= tmp;
     }
     if (ramp_mesh && (t < ramp_timescale)) {
       ddt(Pe) += PeTarget / ramp_timescale;
@@ -3045,9 +3088,12 @@ int Hermes::rhs(BoutReal t) {
 
 
     if (pi_hyper_z > 0.0) {
-      ddt(Pi) -= pi_hyper_z * SQ(SQ(coord->dz)) * D4DZ4(Pi);
+      if (norm_dxdydz){
+        ddt(Pi) -= pi_hyper_z * D4DZ4(Pi);
+      } else {
+	ddt(Pi) -= pi_hyper_z * (SQ(SQ(coord->dz)))  * D4DZ4(Pi);
+      }
     }
-
 
     //////////////////////
     // Classical diffusion
