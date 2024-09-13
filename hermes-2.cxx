@@ -891,7 +891,7 @@ int Hermes::init(bool restarting) {
   coord->Bxy /= Bnorm;
   // Metric is in grid file - just need to normalise
   if (norm_dxdydz){
-    coord->dx /= rho_s0;                                                                                                                                                                                              coord->dy /= rho_s0;                                                                                                                                                                                      
+    coord->dx /= rho_s0;                                                                                                                   coord->dy /= rho_s0;      
     coord->dz /= rho_s0;
   }
   //CONTRAVARIANT
@@ -1116,16 +1116,7 @@ int Hermes::init(bool restarting) {
   // Sources (after metric)
 
   // Multiply sources by g11
-  OPTION(optsc, source_vary_g11, false);
-  if (source_vary_g11) {
-    // Average metric tensor component
-    g11norm = coord->g11 / averageY(coord->g11);
-
-    NeSource *= g11norm;
-    PeSource *= g11norm;
-    PiSource *= g11norm;
-  }
-
+  
   /////////////////////////////////////////////////////////
   // Read curvature components
   TRACE("Reading curvature");
@@ -1730,48 +1721,10 @@ int Hermes::rhs(BoutReal t) {
           }
         }
 
-	
-
-	/*
-	// Inner boundary : set to neumann -> 
-	if (mesh->firstX()) {
-          for (int j = mesh->ystart; j <= mesh->yend; j++) {
-            for (int k = 0; k < mesh->LocalNz; k++) {
-
-              phi_boundary3d(mesh->xstart - 1, j, k) =
-                  0.5
-                  * (phi_boundary3d(mesh->xstart, j, k) +
-                     phi_boundary3d(mesh->xstart, j, k) +
-                     Pi(mesh->xstart - 1, j, k) +
-                     Pi(mesh->xstart, j, k));
-            }
-          }
-        }
-
-
-	// Outer boundary -> set to only be Pi so phi=phi_bar - Pi = 0
-        if (mesh->lastX()) {
-          for (int j = mesh->ystart; j <= mesh->yend; j++) {
-            for (int k = 0; k < mesh->LocalNz; k++) {
-              phi_boundary3d(mesh->xend + 1, j, k) =
-                  0.5
-                  * (Pi(mesh->xend + 1, j, k) + Pi(mesh->xend, j, k));
-            }
-          }
-
-
-	  
-	  
-        }
-
-	*/
 
 
 	
 
-
-
-	
 
 	                                                                                                                                                                                       
 	
@@ -2192,8 +2145,6 @@ int Hermes::rhs(BoutReal t) {
   TRACE("density");
 
   if (currents) {
-    // ExB drift, only if electric field is evolved
-    // ddt(Ne) = bracket(Ne, phi, BRACKET_ARAKAWA) * bracket_factor;
     if (use_Div_n_bxGrad_f_B_XPPM){
       ddt(Ne) = -Div_n_bxGrad_f_B_XPPM(Ne, phi, ne_bndry_flux, poloidal_flows,true) * bracket_factor;
     } else {
@@ -2206,29 +2157,18 @@ int Hermes::rhs(BoutReal t) {
 
   // Parallel flow
   if (parallel_flow) {
-    // if (!fci_transform){
-    //   if (currents) {
-    //         // Parallel wave speed increased to electron sound speed
-    //         // since electrostatic & electromagnetic waves are supported
-    //         ddt(Ne) -= FV::Div_par(Ne, Ve, sqrt(mi_me) * sound_speed);
-    //   }else {
-    //         // Parallel wave speed is ion sound speed
-    //         ddt(Ne) -= FV::Div_par(Ne, Ve, sound_speed);
-    //   }
-    // }else{
-
     check_all(Ne);
 
     if (!evolve_ni) {
       check_all(Ve);
       Field3D neve = mul_all(Ne, Ve);
       check_all(neve);
-      ddt(Ne) -= Div_parP(neve);
+      ddt(Ne) -= NEWOPS::Div_par(neve,CELL_DEFAULT,"DEFAULT","RGN_ALL");
     } else {
       check_all(Vi);
       Field3D nevi = mul_all(Ne, Vi);
       check_all(nevi);
-      ddt(Ne) -= Div_parP(nevi);
+      ddt(Ne) -= NEWOPS::Div_par(nevi,CELL_DEFAULT,"DEFAULT","RGN_ALL");
     }
 
   }
@@ -2281,35 +2221,10 @@ int Hermes::rhs(BoutReal t) {
   
   ddt(Ne) += NeSource;
 
-  if (low_n_diffuse) {
-    // Diffusion which kicks in at very low density, in order to
-    // help prevent negative density regions
-    if(fci_transform){
-      ddt(Ne) += Div_par_K_Grad_par(SQ(coord->dy) * coord->g_22 * 1e-4 / Ne, Ne);
-    }else{
-      ddt(Ne) += FV::Div_par_K_Grad_par(SQ(coord->dy) * coord->g_22 * 1e-4 / Ne, Ne);
-    }
-  }
-  if (low_n_diffuse_perp) {
-    ddt(Ne) += Div_Perp_Lap_FV_Index(1e-4 / Ne, Ne, ne_bndry_flux);
-  }
-
-  if (ne_hyper_z > 0.0) {
-    if (norm_dxdydz){
-      ddt(Ne) -= ne_hyper_z * D4DZ4(Ne);
-    } else {
-      ddt(Ne) -= ne_hyper_z * (SQ(SQ(coord->dz)))  * D4DZ4(Ne);
-    }
-  }
-
   
-  if (ne_num_diff > 0.0) {
-    // Numerical perpendicular diffusion
-    ddt(Ne) += Div_Perp_Lap_FV_Index(ne_num_diff, Ne, ne_bndry_flux);
-  }
-
+  
   if (ne_num_hyper > 0.0) {
-    ddt(Ne) -= ne_num_hyper * (D4DX4_FV_Index(Ne, true) + D4DZ4_Index(Ne));
+    ddt(Ne) -= ne_num_hyper * (D4DX4_FV_Index(Ne, true)/SQ(SQ(coord->dx)));
   }
 
   if (numdiff > 0.0) {
@@ -2336,7 +2251,7 @@ int Hermes::rhs(BoutReal t) {
       // This term is central differencing so that it balances the parallel gradient
       // of the potential in Ohm's law
       // Jpar.applyParallelBoundary(parbc);
-      vort_jpar = Div_parP(Jpar);
+      vort_jpar = NEWOPS::Div_par(Jpar,CELL_DEFAULT,"DEFAULT","RGN_ALL");
       ddt(Vort) += vort_jpar;
       // a += Div_parP(Jpar);
     }
@@ -2394,15 +2309,6 @@ int Hermes::rhs(BoutReal t) {
 	  }
 
 	  
-	  if (parallel_flow && parallel_vort_flow) {
-	    check_all(Ve);
-	    Field3D vortve = mul_all(Vort, Ve);
-	    vortve.applyBoundary("neumann_o2");
-	    mesh->communicate(vortve);
-	    vortve.applyParallelBoundary(parbc);
-	    ddt(Vort) -= Div_parP(vortve);
-	  }
-	  
         }else if (j_pol_simplified) {
           // use simplified polarization term from i.e. GBS
 	  if (use_Div_n_bxGrad_f_B_XPPM){
@@ -2449,22 +2355,14 @@ int Hermes::rhs(BoutReal t) {
       ddt(Vort) += FCIDiv_a_Grad_perp(a_nu3d, Vort);
     }
 
-    if (ion_neutral_rate > 0.0) {
-      // Sink of vorticity due to ion-neutral friction
-      ddt(Vort) -= ion_neutral_rate * Vort;
-    }
-
+    
     if (x_hyper_viscos > 0) {
       // Form of hyper-viscosity to suppress zig-zags in X
-      ddt(Vort) -= x_hyper_viscos * D4DX4_FV_Index(Vort);
+      ddt(Vort) -= x_hyper_viscos * D4DX4_FV_Index(Vort)/(SQ(SQ(coord->dx)));
      }
-    if (y_hyper_viscos > 0) {
-      // Form of hyper-viscosity to suppress zig-zags in Y
-      ddt(Vort) -= y_hyper_viscos * FV::D4DY4_Index(Vort, false);
-    }
     if (z_hyper_viscos > 0) {
       // Form of hyper-viscosity to suppress zig-zags in Z
-      ddt(Vort) -= z_hyper_viscos * SQ(SQ(coord->dz)) * D4DZ4(Vort);
+      ddt(Vort) -= z_hyper_viscos * D4DZ4(Vort);
     }
 
     if (vort_dissipation) {
@@ -2521,16 +2419,16 @@ int Hermes::rhs(BoutReal t) {
 
     // Parallel electric field
     if (j_par) {
-      ddt(VePsi) += mi_me * Grad_parP(phi);
+      ddt(VePsi) += mi_me * NEWOPS::Grad_par(phi,CELL_DEFAULT,"DEFAULT","RGN_ALL");
     }
 
     // Parallel electron pressure
     if (pe_par) {
-      ddt(VePsi) -= mi_me * Grad_parP(Pe) / Ne;
+      ddt(VePsi) -= mi_me * NEWOPS::Grad_par(Pe,CELL_DEFAULT,"DEFAULT","RGN_ALL") / Ne;
     }
 
     if (thermal_force) {
-      ddt(VePsi) -= mi_me * 0.71 * Grad_parP(Te);
+      ddt(VePsi) -= mi_me * 0.71 * NEWOPS::Grad_par(Te,CELL_DEFAULT,"DEFAULT","RGN_ALL");
     }
 
     
@@ -2540,7 +2438,7 @@ int Hermes::rhs(BoutReal t) {
       // Comm breaks sheath par BCs!
       //mesh->communicate(vdiff);
       //vdiff.applyParallelBoundary(parbc);
-      ddt(VePsi) += Vi * Grad_par(vdiff); // Parallel advection
+      ddt(VePsi) += Vi * NEWOPS::Grad_par(vdiff,CELL_DEFAULT,"DEFAULT","RGN_ALL"); // Parallel advection
       //ddt(VePsi) -= bracket(phi, vdiff, BRACKET_ARAKAWA)*bracket_factor;  // ExB advection
 
       if (VePsi_perp){
@@ -2559,55 +2457,12 @@ int Hermes::rhs(BoutReal t) {
 
     }
 
-    if (hyper > 0.0) {
-      ddt(VePsi) -= hyper * mi_me * nu * Delp2(Jpar) / Ne;
-    }
+    if (VePsi_hyperXZ > 0) {
+      // Form of hyper-viscosity to suppress zig-zags in X                                                                             
+      ddt(VePsi) -= VePsi_hyperXZ * D4DX4_FV_Index(VePsi)/(SQ(SQ(coord->dx)));
+      ddt(VePsi) -= VePsi_hyperXZ * D4DZ4(VePsi);
+     }
 
-    if (VePsi_hyperXZ>0.0){
-      ddt(VePsi) -= ( VePsi_hyperXZ * (SQ(SQ(coord->dx)))  * D4DX4(VePsi));
-    }
-
-    if (VePsi_hyperXZ > 0.0) {
-      if (norm_dxdydz){
-        ddt(VePsi) -= VePsi_hyperXZ * D4DZ4(VePsi);
-      } else {
-	ddt(VePsi) -= VePsi_hyperXZ * (SQ(SQ(coord->dz)))  * D4DZ4(VePsi);
-      }
-    }
-
-    
-    if (ve_num_diff > 0.0) {
-      // Numerical perpendicular diffusion
-      ddt(VePsi) += Div_Perp_Lap_FV_Index(ve_num_diff, Ve, ne_bndry_flux);
-    }
-    if (ve_num_hyper > 0.0) {
-      ddt(VePsi) -= ve_num_hyper * (D4DX4_FV_Index(Ve, true) + D4DZ4_Index(Ve));
-    }
-
-    if (vepsi_dissipation) {
-      // Adds dissipation term like in other equations
-      // Maximum speed either electron sound speed or Alfven speed
-      Field3D max_speed = Bnorm * coord->Bxy / sqrt(SI::mu0 * AA * SI::Mp * Nnorm * Ne)
-                          / Cs0;                      // Alfven speed (normalised by Cs0)
-      Field3D elec_sound = sqrt(mi_me) * sound_speed; // Electron sound speed
-      for (auto& i : max_speed.getRegion("RGN_NOBNDRY")) {
-        // Maximum of Alfven or thermal electron speed
-        if (elec_sound[i] > max_speed[i]) {
-          max_speed[i] = elec_sound[i];
-        }
-
-        // Limit to 100x reference sound speed or light speed
-        BoutReal lim = BOUTMIN(100., 3e8 / Cs0);
-        if (max_speed[i] > lim) {
-          max_speed[i] = lim;
-        }
-      }
-      if (!fci_transform) {
-        ddt(VePsi) -= FV::Div_par(Ve - Vi, 0.0, max_speed);
-      } else {
-        ddt(VePsi) += SQ(coord->dy) * (D2DY2(Ve) - D2DY2(Vi));
-      }
-    }
   }
 
   ///////////////////////////////////////////////////////////
@@ -2647,29 +2502,7 @@ int Hermes::rhs(BoutReal t) {
     // Ignoring polarisation drift for now
     if (pe_par) {
       Field3D peppi = add_all(Pe, Pi);
-      ddt(NVi) -= Grad_parP(peppi);
-    }
-
-    if (ion_viscosity) {
-      TRACE("NVi:ion viscosity");
-      // Poloidal flow damping
-      if(fci_transform){
-        // The parallel part is solved as a diffusion term
-        Coordinates::FieldMetric sqrtBVi = mul_all(B12, Vi);
-        Coordinates::FieldMetric Pitau_i_B =
-            div_all(mul_all(Pi, tau_i), (coord->Bxy));
-        ddt(NVi) += 1.28 * B12 * Div_par_K_Grad_par(Pitau_i_B, sqrtBVi);
-      }else{
-        ddt(NVi) += 1.28 * B12 *
-                    FV::Div_par_K_Grad_par(Pi * tau_i / (coord->Bxy), B12 * Vi);
-      }
-
-      if (currents) {
-        // Perpendicular part. B32 = B^{3/2}
-        // This is only included if ExB flow is included
-        Field3D Piciperp_B32 = div_all(Pi_ciperp, B32);
-        ddt(NVi) -= (2. / 3) * B32 * Grad_par(Piciperp_B32);
-      }
+      ddt(NVi) -= NEWOPS::Grad_par(peppi,CELL_DEFAULT,"DEFAULT","RGN_ALL");
     }
 
     // Ion-neutral friction
@@ -2682,14 +2515,6 @@ int Hermes::rhs(BoutReal t) {
 
     }
     
-    if (density_inflow) {
-      // Particles arrive in cell at rate NeSource
-      // This should come from a flow through the cell edge
-      // with a flow velocity, and hence momentum
-
-      ddt(NVi) += NeSource * (NeSource / Ne) * coord->dy * sqrt(coord->g_22);
-    }
-
     if (classical_diffusion) {
       // Using same cross-field drift as in density equation
       Field3D ViDn = mul_all(Vi,Dn);
@@ -2706,28 +2531,6 @@ int Hermes::rhs(BoutReal t) {
       ddt(NVi) += FCIDiv_a_Grad_perp(mul_all(Ne, a_nu3d), Vi);
     }
 
-    if (hyperpar > 0.0) {
-      ddt(NVi) -= hyperpar * FV::D4DY4_Index(Vi) / mi_me;
-     }
-
-    if (low_n_diffuse) {
-      // Diffusion which kicks in at very low density, in order to
-      // help prevent negative density regions
-      if(fci_transform){
-        ASSERT0(false);
-        ddt(NVi) += Div_par_K_Grad_par(SQ(coord->dy) * coord->g_22 * 1e-4 / Ne, NVi);
-      }else{
-        ddt(NVi) += FV::Div_par_K_Grad_par(SQ(coord->dy) * coord->g_22 * 1e-4 / Ne, NVi);
-      }
-    }
-    if (low_n_diffuse_perp) {
-      ddt(NVi) += Div_Perp_Lap_FV_Index(1e-4 / Ne, NVi, ne_bndry_flux);
-    }
-
-    if (vi_num_diff > 0.0) {
-      // Numerical perpendicular diffusion
-      ddt(NVi) += Div_Perp_Lap_FV_Index(vi_num_diff * Ne, Vi, ne_bndry_flux);
-    }
   }
 
   ///////////////////////////////////////////////////////////
@@ -2767,17 +2570,11 @@ int Hermes::rhs(BoutReal t) {
         check_all(Pe);
         check_all(Ve);
         Field3D peve = mul_all(Pe,Ve);
-        Field3D tmp = Div_parP(peve);
+        Field3D tmp = NEWOPS::Div_par(peve,CELL_DEFAULT,"DEFAULT","RGN_ALL");
         tmp.name = "Div_parP(peve)";
 	d = -tmp;
         ddt(Pe) -= tmp;
-      } else {
-        if (currents) {
-          ddt(Pe) -= FV::Div_par(Pe, Ve, sqrt(mi_me) * sound_speed);
-        } else {
-          ddt(Pe) -= FV::Div_par(Pe, Ve, sound_speed);
-        }
-      }
+      } 
     }
 
     if (j_diamag) { // Diamagnetic flow
@@ -2798,8 +2595,6 @@ int Hermes::rhs(BoutReal t) {
         tmp.name = "(2. / 3) * Div_par_K_Grad_par(kappa_epar, Te);";
 	a = tmp;
 	ddt(Pe) += tmp;
-      } else {
-        ddt(Pe) += (2. / 3) * FV::Div_par_K_Grad_par(kappa_epar, Te);
       }
     }
 
@@ -2807,10 +2602,8 @@ int Hermes::rhs(BoutReal t) {
       // Parallel heat convection
       if (fci_transform) {
         Field3D tejpar = mul_all(Te,Jpar);
-        ddt(Pe) += (2. / 3) * 0.71 * Div_parP(tejpar);
-      } else {
-        ddt(Pe) += (2. / 3) * 0.71 * Div_par(Te * Jpar);
-      }
+        ddt(Pe) += (2. / 3) * 0.71 * NEWOPS::Div_par(tejpar,CELL_DEFAULT,"DEFAULT","RGN_ALL");
+      } 
     }
 
     if (currents && resistivity) {
@@ -2819,11 +2612,7 @@ int Hermes::rhs(BoutReal t) {
     }
 
     if (pe_hyper_z > 0.0) {
-      if (norm_dxdydz){
-	ddt(Pe) -= pe_hyper_z * D4DZ4(Pe);
-      } else {
-	ddt(Pe) -= pe_hyper_z * (SQ(SQ(coord->dz)))  * D4DZ4(Pe);
-      }
+      ddt(Pe) -= pe_hyper_z * D4DZ4(Pe);
     }
 
     ///////////////////////////////////
@@ -2880,7 +2669,7 @@ int Hermes::rhs(BoutReal t) {
 
     // Transfer and source terms
     if (thermal_force) {
-      auto tmp = (2. / 3) * 0.71 * Jpar * Grad_parP(Te);
+      auto tmp = (2. / 3) * 0.71 * Jpar * NEWOPS::Grad_par(Te,CELL_DEFAULT,"DEFAULT","RGN_ALL");
       tmp.name = "thermal force";
       ddt(Pe) -= tmp;
     }
@@ -2888,14 +2677,11 @@ int Hermes::rhs(BoutReal t) {
     if (pe_par_p_term) {
       // This term balances energetically the pressure term
       // in Ohm's law
-      auto tmp = (2. / 3) * Pe * Div_parP(Ve);
+      auto tmp = (2. / 3) * Pe * NEWOPS::Div_par(Ve,CELL_DEFAULT,"DEFAULT","RGN_ALL");
       b = -tmp;
       ddt(Pe) -= tmp;
     }
-    if (ramp_mesh && (t < ramp_timescale)) {
-      ddt(Pe) += PeTarget / ramp_timescale;
-    }
-
+   
     //////////////////////
     // Classical diffusion
 
@@ -3031,9 +2817,7 @@ int Hermes::rhs(BoutReal t) {
         check_all(Pi);
         check_all(Vi);
         Field3D pivi = mul_all(Pi,Vi);
-        ddt(Pi) -= Div_parP(pivi);
-      } else {
-        ddt(Pi) -= FV::Div_par(Pi, Vi, sound_speed);
+        ddt(Pi) -= NEWOPS::Div_par(pivi,CELL_DEFAULT,"DEFAULT","RGN_ALL");
       }
     }
 
@@ -3050,14 +2834,12 @@ int Hermes::rhs(BoutReal t) {
 
       if (fci_transform) {
         ddt(Pi) += Pi * fci_curvature(Pi + Pe,use_bracket);
-      } else {
-        ddt(Pi) += Pi * Div((Pe + Pi) * Curlb_B);
-      }
+      } 
     }
 
     if (j_par) {
       if (boussinesq) {
-        ddt(Pi) -= (2. / 3) * Jpar * Grad_parP(Pi);
+        ddt(Pi) -= (2. / 3) * Jpar * NEWOPS::Grad_par(Pi,CELL_DEFAULT,"DEFAULT","RGN_ALL");
       } else {
         ddt(Pi) -= (2. / 3) * Jpar * Grad_parP(Pi) / Ne;
       }
@@ -3067,8 +2849,6 @@ int Hermes::rhs(BoutReal t) {
     if (thermal_conduction) {
       if (fci_transform) {
         ddt(Pi) += (2. / 3) * Div_par_K_Grad_par(kappa_ipar, Ti);
-      } else {
-        ddt(Pi) += (2. / 3) * FV::Div_par_K_Grad_par(kappa_ipar, Ti);
       }
     }
 
@@ -3076,7 +2856,7 @@ int Hermes::rhs(BoutReal t) {
     if (pe_par_p_term) {
       // This term balances energetically the pressure term
       // in the parallel momentum equation
-      ddt(Pi) -= (2. / 3) * Pi * Div_parP(Vi);
+      ddt(Pi) -= (2. / 3) * Pi * NEWOPS::Div_par(Vi,CELL_DEFAULT,"DEFAULT","RGN_ALL");
     }
 
     if (electron_ion_transfer) {
@@ -3088,11 +2868,7 @@ int Hermes::rhs(BoutReal t) {
 
 
     if (pi_hyper_z > 0.0) {
-      if (norm_dxdydz){
-        ddt(Pi) -= pi_hyper_z * D4DZ4(Pi);
-      } else {
-	ddt(Pi) -= pi_hyper_z * (SQ(SQ(coord->dz)))  * D4DZ4(Pi);
-      }
+      ddt(Pi) -= pi_hyper_z * D4DZ4(Pi);
     }
 
     //////////////////////
@@ -3145,21 +2921,6 @@ int Hermes::rhs(BoutReal t) {
         Grad_perp_vort.y = 0.0; // Zero parallel component
         ddt(Pi) -= (2. / 3) * (3. / 10) * Ti / (SQ(coord->Bxy) * tau_i)
                    * (Grad_perp_vort * Grad(phiPi));
-      }
-    }
-
-    if (ion_viscosity) {
-      // Collisional heating due to parallel viscosity
-      Field3D sqrtBVi = mul_all(B12, Vi);
-      ddt(Pi) += (2. / 3) * 1.28 * (Pi * tau_i / B12) * Grad_par(sqrtBVi) *
-                 Div_parP(Vi);
-
-      if (currents) {
-        ddt(Pi) -= (4. / 9) * Pi_ciperp * Div_parP(Vi);
-        //(4. / 9) * Vi * B32 * Grad_par(Pi_ciperp / B32);
-        Field3D phiPi = add_all(phi, Pi);
-        ddt(Pi) -= (2. / 6) * Pi_ci * fci_curvature(phiPi,use_bracket);//Curlb_B * Grad(phiPi);
-        ddt(Pi) += (2. / 9) * bracket(Pi_ci, phiPi, BRACKET_ARAKAWA) * bracket_factor;
       }
     }
 
@@ -3427,179 +3188,6 @@ int Hermes::rhs(BoutReal t) {
       }
     }
   }
-
-  ///////////////////////////////////////////////////////////
-  // Neutral gas
-  if (neutrals) {
-    TRACE("Neutral gas model add sources");
-
-    // Add sources/sinks to plasma equations
-    ddt(Ne) -= neutrals->S;             // Sink of plasma density
-    ddt(NVi) -= neutrals->F;            // Plasma momentum
-    ddt(Pe) -= (2. / 3) * neutrals->Rp; // Plasma radiated energy
-    ddt(Pi) -= (2. / 3) * neutrals->Qi; // Ion energy transferred to neutrals
-
-    // Calculate atomic rates
-
-    if (neutral_friction) {
-      // Vorticity
-      if (boussinesq) {
-        if (fci_transform) {
-          Field3D tmp = neutrals->Fperp / (Ne * SQ(coord->Bxy));
-          mesh->communicate(tmp);
-          tmp.applyParallelBoundary(parbc);
-          ddt(Vort) -= FCIDiv_a_Grad_perp(tmp, phi);
-        } else {
-          ddt(Vort) -=
-              FCIDiv_a_Grad_perp(neutrals->Fperp / (Ne * SQ(coord->Bxy)), phi);
-        }
-      } else {
-        ddt(Vort) -= FCIDiv_a_Grad_perp(neutrals->Fperp / SQ(coord->Bxy), phi);
-      }
-    }
-
-    ///////////////////////////////////////////////////////////////////
-    // Recycling at the boundary
-    TRACE("Neutral recycling fluxes");
-    wall_flux = 0.0;
-
-    if (sheath_ydown) {
-      for (RangeIterator r = mesh->iterateBndryLowerY(); !r.isDone(); r++) {
-        // Calculate flux of ions into target from Ne and Vi boundary
-        // This calculation is supposed to be consistent with the flow
-        // of plasma from Div_par_FV(Ne, Ve)
-
-        for (int jz = 0; jz < mesh->LocalNz; jz++) {
-          BoutReal flux_ion =
-              -0.5 *
-              (Ne(r.ind, mesh->ystart, jz) + Ne(r.ind, mesh->ystart - 1, jz)) *
-              0.5 * (Ve(r.ind, mesh->ystart, jz) +
-                     Ve(r.ind, mesh->ystart - 1, jz)); // Flux through surface
-                                                       // [m^-2 s^-1], should be
-                                                       // positive since Ve <
-                                                       // 0.0
-
-          // Flow of neutrals inwards
-          BoutReal flow = frecycle * flux_ion *
-            (coord->J(r.ind, mesh->ystart, jz) +
-             coord->J(r.ind, mesh->ystart - 1, jz)) /
-            (sqrt(coord->g_22(r.ind, mesh->ystart, jz)) +
-             sqrt(coord->g_22(r.ind, mesh->ystart - 1, jz)));
-
-          // Rate of change of neutrals in final cell
-          BoutReal dndt = flow / (coord->J(r.ind, mesh->ystart, jz) *
-                                  coord->dy(r.ind, mesh->ystart, jz));
-
-          // Add mass, momentum and energy to the neutrals
-
-          neutrals->addDensity(r.ind, mesh->ystart, jz, dndt);
-          neutrals->addPressure(r.ind, mesh->ystart, jz,
-                                dndt * (3.5 / Tnorm)); // Franck-Condon energy
-          neutrals->addMomentum(r.ind, mesh->ystart, jz,
-                                dndt * neutral_vwall * sqrt(3.5 / Tnorm));
-
-          // Power deposited onto the wall due to surface recombination
-          wall_power(r.ind, mesh->ystart) += (13.6 / Tnorm) * dndt;
-        }
-      }
-    }
-
-    if (sheath_yup) {
-      for (RangeIterator r = mesh->iterateBndryUpperY(); !r.isDone(); r++) {
-        // Calculate flux of ions into target from Ne and Vi boundary
-        // This calculation is supposed to be consistent with the flow
-        // of plasma from FV::Div_par(Ne, Ve)
-
-        for (int jz = 0; jz < mesh->LocalNz; jz++) {
-          // Flux through surface [m^-2 s^-1], should be positive
-          BoutReal flux_ion =
-              frecycle * 0.5 *
-              (Ne(r.ind, mesh->yend, jz) + Ne(r.ind, mesh->yend + 1, jz)) *
-              0.5 * (Ve(r.ind, mesh->yend, jz) + Ve(r.ind, mesh->yend + 1, jz));
-
-          // Flow of neutrals inwards
-          BoutReal flow = flux_ion * (coord->J(r.ind, mesh->yend, jz) +
-                                      coord->J(r.ind, mesh->yend + 1, jz)) /
-            (sqrt(coord->g_22(r.ind, mesh->yend, jz)) +
-             sqrt(coord->g_22(r.ind, mesh->yend + 1, jz)));
-
-          // Rate of change of neutrals in final cell
-          BoutReal dndt =
-            flow / (coord->J(r.ind, mesh->yend, jz) * coord->dy(r.ind, mesh->yend, jz));
-
-          // Add mass, momentum and energy to the neutrals
-
-          neutrals->addDensity(r.ind, mesh->yend, jz, dndt);
-          neutrals->addPressure(r.ind, mesh->yend, jz,
-                                dndt * (3.5 / Tnorm)); // Franck-Condon energy
-          neutrals->addMomentum(r.ind, mesh->yend, jz,
-                                -dndt * neutral_vwall * sqrt(3.5 / Tnorm));
-
-          // Power deposited onto the wall due to surface recombination
-          wall_power(r.ind, mesh->yend) += (13.6 / Tnorm) * dndt;
-        }
-      }
-    }
-  }
-
-  //////////////////////////////////////////////////////////////
-  // Impurities
-
-  if ((carbon_fraction > 0.0) || impurity_adas) {
-
-    if (carbon_fraction > 0.0) {
-      TRACE("Carbon impurity radiation");
-      Rzrad = carbon_rad->power(Te * Tnorm, Ne * Nnorm,
-                                Ne * (Nnorm * carbon_fraction)); // J / m^3 / s
-    } else {
-      Rzrad = 0.0;
-    }
-
-    if (impurity_adas) {
-      for (auto &i : Rzrad.getRegion("RGN_NOY")) {
-        // Calculate cell centre (C), left (L) and right (R) values
-
-        BoutReal Te_C = Te[i],
-          Te_L = 0.5 * (Te[i.ym()] + Te[i]),
-          Te_R = 0.5 * (Te[i] + Te[i.yp()]);
-        BoutReal Ne_C = Ne[i],
-          Ne_L = 0.5 * (Ne[i.ym()] + Ne[i]),
-          Ne_R = 0.5 * (Ne[i] + Ne[i.yp()]);
-
-        BoutReal Rz_L = computeRadiatedPower(*impurity,
-                                             Te_L * Tnorm,        // electron temperature [eV]
-                                             Ne_L * Nnorm,        // electron density [m^-3]
-                                             fimp * Ne_L * Nnorm, // impurity density [m^-3]
-                                             0.0);       // Neutral density [m^-3]
-
-        BoutReal Rz_C = computeRadiatedPower(*impurity,
-                                             Te_C * Tnorm,        // electron temperature [eV]
-                                             Ne_C * Nnorm,        // electron density [m^-3]
-                                             fimp * Ne_C * Nnorm, // impurity density [m^-3]
-                                             0.0);       // Neutral density [m^-3]
-
-        BoutReal Rz_R = computeRadiatedPower(*impurity,
-                                             Te_R * Tnorm,        // electron temperature [eV]
-                                             Ne_R * Nnorm,        // electron density [m^-3]
-                                             fimp * Ne_R * Nnorm, // impurity density [m^-3]
-                                             0.0);       // Neutral density [m^-3]
-
-        // Jacobian (Cross-sectional area)
-        BoutReal J_C = coord->J[i],
-          J_L = 0.5 * (coord->J[i.ym()] + coord->J[i]),
-          J_R = 0.5 * (coord->J[i] + coord->J[i.yp()]);
-
-        // Simpson's rule, calculate average over cell
-        Rzrad[i] += (J_L * Rz_L +
-                     4. * J_C * Rz_C +
-                     J_R * Rz_R) / (6. * J_C);
-      }
-    }
-
-    Rzrad /= SI::qe * Tnorm * Nnorm * Omega_ci;                // Normalise
-    ddt(Pe) -= (2. / 3) * Rzrad;
-  }
-
   //////////////////////////////////////////////////////////////
   // Parallel closures for 2D simulations
 
@@ -3649,22 +3237,6 @@ int Hermes::rhs(BoutReal t) {
     }
 
     // Electron and ion parallel dynamics not evolved
-  }
-
-  if (low_pass_z >= 0) {
-    // Low pass Z filtering, keeping up to and including low_pass_z
-    ddt(Ne) = lowPass(ddt(Ne), low_pass_z);
-    ddt(Pe) = lowPass(ddt(Pe), low_pass_z);
-
-    if (currents) {
-      ddt(Vort) = lowPass(ddt(Vort), low_pass_z);
-      if (electromagnetic || FiniteElMass) {
-        ddt(VePsi) = lowPass(ddt(VePsi), low_pass_z);
-      }
-    }
-    if (ion_velocity) {
-      ddt(NVi) = lowPass(ddt(NVi), low_pass_z);
-    }
   }
 
   if (!evolve_plasma) {
