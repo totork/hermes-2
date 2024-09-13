@@ -946,7 +946,7 @@ namespace NEWOPS{
   Field3D DDY(const Field3D &f, CELL_LOC outloc, const std::string &method,
     const std::string& region) {
     Coordinates *coords = f.getCoordinates(outloc);
-    Field3D result = bout::derivatives::index::DDY(f, outloc, method, region) / SQ(coords->dy);
+    Field3D result = bout::derivatives::index::DDY(f, outloc, method, region) / (coords->dy);
     return result;
   }
 
