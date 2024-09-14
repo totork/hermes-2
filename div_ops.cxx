@@ -965,26 +965,37 @@ namespace NEWOPS{
   }
 
   Field3D Div_par(const Field3D& f, CELL_LOC outloc, const std::string& method, const std::string& region) {
-    Coordinates *coord = mesh->getCoordinates();
-    Field3D Bxy = coord->Bxy;
-    auto Bxy_floc = f.getCoordinates()->Bxy;
-
-    if (!f.hasParallelSlices()) {
-      // No yup/ydown fields. The Grad_par operator will
-      // shift to field aligned coordinates
-      return Bxy * NEWOPS::Grad_par(f / Bxy_floc, outloc, method,region);
+    /*
+    auto* coords = mesh->getCoordinates();
+    
+    Field3D result;
+    result.allocate();
+    const auto fup = f.yup();
+    const auto fdown = f.ydown();
+    BOUT_FOR(i, f.getRegion("RGN_NOBNDRY")) {
+      // for(auto &i : f.getRegion("RGN_NOBNDRY")) {
+      auto yp = i.yp();
+      auto ym = i.ym();
+      result[i] = (fup[yp] - fdown[ym]) / coords->dy[i] ;
     }
-
-    // Need to modify yup and ydown fields
-    Field3D f_B = f / Bxy_floc;
-    f_B.splitParallelSlices();
-    for (int i = 0; i < f.getMesh()->ystart; ++i) {
-      f_B.yup(i) = f.yup(i) / Bxy_floc.yup(i);
-      f_B.ydown(i) = f.ydown(i) / Bxy_floc.ydown(i);
+    return result;
+    */
+    if (outloc == CELL_DEFAULT) {
+      outloc = f.getLocation();
     }
-    return setName(Bxy * NEWOPS::Grad_par(f_B, outloc, method,region), "Grad_par({:s})", f.name);
+    
+    return NEWOPS::DDY(f,outloc,method,region);
   }
 
+  Field3D Div_par_K_Grad_par(const Field3D& kY, const Field3D& f, CELL_LOC outloc,const std::string& method, const std::string& region){
+    if (outloc == CELL_DEFAULT){
+      outloc = f.getLocation();
+    }
+    Field3D tmp = NEWOPS::Grad_par(f, outloc,"DEFAULT",region);
+    mesh->communicate(tmp);
+    return interp_to(kY, outloc)*NEWOPS::Div_par(tmp, outloc,"DEFAULT",region) + NEWOPS::Div_par(kY, outloc,"DEFAULT",region)*NEWOPS::Grad_par(f, outloc,"DEFAULT",region);
+
+  }
   
 
   

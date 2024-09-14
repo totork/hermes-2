@@ -77,6 +77,7 @@ namespace NEWOPS {
   Field3D Grad_par(const Field3D& var, CELL_LOC outloc, const std::string& method,const std::string& region);
   Field3D Grad2_par2(const Field3D& f, CELL_LOC outloc,const std::string& method,const std::string& region);
   Field3D Div_par(const Field3D& f, CELL_LOC outloc, const std::string& method, const std::string& region);
+  Field3D Div_par_K_Grad_par(const Field3D& kY, const Field3D& f, CELL_LOC outloc,const std::string& method, const std::string& region);
 }
 
 

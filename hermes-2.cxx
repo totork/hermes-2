@@ -460,6 +460,8 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, thermal_flux, true);
   OPTION(optsc, use_Div_n_bxGrad_f_B_XPPM, true);
   OPTION(optsc, use_bracket, true);
+  OPTION(optsc, use_bracket_factor, true);
+
 
   OPTION(optsc, VePsi_perp, true);
   thermal_force = optsc["thermal_force"]
@@ -943,10 +945,11 @@ int Hermes::init(bool restarting) {
     mesh->get(coord->Bxy, "Bxy", 1.0);
     Bxyz /= Bnorm;
     coord->Bxy /= Bnorm;
+    
     // mesh->communicate(Bxyz, coord->Bxy); // To get yup/ydown fields
     //  Note: A Neumann condition simplifies boundary conditions on fluxes
     //  where the condition e.g. on J should be on flux (J/B)
-
+    mesh->communicate(coord->J);
     auto logBxy = log(coord->Bxy);
     auto logBxyz = log(Bxyz);
     logBxy.applyBoundary("neumann");
@@ -978,7 +981,14 @@ int Hermes::init(bool restarting) {
     bout::checkPositive(coord->Bxy.ydown(), "fdown", "RGN_YPAR_-1");
     logB = log(Bxyz);
 
-    bracket_factor = sqrt(coord->g_22) / (coord->J * Bxyz);
+    if (use_bracket_factor){
+      //bracket_factor = sqrt(coord->g_22) / (coord->J * Bxyz);
+      bracket_factor = 1.0 / (coord->J);
+    } else {
+      bracket_factor = 1.0;
+    }
+
+    mesh->communicate(coord->dx,coord->dy,coord->dz);
     SAVE_ONCE(bracket_factor);
   }else{
     mesh->communicate(coord->Bxy);
@@ -2163,12 +2173,12 @@ int Hermes::rhs(BoutReal t) {
       check_all(Ve);
       Field3D neve = mul_all(Ne, Ve);
       check_all(neve);
-      ddt(Ne) -= NEWOPS::Div_par(neve,CELL_DEFAULT,"DEFAULT","RGN_ALL");
+      ddt(Ne) -= NEWOPS::Div_par(neve,CELL_DEFAULT,"DEFAULT","RGN_NOBNDRY");
     } else {
       check_all(Vi);
       Field3D nevi = mul_all(Ne, Vi);
       check_all(nevi);
-      ddt(Ne) -= NEWOPS::Div_par(nevi,CELL_DEFAULT,"DEFAULT","RGN_ALL");
+      ddt(Ne) -= NEWOPS::Div_par(nevi,CELL_DEFAULT,"DEFAULT","RGN_NOBNDRY");
     }
 
   }
@@ -2251,7 +2261,7 @@ int Hermes::rhs(BoutReal t) {
       // This term is central differencing so that it balances the parallel gradient
       // of the potential in Ohm's law
       // Jpar.applyParallelBoundary(parbc);
-      vort_jpar = NEWOPS::Div_par(Jpar,CELL_DEFAULT,"DEFAULT","RGN_ALL");
+      vort_jpar = NEWOPS::Div_par(Jpar,CELL_DEFAULT,"DEFAULT","RGN_NOBNDRY");
       ddt(Vort) += vort_jpar;
       // a += Div_parP(Jpar);
     }
@@ -2419,16 +2429,16 @@ int Hermes::rhs(BoutReal t) {
 
     // Parallel electric field
     if (j_par) {
-      ddt(VePsi) += mi_me * NEWOPS::Grad_par(phi,CELL_DEFAULT,"DEFAULT","RGN_ALL");
+      ddt(VePsi) += mi_me * NEWOPS::Grad_par(phi,CELL_DEFAULT,"DEFAULT","RGN_NOBNDRY");
     }
 
     // Parallel electron pressure
     if (pe_par) {
-      ddt(VePsi) -= mi_me * NEWOPS::Grad_par(Pe,CELL_DEFAULT,"DEFAULT","RGN_ALL") / Ne;
+      ddt(VePsi) -= mi_me * NEWOPS::Grad_par(Pe,CELL_DEFAULT,"DEFAULT","RGN_NOBNDRY") / Ne;
     }
 
     if (thermal_force) {
-      ddt(VePsi) -= mi_me * 0.71 * NEWOPS::Grad_par(Te,CELL_DEFAULT,"DEFAULT","RGN_ALL");
+      ddt(VePsi) -= mi_me * 0.71 * NEWOPS::Grad_par(Te,CELL_DEFAULT,"DEFAULT","RGN_NOBNDRY");
     }
 
     
@@ -2438,7 +2448,7 @@ int Hermes::rhs(BoutReal t) {
       // Comm breaks sheath par BCs!
       //mesh->communicate(vdiff);
       //vdiff.applyParallelBoundary(parbc);
-      ddt(VePsi) += Vi * NEWOPS::Grad_par(vdiff,CELL_DEFAULT,"DEFAULT","RGN_ALL"); // Parallel advection
+      ddt(VePsi) += Vi * NEWOPS::Grad_par(vdiff,CELL_DEFAULT,"DEFAULT","RGN_NOBNDRY"); // Parallel advection
       //ddt(VePsi) -= bracket(phi, vdiff, BRACKET_ARAKAWA)*bracket_factor;  // ExB advection
 
       if (VePsi_perp){
@@ -2502,7 +2512,7 @@ int Hermes::rhs(BoutReal t) {
     // Ignoring polarisation drift for now
     if (pe_par) {
       Field3D peppi = add_all(Pe, Pi);
-      ddt(NVi) -= NEWOPS::Grad_par(peppi,CELL_DEFAULT,"DEFAULT","RGN_ALL");
+      ddt(NVi) -= NEWOPS::Grad_par(peppi,CELL_DEFAULT,"DEFAULT","RGN_NOBNDRY");
     }
 
     // Ion-neutral friction
@@ -2570,7 +2580,7 @@ int Hermes::rhs(BoutReal t) {
         check_all(Pe);
         check_all(Ve);
         Field3D peve = mul_all(Pe,Ve);
-        Field3D tmp = NEWOPS::Div_par(peve,CELL_DEFAULT,"DEFAULT","RGN_ALL");
+        Field3D tmp = NEWOPS::Div_par(peve,CELL_DEFAULT,"DEFAULT","RGN_NOBNDRY");
         tmp.name = "Div_parP(peve)";
 	d = -tmp;
         ddt(Pe) -= tmp;
@@ -2591,7 +2601,7 @@ int Hermes::rhs(BoutReal t) {
     if (thermal_conduction) {
       if (fci_transform) {
         check_all(kappa_epar);
-        auto tmp = (2. / 3) * Div_par_K_Grad_par(kappa_epar, Te);
+        auto tmp = (2. / 3) * NEWOPS::Div_par_K_Grad_par(kappa_epar, Te,CELL_DEFAULT,"DEFAULT","RGN_NOBNDRY");
         tmp.name = "(2. / 3) * Div_par_K_Grad_par(kappa_epar, Te);";
 	a = tmp;
 	ddt(Pe) += tmp;
@@ -2602,7 +2612,7 @@ int Hermes::rhs(BoutReal t) {
       // Parallel heat convection
       if (fci_transform) {
         Field3D tejpar = mul_all(Te,Jpar);
-        ddt(Pe) += (2. / 3) * 0.71 * NEWOPS::Div_par(tejpar,CELL_DEFAULT,"DEFAULT","RGN_ALL");
+        ddt(Pe) += (2. / 3) * 0.71 * NEWOPS::Div_par(tejpar,CELL_DEFAULT,"DEFAULT","RGN_NOBNDRY");
       } 
     }
 
@@ -2637,10 +2647,8 @@ int Hermes::rhs(BoutReal t) {
               floor(0.5 * (Ne(x, y, z) +
                            Ne.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
                     0.0);
-          BoutReal vesheath =
-	    0.5 * (Ve(x, y, z) +
-                           Ve.ynext(bndry_par->dir)(x, y + bndry_par->dir, z));
-          // BoutReal tisheath = floor(
+          BoutReal vesheath = (Ve.ynext(bndry_par->dir)(x, y + bndry_par->dir, z));
+          // BoutReal tisheatyh = floor(
           //                               0.5 * (Ti(x, y, z) +
           // Ti.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
           // 0.0);
@@ -2657,7 +2665,7 @@ int Hermes::rhs(BoutReal t) {
           // Divide by volume of cell, and 2/3 to get pressure
           BoutReal power =
             flux
-            / (coord->dy(x, y, z) * coord->J(x, y, z));
+            / coord->J(x, y, z);
           // ddt(Pe)(x, y, z) -= (2. / 3) * power;
           sheath_dpe(x, y, z) -= (2. / 3) * power;
         }
@@ -2669,7 +2677,7 @@ int Hermes::rhs(BoutReal t) {
 
     // Transfer and source terms
     if (thermal_force) {
-      auto tmp = (2. / 3) * 0.71 * Jpar * NEWOPS::Grad_par(Te,CELL_DEFAULT,"DEFAULT","RGN_ALL");
+      auto tmp = (2. / 3) * 0.71 * Jpar * NEWOPS::Grad_par(Te,CELL_DEFAULT,"DEFAULT","RGN_NOBNDRY");
       tmp.name = "thermal force";
       ddt(Pe) -= tmp;
     }
@@ -2677,7 +2685,7 @@ int Hermes::rhs(BoutReal t) {
     if (pe_par_p_term) {
       // This term balances energetically the pressure term
       // in Ohm's law
-      auto tmp = (2. / 3) * Pe * NEWOPS::Div_par(Ve,CELL_DEFAULT,"DEFAULT","RGN_ALL");
+      auto tmp = (2. / 3) * Pe * NEWOPS::Div_par(Ve,CELL_DEFAULT,"DEFAULT","RGN_NOBNDRY");
       b = -tmp;
       ddt(Pe) -= tmp;
     }
@@ -2817,7 +2825,7 @@ int Hermes::rhs(BoutReal t) {
         check_all(Pi);
         check_all(Vi);
         Field3D pivi = mul_all(Pi,Vi);
-        ddt(Pi) -= NEWOPS::Div_par(pivi,CELL_DEFAULT,"DEFAULT","RGN_ALL");
+        ddt(Pi) -= NEWOPS::Div_par(pivi,CELL_DEFAULT,"DEFAULT","RGN_NOBNDRY");
       }
     }
 
@@ -2839,7 +2847,7 @@ int Hermes::rhs(BoutReal t) {
 
     if (j_par) {
       if (boussinesq) {
-        ddt(Pi) -= (2. / 3) * Jpar * NEWOPS::Grad_par(Pi,CELL_DEFAULT,"DEFAULT","RGN_ALL");
+        ddt(Pi) -= (2. / 3) * Jpar * NEWOPS::Grad_par(Pi,CELL_DEFAULT,"DEFAULT","RGN_NOBNDRY");
       } else {
         ddt(Pi) -= (2. / 3) * Jpar * Grad_parP(Pi) / Ne;
       }
@@ -2848,7 +2856,7 @@ int Hermes::rhs(BoutReal t) {
     // Parallel heat conduction
     if (thermal_conduction) {
       if (fci_transform) {
-        ddt(Pi) += (2. / 3) * Div_par_K_Grad_par(kappa_ipar, Ti);
+        ddt(Pi) += (2. / 3) * NEWOPS::Div_par_K_Grad_par(kappa_ipar, Ti,CELL_DEFAULT,"DEFAULT","RGN_NOBNDRY");
       }
     }
 
@@ -2856,7 +2864,7 @@ int Hermes::rhs(BoutReal t) {
     if (pe_par_p_term) {
       // This term balances energetically the pressure term
       // in the parallel momentum equation
-      ddt(Pi) -= (2. / 3) * Pi * NEWOPS::Div_par(Vi,CELL_DEFAULT,"DEFAULT","RGN_ALL");
+      ddt(Pi) -= (2. / 3) * Pi * NEWOPS::Div_par(Vi,CELL_DEFAULT,"DEFAULT","RGN_NOBNDRY");
     }
 
     if (electron_ion_transfer) {
@@ -2983,7 +2991,7 @@ int Hermes::rhs(BoutReal t) {
           // Divide by volume of cell, and 2/3 to get pressure
           BoutReal power =
             flux
-            / (coord->dy(x, y, z) * coord->J(x, y, z));
+            / coord->J(x, y, z);
           sheath_dpi(x, y, z) -= (3. / 2) * power;
         }
       }
