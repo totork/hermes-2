@@ -1783,7 +1783,7 @@ int Hermes::rhs(BoutReal t) {
               // Use older Laplacian solver
               // phiSolver->setCoefC(1./SQ(coord->Bxy)); // Set when initialised
               mesh->communicate(phi_boundary3d);
-              phi = phiSolver->solve(mul_all(Vort , mul_all(coord->Bxy, coord->Bxy)), phi_boundary3d);//_boundary3d);
+              phi = phiSolver->solve(mul_all(div_all(Vort,Omega_ci) , mul_all(coord->Bxy, coord->Bxy)), phi_boundary3d);//_boundary3d);
               //phi = phiSolver->solve(Vort, phi);
             }
           }
