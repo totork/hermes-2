@@ -141,6 +141,8 @@ private:
   bool poloidal_flows;  // Include y derivatives in diamagnetic and ExB drifts
   bool thermal_flux;    // Include parallel and perpendicular energy flux from Te gradients
   bool thermal_conduction; // Braginskii electron heat conduction
+  bool conduction_pargrad;
+  
   bool electron_ion_transfer; // Electron-ion heat transfer
   bool classical_diffusion; // Collisional diffusion, including viscosity
   bool use_Div_n_bxGrad_f_B_XPPM; //Use stencil operator for ExB

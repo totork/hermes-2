@@ -461,7 +461,8 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, use_Div_n_bxGrad_f_B_XPPM, true);
   OPTION(optsc, use_bracket, true);
   OPTION(optsc, use_bracket_factor, true);
-
+  OPTION(optsc, conduction_pargrad, true);
+ 
 
   OPTION(optsc, VePsi_perp, true);
   thermal_force = optsc["thermal_force"]
@@ -2144,6 +2145,9 @@ int Hermes::rhs(BoutReal t) {
         kappa_ipar(r.ind, mesh->yend + 1, jz) = kappa_ipar(r.ind, mesh->yend, jz);
       }
     }
+    kappa_epar.applyBoundary("neumann_o2");
+    mesh->communicate(kappa_epar);
+    kappa_epar.applyParallelBoundary(parbc);
   }
 
   if(currents){ nu.applyBoundary(t); }
@@ -2601,10 +2605,18 @@ int Hermes::rhs(BoutReal t) {
     if (thermal_conduction) {
       if (fci_transform) {
         check_all(kappa_epar);
-        auto tmp = (2. / 3) * NEWOPS::Div_par_K_Grad_par(kappa_epar, Te,CELL_DEFAULT,"DEFAULT","RGN_NOBNDRY");
-        tmp.name = "(2. / 3) * Div_par_K_Grad_par(kappa_epar, Te);";
-	a = tmp;
-	ddt(Pe) += tmp;
+	if (conduction_pargrad){
+	  auto tmp = (2. / 3) * NEWOPS::Div_par_K_Grad_par(kappa_epar, Te,CELL_DEFAULT,"DEFAULT","RGN_NOBNDRY");
+	  a = tmp;
+	  ddt(Pe) += tmp;
+	} else {
+	  auto tmp = NEWOPS::Grad2_par2(Te,CELL_DEFAULT,"DEFAULT","RGN_NOBNDRY" );
+	  tmp.applyBoundary("neumann_o2");
+	  mesh->communicate(tmp);
+	  tmp.applyParallelBoundary(parbc);
+	  a = (2.0 / 3.0) * mul_all(kappa_epar , tmp);
+          ddt(Pe) += a;
+	}
       }
     }
 
