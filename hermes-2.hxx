@@ -75,7 +75,7 @@ private:
   Field3D a;
   Field3D b;
   Field3D d;
-
+  Field3D debug_visheath;
   //Debug variables for the vorticity time evolution
   Field3D vort_dia,vort_ExB,vort_jpar,vort_parflow;
   
@@ -146,6 +146,8 @@ private:
   bool use_Div_n_bxGrad_f_B_XPPM; //Use stencil operator for ExB
   bool use_bracket;                 //Use the bracket for the curvature drifts
   bool norm_dxdydz;
+  bool use_Div_parP_n;
+
   // Anomalous perpendicular diffusion coefficients
   BoutReal anomalous_D;    // Density diffusion
   BoutReal anomalous_chi;  // Electron thermal diffusion

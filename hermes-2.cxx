@@ -460,7 +460,8 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, thermal_flux, true);
   OPTION(optsc, use_Div_n_bxGrad_f_B_XPPM, true);
   OPTION(optsc, use_bracket, true);
-
+  OPTION(optsc, use_Div_parP_n, true);
+  
   OPTION(optsc, VePsi_perp, true);
   thermal_force = optsc["thermal_force"]
                     .doc("Force on electrons due to temperature gradients")
@@ -1314,7 +1315,7 @@ int Hermes::init(bool restarting) {
   vort_ExB = 0.0;
   vort_jpar = 0.0;
   vort_parflow = 0.0;
-  
+  debug_visheath = 0.0;
   SAVE_REPEAT(a,b,d);
   SAVE_REPEAT(Te, Ti);
 
@@ -1329,6 +1330,7 @@ int Hermes::init(bool restarting) {
 
     SAVE_REPEAT(nu);
     SAVE_REPEAT(vort_dia,vort_ExB,vort_jpar,vort_parflow);
+    SAVE_REPEAT(debug_visheath);
     /*
     if (resistivity) {
       SAVE_REPEAT(nu); // Parallel resistivity
@@ -2010,7 +2012,9 @@ int Hermes::rhs(BoutReal t) {
             }
           }
 
-
+	  if (verbose){
+	    debug_visheath(x,y,z) = visheath;
+	  }
 
 	  
           // Sheath current
@@ -2636,7 +2640,13 @@ int Hermes::rhs(BoutReal t) {
     }
 
     // FV with added dissipation
-    ddt(NVi) -= Div_parP_n(Ne, Vi, sound_speed, fwd_bndry_mask, bwd_bndry_mask);
+    if (use_Div_parP_n){
+      ddt(NVi) -= Div_parP_n(Ne, Vi, sound_speed, fwd_bndry_mask, bwd_bndry_mask);
+    } else {
+      auto nvivi = mul_all(NVi,Vi);
+      ddt(NVi) -= Div_parP(nvivi);
+    }
+
     // // straight forward
     // Field3D nvivi = mul_all(NVi, Vi);
     // ddt(NVi) -= Div_parP(nvivi);
