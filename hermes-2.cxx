@@ -35,6 +35,7 @@
 #include <bout/constants.hxx>
 #include <bout/assert.hxx>
 #include <bout/fv_ops.hxx>
+#include <cmath>
 
 
 // OpenADAS interface Atomicpp by T.Body
@@ -42,6 +43,22 @@
 #include "atomicpp/Prad.hxx"
 
 std::string parbc{"parallel_neumann_o1"};
+
+
+template <typename T>
+T max_abs(T a, T b) {
+    return (std::abs(a) > std::abs(b)) ? a : b;
+}
+
+// Recursive case for more than two arguments                                                                                                                                                                      
+template <typename T, typename... Args>
+T max_abs(T first, Args... args) {
+    return max_abs(first, max_abs(args...));
+}
+
+
+
+
 
 namespace FV {
   template<typename CellEdges = MC>
@@ -1207,6 +1224,11 @@ int Hermes::init(bool restarting) {
   optsc["newXZsolver"].setConditionallyUsed();
   optsc["split_n0"].setConditionallyUsed();
   optsc["split_n0_psi"].setConditionallyUsed();
+
+  if(FiniteElMass){
+    SAVE_REPEAT(Ve);
+  }
+  
   if (j_par | j_diamag | relaxation) {
     // Only needed if there are any currents
     SAVE_REPEAT(phi);
@@ -1215,7 +1237,7 @@ int Hermes::init(bool restarting) {
     }
 
     if (j_par) {
-      SAVE_REPEAT(Ve);
+      
 
       if (electromagnetic)
         SAVE_REPEAT(psi);
@@ -1318,7 +1340,7 @@ int Hermes::init(bool restarting) {
   debug_visheath = 0.0;
   SAVE_REPEAT(a,b,d);
   SAVE_REPEAT(Te, Ti);
-
+  NVi_Div_parP_n = 0.0;
   if (verbose) {
     // Save additional fields
     SAVE_REPEAT(Jpar); // Parallel current
@@ -1331,6 +1353,7 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(nu);
     SAVE_REPEAT(vort_dia,vort_ExB,vort_jpar,vort_parflow);
     SAVE_REPEAT(debug_visheath);
+    SAVE_REPEAT(NVi_Div_parP_n);
     /*
     if (resistivity) {
       SAVE_REPEAT(nu); // Parallel resistivity
@@ -1365,7 +1388,7 @@ int Hermes::init(bool restarting) {
   if (evolve_ti && parallel_sheaths){
     SAVE_REPEAT(sheath_dpi);
   }
-  
+  zero_all(Ve);
   
   // Magnetic field in boundary
   auto& Bxy = mesh->getCoordinates()->Bxy;
@@ -1865,7 +1888,7 @@ int Hermes::rhs(BoutReal t) {
     // No magnetic fields or currents
     zero_all(psi);
     zero_all(Jpar);
-    zero_all(Ve); // Ve will be set after the sheath boundaries below
+    // Ve will be set after the sheath boundaries below
   } else {
     // Calculate electomagnetic potential psi from VePsi
     // VePsi = Ve - Vi + 0.5 * mi_me * beta_e * psi
@@ -2076,13 +2099,16 @@ int Hermes::rhs(BoutReal t) {
     }
   }
 
-
-  if (!currents) {
+  
+  
+  if (!currents && !FiniteElMass) {
     // No currents, so reset Ve to be equal to Vi
     // VePsi also reset, so saved in restart file correctly
     Ve = Vi;
     VePsi = Ve;
   }
+
+  
 
   //////////////////////////////////////////////////////////////
   // Plasma quantities calculated.
@@ -2188,6 +2214,10 @@ int Hermes::rhs(BoutReal t) {
   }
 
   if(currents){ nu.applyBoundary(t); }
+
+  if (FiniteElMass){
+    Ve = add_all(VePsi , Vi);
+  }
 
   
   ///////////////////////////////////////////////////////////
@@ -2510,14 +2540,17 @@ int Hermes::rhs(BoutReal t) {
 
   ddt(VePsi) = 0.0;
 
+  if (FiniteElMass && pe_par){
+    ddt(VePsi) -= mi_me * Grad_parP(Pe) / Ne;
+  }
+  
+  if (FiniteElMass && resistivity){
+    ddt(VePsi) -= mi_me * nu * (Ve - Vi);
+  }
+  
   if (currents && (electromagnetic || FiniteElMass)) {
     // Evolve VePsi except for electrostatic and zero electron mass case
 
-    if (resistivity) {
-      ddt(VePsi) -= mi_me * nu * (Ve - Vi);
-      // External electric field
-      // ddt(VePsi) += mi_me*nu*(Jpar - Jpar0)/NeVe;
-    }
 
     if (anomalous_nu>0.0){
       ddt(VePsi) += FCIDiv_a_Grad_perp( a_nu3d, VePsi);
@@ -2528,10 +2561,6 @@ int Hermes::rhs(BoutReal t) {
       ddt(VePsi) += mi_me * Grad_parP(phi);
     }
 
-    // Parallel electron pressure
-    if (pe_par) {
-      ddt(VePsi) -= mi_me * Grad_parP(Pe) / Ne;
-    }
 
     if (thermal_force) {
       ddt(VePsi) -= mi_me * 0.71 * Grad_parP(Te);
@@ -2641,10 +2670,11 @@ int Hermes::rhs(BoutReal t) {
 
     // FV with added dissipation
     if (use_Div_parP_n){
-      ddt(NVi) -= Div_parP_n(Ne, Vi, sound_speed, fwd_bndry_mask, bwd_bndry_mask);
+      NVi_Div_parP_n = Div_parP_n(Ne, Vi, sound_speed, fwd_bndry_mask, bwd_bndry_mask);
+      ddt(NVi) -= NVi_Div_parP_n;
     } else {
       auto nvivi = mul_all(NVi,Vi);
-      ddt(NVi) -= Div_parP(nvivi);
+      ddt(NVi) -= Div_par(nvivi);
     }
 
     // // straight forward
@@ -3822,10 +3852,14 @@ Field3D Hermes::Div_parP_n(const Field3D &n, const Field3D &v,
     const BoutReal viL = v[i] - gv[i] / 2;
     const BoutReal nmR = n.ydown()[im] - gn.ydown()[im];
     const BoutReal vmR = v.ydown()[im] - gv.ydown()[im];
-    const BoutReal amaxp = std::max(
-        {abs(v[i]), abs(v.yup()[ip]), sound_speed[i], sound_speed.yup()[ip]});
-    const BoutReal amaxm = std::max({abs(v[i]), abs(v.ydown()[im]),
-                                     sound_speed[i], sound_speed.ydown()[im]});
+    //const BoutReal amaxp = std::max(
+    //    {abs(v[i]), abs(v.yup()[ip]), sound_speed[i], sound_speed.yup()[ip]});
+    //const BoutReal amaxm = std::max({abs(v[i]), abs(v.ydown()[im]),
+    //                                sound_speed[i], sound_speed.ydown()[im]});
+    const BoutReal amaxp = std::max({abs(v[i]), abs(v.yup()[ip]), sound_speed[i], sound_speed.yup()[ip]});
+    const BoutReal amaxm = std::max({abs(v[i]), abs(v.ydown()[im]),sound_speed[i], sound_speed.ydown()[im]});
+
+    
     BoutReal Gnvp = 0.5 * (niR * SQ(viR) + npL * SQ(vpL)) +
                     0.5 * amaxp * (niR * viR - npL * vpL);
     BoutReal Gnvm = 0.5 * (nmR * SQ(vmR) + niL * SQ(viL)) +

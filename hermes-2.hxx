@@ -147,7 +147,9 @@ private:
   bool use_bracket;                 //Use the bracket for the curvature drifts
   bool norm_dxdydz;
   bool use_Div_parP_n;
-
+  bool conduction_kappagrad;
+  
+  Field3D NVi_Div_parP_n;
   // Anomalous perpendicular diffusion coefficients
   BoutReal anomalous_D;    // Density diffusion
   BoutReal anomalous_chi;  // Electron thermal diffusion
