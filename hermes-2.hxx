@@ -75,7 +75,10 @@ private:
   Field3D a;
   Field3D b;
   Field3D d;
-  Field3D debug_visheath;
+  Field3D debug_visheath,debug_VePsisheath;
+  Field3D debug_phisheath;
+  Field3D TE_VePsi_pe_par,TE_VePsi_resistivity,TE_VePsi_anom,TE_VePsi_j_par,TE_VePsi_thermal_force,TE_VePsi_par_adv;
+  
   //Debug variables for the vorticity time evolution
   Field3D vort_dia,vort_ExB,vort_jpar,vort_parflow;
   
@@ -150,6 +153,9 @@ private:
   bool conduction_kappagrad;
   
   Field3D NVi_Div_parP_n;
+
+  bool TE_VePsi;
+  
   // Anomalous perpendicular diffusion coefficients
   BoutReal anomalous_D;    // Density diffusion
   BoutReal anomalous_chi;  // Electron thermal diffusion

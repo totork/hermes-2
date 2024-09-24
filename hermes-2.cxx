@@ -531,6 +531,8 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, sheath_closure, false);
   OPTION(optsc, drift_wave, false);
   OPTION(optsc, norm_dxdydz, false);
+  OPTION(optsc, TE_VePsi, false);
+  
   // Cross-field transport
   classical_diffusion = optsc["classical_diffusion"]
                           .doc("Collisional cross-field diffusion, including viscosity")
@@ -1338,6 +1340,25 @@ int Hermes::init(bool restarting) {
   vort_jpar = 0.0;
   vort_parflow = 0.0;
   debug_visheath = 0.0;
+  debug_VePsisheath = 0.0;
+  debug_phisheath = 0.0;
+
+  TE_VePsi_pe_par = 0.0;
+  TE_VePsi_resistivity = 0.0;
+  TE_VePsi_anom = 0.0;
+  TE_VePsi_j_par = 0.0;
+  TE_VePsi_thermal_force = 0.0;
+  TE_VePsi_par_adv = 0.0;
+
+  if (TE_VePsi){
+    SAVE_REPEAT(TE_VePsi_pe_par);
+    SAVE_REPEAT(TE_VePsi_resistivity);
+    SAVE_REPEAT(TE_VePsi_anom);
+    SAVE_REPEAT(TE_VePsi_j_par);
+    SAVE_REPEAT(TE_VePsi_thermal_force);
+    SAVE_REPEAT(TE_VePsi_par_adv);
+  }
+  
   SAVE_REPEAT(a,b,d);
   SAVE_REPEAT(Te, Ti);
   NVi_Div_parP_n = 0.0;
@@ -1354,6 +1375,8 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(vort_dia,vort_ExB,vort_jpar,vort_parflow);
     SAVE_REPEAT(debug_visheath);
     SAVE_REPEAT(NVi_Div_parP_n);
+    SAVE_REPEAT(debug_phisheath);
+    SAVE_REPEAT(debug_VePsisheath);
     /*
     if (resistivity) {
       SAVE_REPEAT(nu); // Parallel resistivity
@@ -2020,6 +2043,9 @@ int Hermes::rhs(BoutReal t) {
 
           // Zero-gradient potential
           BoutReal phisheath = phi(x, y, z);
+	  if (verbose){
+	    debug_phisheath(x,y,z) = phisheath;
+	  }
           BoutReal visheath = bndry_par->dir * sqrt(tisheath + tesheath);
 
 	  if (sheath_allow_supersonic) {
@@ -2056,6 +2082,9 @@ int Hermes::rhs(BoutReal t) {
             vesheath = visheath;
             jsheath = 0.0;
           }
+	  if (verbose){
+	    debug_VePsisheath (x,y,z) = VePsisheath;
+	  }
 
           // Neumann conditions
           Ne.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = nesheath;
@@ -2541,11 +2570,19 @@ int Hermes::rhs(BoutReal t) {
   ddt(VePsi) = 0.0;
 
   if (FiniteElMass && pe_par){
-    ddt(VePsi) -= mi_me * Grad_parP(Pe) / Ne;
+    auto tmp = -mi_me * Grad_parP(Pe) / Ne;
+    if(TE_VePsi){
+      TE_VePsi_pe_par = tmp;
+    }
+    ddt(VePsi) += tmp;
   }
   
   if (FiniteElMass && resistivity){
-    ddt(VePsi) -= mi_me * nu * (Ve - Vi);
+    auto tmp = -mi_me * nu * (Ve - Vi);
+    if(TE_VePsi){
+      TE_VePsi_resistivity = tmp;
+    }
+    ddt(VePsi) += tmp;
   }
   
   if (currents && (electromagnetic || FiniteElMass)) {
@@ -2553,17 +2590,29 @@ int Hermes::rhs(BoutReal t) {
 
 
     if (anomalous_nu>0.0){
-      ddt(VePsi) += FCIDiv_a_Grad_perp( a_nu3d, VePsi);
+      auto tmp = FCIDiv_a_Grad_perp( a_nu3d, VePsi);
+      if(TE_VePsi){
+	TE_VePsi_anom = tmp;
+      }
+      ddt(VePsi) += tmp;
     }
 
     // Parallel electric field
     if (j_par) {
-      ddt(VePsi) += mi_me * Grad_parP(phi);
+      auto tmp = mi_me * Grad_parP(phi);
+      if(TE_VePsi){
+	TE_VePsi_j_par = tmp;
+      }
+      ddt(VePsi) += tmp;
     }
 
 
     if (thermal_force) {
-      ddt(VePsi) -= mi_me * 0.71 * Grad_parP(Te);
+      auto tmp = -mi_me * 0.71 * Grad_parP(Te);
+      if (TE_VePsi){
+	TE_VePsi_thermal_force = tmp;
+      }
+      ddt(VePsi) += tmp;
     }
 
     
@@ -2573,7 +2622,11 @@ int Hermes::rhs(BoutReal t) {
       // Comm breaks sheath par BCs!
       //mesh->communicate(vdiff);
       //vdiff.applyParallelBoundary(parbc);
-      ddt(VePsi) += Vi * Grad_par(vdiff); // Parallel advection
+      auto tmp = Vi * Grad_par(vdiff);
+      if (TE_VePsi){
+	TE_VePsi_par_adv = tmp;
+      }
+      ddt(VePsi) += tmp; // Parallel advection
       //ddt(VePsi) -= bracket(phi, vdiff, BRACKET_ARAKAWA)*bracket_factor;  // ExB advection
 
       if (VePsi_perp){
