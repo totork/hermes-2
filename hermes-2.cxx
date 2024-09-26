@@ -1342,7 +1342,7 @@ int Hermes::init(bool restarting) {
   debug_visheath = 0.0;
   debug_VePsisheath = 0.0;
   debug_phisheath = 0.0;
-
+  debug_denom = 0.0;
   TE_VePsi_pe_par = 0.0;
   TE_VePsi_resistivity = 0.0;
   TE_VePsi_anom = 0.0;
@@ -1368,6 +1368,10 @@ int Hermes::init(bool restarting) {
 
     SAVE_REPEAT(tau_e, tau_i);
 
+    if(kappa_limit_alpha>0.0){
+      SAVE_REPEAT(debug_denom);
+    }
+    
     SAVE_REPEAT(kappa_epar); // Parallel electron heat conductivity
     SAVE_REPEAT(kappa_ipar); // Parallel ion heat conductivity
 
@@ -2210,15 +2214,27 @@ int Hermes::rhs(BoutReal t) {
        * R.Schneider et al. Contrib. Plasma Phys. 46, No. 1-2, 3 – 191 (2006)
        * DOI 10.1002/ctpp.200610001
        */
-      ASSERT0(not fci_transform);
-      // Spitzer-Harm heat flux
-      Field3D q_SH = kappa_epar * Grad_par(Te);
-      Field3D q_fl = kappa_limit_alpha * Ne * Te * sqrt(mi_me * Te);
-
-      kappa_epar = kappa_epar / (1. + abs(q_SH / q_fl));
-
-      // Values of kappa on cell boundaries are needed for fluxes
-      kappa_epar.applyBoundary("dirichlet");
+      kappa_epar.applyBoundary("neumann");
+      mesh->communicate(kappa_epar);
+      kappa_epar.applyParallelBoundary(parbc);
+      Field3D gradTe = Grad_parP(Te);
+      mesh->communicate(gradTe);
+      gradTe.applyParallelBoundary(parbc);
+      Field3D Te32 = pow(Te,1.5);
+      mesh->communicate(Te32);
+      Field3D q_SH = mul_all(kappa_epar,gradTe);      
+      Field3D q_fl = mul_all(kappa_limit_alpha,mul_all(sqrt(mi_me),mul_all(Ne,Te32)));
+      Field3D one;
+      set_all(one, 1.0);
+      Field3D denom = one + abs(div_all(q_SH,q_fl));
+      denom.applyBoundary("neumann");
+      mesh->communicate(denom);
+      denom.applyParallelBoundary(parbc);
+      if (verbose){
+	debug_denom = denom;
+      }
+      
+      kappa_epar = div_all(kappa_epar,denom);
     }
 
     // Ion parallel heat conduction
@@ -2568,26 +2584,24 @@ int Hermes::rhs(BoutReal t) {
   TRACE("Ohm's law");
 
   ddt(VePsi) = 0.0;
-
-  if (FiniteElMass && pe_par){
-    auto tmp = -mi_me * Grad_parP(Pe) / Ne;
-    if(TE_VePsi){
-      TE_VePsi_pe_par = tmp;
-    }
-    ddt(VePsi) += tmp;
-  }
   
-  if (FiniteElMass && resistivity){
-    auto tmp = -mi_me * nu * (Ve - Vi);
-    if(TE_VePsi){
-      TE_VePsi_resistivity = tmp;
-    }
-    ddt(VePsi) += tmp;
-  }
-  
-  if (currents && (electromagnetic || FiniteElMass)) {
+  if ( electromagnetic || FiniteElMass) {
     // Evolve VePsi except for electrostatic and zero electron mass case
+    if (pe_par){
+      auto tmp = -mi_me * Grad_parP(Pe) / Ne;
+      if(TE_VePsi){
+	TE_VePsi_pe_par = tmp;
+      }
+      ddt(VePsi) += tmp;
+    }
 
+    if ( resistivity){
+      auto tmp = -mi_me * nu * (Ve - Vi);
+      if(TE_VePsi){
+	TE_VePsi_resistivity = tmp;
+      }
+      ddt(VePsi) += tmp;
+    }
 
     if (anomalous_nu>0.0){
       auto tmp = FCIDiv_a_Grad_perp( a_nu3d, VePsi);
@@ -2597,6 +2611,8 @@ int Hermes::rhs(BoutReal t) {
       ddt(VePsi) += tmp;
     }
 
+
+    
     // Parallel electric field
     if (j_par) {
       auto tmp = mi_me * Grad_parP(phi);

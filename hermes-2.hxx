@@ -78,7 +78,7 @@ private:
   Field3D debug_visheath,debug_VePsisheath;
   Field3D debug_phisheath;
   Field3D TE_VePsi_pe_par,TE_VePsi_resistivity,TE_VePsi_anom,TE_VePsi_j_par,TE_VePsi_thermal_force,TE_VePsi_par_adv;
-  
+  Field3D debug_denom;
   //Debug variables for the vorticity time evolution
   Field3D vort_dia,vort_ExB,vort_jpar,vort_parflow;
   
