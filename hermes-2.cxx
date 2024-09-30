@@ -1363,6 +1363,8 @@ int Hermes::init(bool restarting) {
   TE_VePsi_thermal_force = 0.0;
   TE_VePsi_par_adv = 0.0;
   TE_VePsi_hyper = 0.0;
+  TE_VePsi_perp = 0.0;
+  TE_VePsi_numdiff = 0.0;
   if (TE_VePsi){
     SAVE_REPEAT(TE_VePsi_pe_par);
     SAVE_REPEAT(TE_VePsi_resistivity);
@@ -1370,7 +1372,7 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(TE_VePsi_j_par);
     SAVE_REPEAT(TE_VePsi_thermal_force);
     SAVE_REPEAT(TE_VePsi_par_adv);
-    SAVE_REPEAT(TE_VePsi_hyper);
+    SAVE_REPEAT(TE_VePsi_hyper,TE_VePsi_perp,TE_VePsi_numdiff);
   }
   
   SAVE_REPEAT(a,b,d);
@@ -2665,23 +2667,24 @@ int Hermes::rhs(BoutReal t) {
       //ddt(VePsi) -= bracket(phi, vdiff, BRACKET_ARAKAWA)*bracket_factor;  // ExB advection
 
       if (VePsi_perp){
-	ddt(VePsi) += Div_n_bxGrad_f_B_XPPM(VePsi, phi, false,
-                                        poloidal_flows) * bracket_factor;
+	auto tmp = Div_n_bxGrad_f_B_XPPM(VePsi, phi, false,poloidal_flows) * bracket_factor;
+	if(TE_VePsi){
+	  TE_VePsi_perp = tmp;
+	}
+	ddt(VePsi) += tmp;
       }
 
       // Should also have ion polarisation advection here
     }
 
     if (numdiff > 0.0) {
-      // ddt(VePsi) += sqrt(mi_me) * numdiff * Div_par_diffusion_index(Ve);
       for(auto &i : VePsi.getRegion("RGN_NOBNDRY")) {
-        ddt(VePsi)[i] +=  numdiff*(VePsi.ydown()[i.ym()] - 2.*VePsi[i] + VePsi.yup()[i.yp()]);
+	auto tmp = numdiff*(VePsi.ydown()[i.ym()] - 2.*VePsi[i] + VePsi.yup()[i.yp()]);
+	if(TE_VePsi){
+	  TE_VePsi_numdiff[i] = tmp;
+	}
+        ddt(VePsi)[i] += tmp;
       }
-
-    }
-
-    if (hyper > 0.0) {
-      ddt(VePsi) -= hyper * mi_me * nu * Delp2(Jpar) / Ne;
     }
 
     if (VePsi_hyperXZ>0.0){
@@ -2692,39 +2695,6 @@ int Hermes::rhs(BoutReal t) {
       ddt(VePsi) += tmp;
     }
 
-    
-    if (ve_num_diff > 0.0) {
-      // Numerical perpendicular diffusion
-      ddt(VePsi) += Div_Perp_Lap_FV_Index(ve_num_diff, Ve, ne_bndry_flux);
-    }
-    if (ve_num_hyper > 0.0) {
-      ddt(VePsi) -= ve_num_hyper * (D4DX4_FV_Index(Ve, true) + D4DZ4_Index(Ve));
-    }
-
-    if (vepsi_dissipation) {
-      // Adds dissipation term like in other equations
-      // Maximum speed either electron sound speed or Alfven speed
-      Field3D max_speed = Bnorm * coord->Bxy / sqrt(SI::mu0 * AA * SI::Mp * Nnorm * Ne)
-                          / Cs0;                      // Alfven speed (normalised by Cs0)
-      Field3D elec_sound = sqrt(mi_me) * sound_speed; // Electron sound speed
-      for (auto& i : max_speed.getRegion("RGN_NOBNDRY")) {
-        // Maximum of Alfven or thermal electron speed
-        if (elec_sound[i] > max_speed[i]) {
-          max_speed[i] = elec_sound[i];
-        }
-
-        // Limit to 100x reference sound speed or light speed
-        BoutReal lim = BOUTMIN(100., 3e8 / Cs0);
-        if (max_speed[i] > lim) {
-          max_speed[i] = lim;
-        }
-      }
-      if (!fci_transform) {
-        ddt(VePsi) -= FV::Div_par(Ve - Vi, 0.0, max_speed);
-      } else {
-        ddt(VePsi) += SQ(coord->dy) * (D2DY2(Ve) - D2DY2(Vi));
-      }
-    }
   }
 
   ///////////////////////////////////////////////////////////
