@@ -77,10 +77,10 @@ private:
   Field3D d;
   Field3D debug_visheath,debug_VePsisheath;
   Field3D debug_phisheath;
-  Field3D TE_VePsi_pe_par,TE_VePsi_resistivity,TE_VePsi_anom,TE_VePsi_j_par,TE_VePsi_thermal_force,TE_VePsi_par_adv;
+  Field3D TE_VePsi_pe_par,TE_VePsi_resistivity,TE_VePsi_anom,TE_VePsi_j_par,TE_VePsi_thermal_force,TE_VePsi_par_adv,TE_VePsi_hyper;
   Field3D debug_denom;
   //Debug variables for the vorticity time evolution
-  Field3D vort_dia,vort_ExB,vort_jpar,vort_parflow;
+  Field3D vort_dia,vort_ExB,vort_jpar,vort_parflow,vort_anom,vort_hyper;
   
   // Limited variables
   Field3D Telim, Tilim;
@@ -155,13 +155,13 @@ private:
   Field3D NVi_Div_parP_n;
 
   bool TE_VePsi;
-  
+  BoutReal MMS_Ne_ParDiff;
   // Anomalous perpendicular diffusion coefficients
   BoutReal anomalous_D;    // Density diffusion
   BoutReal anomalous_chi;  // Electron thermal diffusion
   BoutReal anomalous_nu;   // Momentum diffusion (kinematic viscosity)
   Field3D a_d3d, a_chi3d, a_nu3d; // 3D coef
-
+  Field3D a_MMS3d;
   bool anomalous_D_nvi; // Include terms in momentum equation
   bool anomalous_D_pepi; // Include terms in Pe, Pi equations
   

@@ -480,6 +480,7 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, use_Div_parP_n, true);
   
   OPTION(optsc, VePsi_perp, true);
+
   thermal_force = optsc["thermal_force"]
                     .doc("Force on electrons due to temperature gradients")
                     .withDefault<bool>(true);
@@ -542,7 +543,7 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, anomalous_nu, -1);
   OPTION(optsc, anomalous_D_nvi, true);
   OPTION(optsc, anomalous_D_pepi, true);
-
+  OPTION(optsc, MMS_Ne_ParDiff, -1.0);
   // Flux limiters
   OPTION(optsc, flux_limit_alpha, -1);
   OPTION(optsc, kappa_limit_alpha, -1);
@@ -668,6 +669,14 @@ int Hermes::init(bool restarting) {
 
   output.write("\ttau_e0={:e}, tau_i0={:e}\n", tau_e0, tau_i0);
 
+  if (MMS_Ne_ParDiff > 0.0){
+    MMS_Ne_ParDiff /= rho_s0 * rho_s0 * Omega_ci;
+    a_MMS3d = MMS_Ne_ParDiff;
+    mesh->communicate(a_MMS3d);
+    a_MMS3d.yup() = MMS_Ne_ParDiff;
+    a_MMS3d.ydown() = MMS_Ne_ParDiff;
+  }
+  
   if (anomalous_D > 0.0) {
     // Normalise
     anomalous_D /= rho_s0 * rho_s0 * Omega_ci; // m^2/s
@@ -677,6 +686,8 @@ int Hermes::init(bool restarting) {
     a_d3d.yup() = anomalous_D;
     a_d3d.ydown() = anomalous_D;
   }
+
+  
   
   if (anomalous_chi > 0.0) {
     // Normalise
@@ -1339,6 +1350,8 @@ int Hermes::init(bool restarting) {
   vort_ExB = 0.0;
   vort_jpar = 0.0;
   vort_parflow = 0.0;
+  vort_hyper = 0.0;
+  vort_anom = 0.0;
   debug_visheath = 0.0;
   debug_VePsisheath = 0.0;
   debug_phisheath = 0.0;
@@ -1349,7 +1362,7 @@ int Hermes::init(bool restarting) {
   TE_VePsi_j_par = 0.0;
   TE_VePsi_thermal_force = 0.0;
   TE_VePsi_par_adv = 0.0;
-
+  TE_VePsi_hyper = 0.0;
   if (TE_VePsi){
     SAVE_REPEAT(TE_VePsi_pe_par);
     SAVE_REPEAT(TE_VePsi_resistivity);
@@ -1357,6 +1370,7 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(TE_VePsi_j_par);
     SAVE_REPEAT(TE_VePsi_thermal_force);
     SAVE_REPEAT(TE_VePsi_par_adv);
+    SAVE_REPEAT(TE_VePsi_hyper);
   }
   
   SAVE_REPEAT(a,b,d);
@@ -1376,7 +1390,11 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(kappa_ipar); // Parallel ion heat conductivity
 
     SAVE_REPEAT(nu);
-    SAVE_REPEAT(vort_dia,vort_ExB,vort_jpar,vort_parflow);
+    SAVE_REPEAT(vort_dia);
+    SAVE_REPEAT(vort_ExB);
+    SAVE_REPEAT(vort_jpar);
+    SAVE_REPEAT(vort_anom);
+    SAVE_REPEAT(vort_hyper);
     SAVE_REPEAT(debug_visheath);
     SAVE_REPEAT(NVi_Div_parP_n);
     SAVE_REPEAT(debug_phisheath);
@@ -2283,6 +2301,8 @@ int Hermes::rhs(BoutReal t) {
     ddt(Ne) = 0.0;
   }
 
+  
+  
   // Parallel flow
   if (parallel_flow) {
     // if (!fci_transform){
@@ -2525,25 +2545,24 @@ int Hermes::rhs(BoutReal t) {
     if (anomalous_nu > 0.0) {
       TRACE("Vort:anomalous_nu");
       // Perpendicular anomalous momentum diffusion
-      ddt(Vort) += FCIDiv_a_Grad_perp(a_nu3d, Vort);
+      vort_anom = FCIDiv_a_Grad_perp(a_nu3d, Vort);
+      ddt(Vort) += vort_anom;
     }
 
     if (ion_neutral_rate > 0.0) {
       // Sink of vorticity due to ion-neutral friction
       ddt(Vort) -= ion_neutral_rate * Vort;
     }
-
+    
     if (x_hyper_viscos > 0) {
-      // Form of hyper-viscosity to suppress zig-zags in X
-      ddt(Vort) -= x_hyper_viscos * D4DX4_FV_Index(Vort);
-     }
-    if (y_hyper_viscos > 0) {
-      // Form of hyper-viscosity to suppress zig-zags in Y
-      ddt(Vort) -= y_hyper_viscos * FV::D4DY4_Index(Vort, false);
+      vort_hyper = -x_hyper_viscos * SQ(SQ(coord->dx)) * D4DX4(Vort);;
+      ddt(Vort) += vort_hyper;
     }
+
     if (z_hyper_viscos > 0) {
-      // Form of hyper-viscosity to suppress zig-zags in Z
-      ddt(Vort) -= z_hyper_viscos * SQ(SQ(coord->dz)) * D4DZ4(Vort);
+      auto tmp = -z_hyper_viscos * SQ(SQ(coord->dz)) * D4DZ4(Vort);
+      vort_hyper += tmp;
+      ddt(Vort) += tmp;
     }
 
     if (vort_dissipation) {
@@ -2666,15 +2685,11 @@ int Hermes::rhs(BoutReal t) {
     }
 
     if (VePsi_hyperXZ>0.0){
-      ddt(VePsi) -= ( VePsi_hyperXZ * (SQ(SQ(coord->dx)))  * D4DX4(VePsi));
-    }
-
-    if (VePsi_hyperXZ > 0.0) {
-      if (norm_dxdydz){
-        ddt(VePsi) -= VePsi_hyperXZ * D4DZ4(VePsi);
-      } else {
-	ddt(VePsi) -= VePsi_hyperXZ * (SQ(SQ(coord->dz)))  * D4DZ4(VePsi);
+      auto tmp = -VePsi_hyperXZ*((SQ(SQ(coord->dx)))*D4DX4(VePsi) + (SQ(SQ(coord->dz)))*D4DZ4(VePsi));
+      if(TE_VePsi){
+	TE_VePsi_hyper = tmp;
       }
+      ddt(VePsi) += tmp;
     }
 
     
@@ -2732,26 +2747,28 @@ int Hermes::rhs(BoutReal t) {
       ddt(NVi) = 0.0;
     }
 
+    if (MMS_Ne_ParDiff> 0.0){
+      auto tmp = Div_par_K_Grad_par(a_MMS3d,NVi);
+      ddt(NVi) += tmp;
+    }
+
+    
     if (j_diamag) {
       // Magnetic drift
       ddt(NVi) -= fci_curvature(mul_all(NVi , Ti),use_bracket);
     }
 
     // FV with added dissipation
-    if (use_Div_parP_n){
-      NVi_Div_parP_n = Div_parP_n(Ne, Vi, sound_speed, fwd_bndry_mask, bwd_bndry_mask);
-      ddt(NVi) -= NVi_Div_parP_n;
-    } else {
-      auto nvivi = mul_all(NVi,Vi);
-      ddt(NVi) -= Div_par(nvivi);
-    }
+    if (MMS_Ne_ParDiff <= 0.0){
+      if (use_Div_parP_n){
+	NVi_Div_parP_n = Div_parP_n(Ne, Vi, sound_speed, fwd_bndry_mask, bwd_bndry_mask);
+	ddt(NVi) -= NVi_Div_parP_n;
+      } else {
+	auto nvivi = mul_all(NVi,Vi);
+	ddt(NVi) -= Div_par(nvivi);
+      }
 
-    // // straight forward
-    // Field3D nvivi = mul_all(NVi, Vi);
-    // ddt(NVi) -= Div_parP(nvivi);
-    // //  Skew-symmetric form
-    // ddt(NVi) -= 0.5 * (Div_par(mul_all(NVi, Vi)) + Vi * Grad_par(NVi) + NVi *
-    //                        Div_par(Vi));
+    }
 
     // Ignoring polarisation drift for now
     if (pe_par) {
@@ -3709,72 +3726,6 @@ int Hermes::rhs(BoutReal t) {
     ddt(Pe) -= (2. / 3) * Rzrad;
   }
 
-  //////////////////////////////////////////////////////////////
-  // Parallel closures for 2D simulations
-
-  if (sinks) {
-    // Sink terms for 2D simulations
-
-    // Field3D nsink = 0.5*Ne*sqrt(Te)*sink_invlpar;   // n C_s/ (2L)  //
-    // Sound speed flow to targets
-    Field3D nsink = 0.5 * sqrt(Ti) * Ne * sink_invlpar;
-    nsink = floor(nsink, 0.0);
-
-    ddt(Ne) -= nsink;
-
-    ddt(Pe) -=  Te * nsink; // Advection
-        
-
-    if (sheath_closure) {
-      ///////////////////////////
-      // Sheath dissipation closure
-
-      Field3D phi_te = floor(phi / Te, 0.0);
-      Field3D jsheath = Ne * sqrt(Te) *
-                        (1 - (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-phi_te));
-
-      ddt(Vort) += jsheath * sink_invlpar;
-    } else {
-      ///////////////////////////
-      // Vorticity closure
-      ddt(Vort) -= FCIDiv_a_Grad_perp(nsink / SQ(coord->Bxy), phi);
-      // ddt(Vort) -= (nsink / Ne)*Vort;
-      // Note: If nsink = n * nu then this reduces to
-      // ddt(Vort) -= nu * Vort
-    }
-
-    if (drift_wave) {
-      // Include a drift-wave closure in the core region
-      // as in Hasegawa-Wakatani and SOLT models
-
-      Field2D Tedc = DC(Te); // Zonal average
-      Field3D Q = phi - Te * log(Ne);
-
-      // Drift-wave operator
-      Field3D Adw = alpha_dw * pow(Tedc, 1.5) * (Q - DC(Q));
-
-      ddt(Ne) += Adw;
-      ddt(Vort) += Adw;
-    }
-
-    // Electron and ion parallel dynamics not evolved
-  }
-
-  if (low_pass_z >= 0) {
-    // Low pass Z filtering, keeping up to and including low_pass_z
-    ddt(Ne) = lowPass(ddt(Ne), low_pass_z);
-    ddt(Pe) = lowPass(ddt(Pe), low_pass_z);
-
-    if (currents) {
-      ddt(Vort) = lowPass(ddt(Vort), low_pass_z);
-      if (electromagnetic || FiniteElMass) {
-        ddt(VePsi) = lowPass(ddt(VePsi), low_pass_z);
-      }
-    }
-    if (ion_velocity) {
-      ddt(NVi) = lowPass(ddt(NVi), low_pass_z);
-    }
-  }
 
   if (!evolve_plasma) {
     ddt(Ne) = 0.0;
