@@ -72,14 +72,18 @@ private:
   Field3D Ve, Vi, Jpar;  // Electron and ion parallel velocities
   Field3D psi;        // Electromagnetic potential (-A_||)
   Field3D phi;        // Electrostatic potential
+
+
+  // DEBUG VARIABLES
   Field3D a;
   Field3D b;
   Field3D d;
   Field3D debug_visheath,debug_VePsisheath;
   Field3D debug_phisheath;
   Field3D TE_VePsi_pe_par,TE_VePsi_resistivity,TE_VePsi_anom,TE_VePsi_j_par,TE_VePsi_thermal_force,TE_VePsi_par_adv,TE_VePsi_hyper,TE_VePsi_perp,TE_VePsi_numdiff;
+  Field3D TE_Ne_ExB, TE_Ne_parflow,TE_Ne_anom,TE_Ne_dia,TE_Ne_hyper;
   Field3D debug_denom;
-  //Debug variables for the vorticity time evolution
+  
   Field3D vort_dia,vort_ExB,vort_jpar,vort_parflow,vort_anom,vort_hyper;
   
   // Limited variables
@@ -154,7 +158,7 @@ private:
   
   Field3D NVi_Div_parP_n;
 
-  bool TE_VePsi;
+  bool TE_VePsi,TE_Ne;
   BoutReal MMS_Ne_ParDiff;
   // Anomalous perpendicular diffusion coefficients
   BoutReal anomalous_D;    // Density diffusion

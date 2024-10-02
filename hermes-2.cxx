@@ -533,6 +533,7 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, drift_wave, false);
   OPTION(optsc, norm_dxdydz, false);
   OPTION(optsc, TE_VePsi, false);
+  OPTION(optsc, TE_Ne,false);
   
   // Cross-field transport
   classical_diffusion = optsc["classical_diffusion"]
@@ -1374,6 +1375,16 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(TE_VePsi_par_adv);
     SAVE_REPEAT(TE_VePsi_hyper,TE_VePsi_perp,TE_VePsi_numdiff);
   }
+  TE_Ne_ExB = 0.0;
+  TE_Ne_parflow = 0.0;
+  TE_Ne_anom = 0.0;
+  TE_Ne_dia = 0.0;
+  TE_Ne_hyper = 0.0;
+  if (TE_Ne){
+    SAVE_REPEAT(TE_Ne_ExB,TE_Ne_parflow,TE_Ne_anom,TE_Ne_dia,TE_Ne_hyper);
+  }
+
+  
   
   SAVE_REPEAT(a,b,d);
   SAVE_REPEAT(Te, Ti);
@@ -2297,7 +2308,11 @@ int Hermes::rhs(BoutReal t) {
     // ExB drift, only if electric field is evolved
     // ddt(Ne) = bracket(Ne, phi, BRACKET_ARAKAWA) * bracket_factor;
     if (use_Div_n_bxGrad_f_B_XPPM){
-      ddt(Ne) = -Div_n_bxGrad_f_B_XPPM(Ne, phi, ne_bndry_flux, poloidal_flows,true) * bracket_factor;
+      auto tmp = -Div_n_bxGrad_f_B_XPPM(Ne, phi, ne_bndry_flux, poloidal_flows,true) * bracket_factor;
+      if(TE_Ne){
+	TE_Ne_ExB = tmp;
+      }
+      ddt(Ne) = tmp;
     } else {
       ddt(Ne) = -bracket(Ne, phi, BRACKET_ARAKAWA) * bracket_factor;
     }
@@ -2322,7 +2337,12 @@ int Hermes::rhs(BoutReal t) {
       check_all(Vi);
       Field3D nevi = mul_all(Ne, Vi);
       check_all(nevi);
-      ddt(Ne) -= Div_parP(nevi);
+      auto tmp = -Div_parP(nevi);
+      if(TE_Ne){
+	TE_Ne_parflow = tmp;
+      }
+      
+      ddt(Ne) += tmp;
     }
 
   }
@@ -2335,7 +2355,11 @@ int Hermes::rhs(BoutReal t) {
       ddt(Ne) -= fci_curvature(Pe,use_bracket);
     } else {
       mesh->communicate(Pi);
-      ddt(Ne) += fci_curvature(Pi,use_bracket);
+      auto tmp = fci_curvature(Pi,use_bracket);
+      if(TE_Ne){
+	TE_Ne_dia = tmp;
+      }
+      ddt(Ne) += tmp;
     }
   }
 
@@ -2369,23 +2393,24 @@ int Hermes::rhs(BoutReal t) {
     ddt(Ne) += FCIDiv_a_Grad_perp(Ne_tauB2, TiTediff);
   }
   if (anomalous_D > 0.0) {
-    ddt(Ne) += FCIDiv_a_Grad_perp(a_d3d, Ne);
+    auto tmp = FCIDiv_a_Grad_perp(a_d3d, Ne);
+    if (TE_Ne){
+      TE_Ne_anom = tmp;
+    }
+    ddt(Ne) += tmp;
   }
 
   
   ddt(Ne) += NeSource;
 
   if (ne_hyper_z > 0.0) {
-    ddt(Ne) -= ne_hyper_z * (SQ(SQ(coord->dz)))  * D4DZ4(Ne);
+    auto tmp = -ne_hyper_z * (SQ(SQ(coord->dz)))  * D4DZ4(Ne);
+    if (TE_Ne){
+      TE_Ne_hyper = tmp;
+    }
+    ddt(Ne) += tmp;
   }
-  if (ne_num_diff > 0.0) {
-    // Numerical perpendicular diffusion
-    ddt(Ne) += Div_Perp_Lap_FV_Index(ne_num_diff, Ne, ne_bndry_flux);
-  }
-
-  if (ne_num_hyper > 0.0) {
-    ddt(Ne) -= ne_num_hyper * (D4DX4_FV_Index(Ne, true) + D4DZ4_Index(Ne));
-  }
+  
 
   if (numdiff > 0.0) {
     BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")) {
