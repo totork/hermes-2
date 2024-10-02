@@ -478,7 +478,7 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, use_Div_n_bxGrad_f_B_XPPM, true);
   OPTION(optsc, use_bracket, true);
   OPTION(optsc, use_Div_parP_n, true);
-  
+  OPTION(optsc, Ohmslaw_use_ve, false);
   OPTION(optsc, VePsi_perp, true);
 
   thermal_force = optsc["thermal_force"]
@@ -2607,7 +2607,13 @@ int Hermes::rhs(BoutReal t) {
     if (FiniteElMass) {
       // Finite Electron Mass. Small correction needed to conserve energy
       Field3D vdiff = sub_all(Vi,Ve);
-      auto tmp = Vi * Grad_par(vdiff);
+      Field3D tmp = 0.0;
+      if (Ohmslaw_use_ve){
+	tmp = Ve * Grad_par(vdiff);
+      } else {
+	tmp = Vi * Grad_par(vdiff);
+      }
+
       if (TE_VePsi){
 	TE_VePsi_par_adv = tmp;
       }

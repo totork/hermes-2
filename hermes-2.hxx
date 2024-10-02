@@ -155,10 +155,11 @@ private:
   bool norm_dxdydz;
   bool use_Div_parP_n;
   bool conduction_kappagrad;
-  
+  bool Ohmslaw_use_ve;
   Field3D NVi_Div_parP_n;
 
   bool TE_VePsi,TE_Ne;
+  
   BoutReal MMS_Ne_ParDiff;
   // Anomalous perpendicular diffusion coefficients
   BoutReal anomalous_D;    // Density diffusion
