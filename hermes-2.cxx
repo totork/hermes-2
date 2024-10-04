@@ -2404,7 +2404,7 @@ int Hermes::rhs(BoutReal t) {
   ddt(Ne) += NeSource;
 
   if (ne_hyper_z > 0.0) {
-    auto tmp = -ne_hyper_z * (SQ(SQ(coord->dz)))  * D4DZ4(Ne);
+    auto tmp = -ne_hyper_z *( (SQ(SQ(coord->dz)))  * D4DZ4(Ne) + SQ(SQ(coord->dx))*D4DX4(Ne)  );
     if (TE_Ne){
       TE_Ne_hyper = tmp;
     }
@@ -2820,7 +2820,7 @@ int Hermes::rhs(BoutReal t) {
       if (norm_dxdydz){
 	ddt(Pe) -= pe_hyper_z * D4DZ4(Pe);
       } else {
-	ddt(Pe) -= pe_hyper_z * (SQ(SQ(coord->dz)))  * D4DZ4(Pe);
+	ddt(Pe) -= pe_hyper_z * ( (SQ(SQ(coord->dz)))  * D4DZ4(Pe) + SQ(SQ(coord->dx))*D4DX4(Pe)  );
       }
     }
 
@@ -3086,7 +3086,7 @@ int Hermes::rhs(BoutReal t) {
       if (norm_dxdydz){
         ddt(Pi) -= pi_hyper_z * D4DZ4(Pi);
       } else {
-	ddt(Pi) -= pi_hyper_z * (SQ(SQ(coord->dz)))  * D4DZ4(Pi);
+	ddt(Pi) -= pi_hyper_z * ( (SQ(SQ(coord->dz)))  * D4DZ4(Pi) + SQ(SQ(coord->dx))*D4DX4(Pi)  );
       }
     }
 
