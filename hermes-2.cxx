@@ -480,7 +480,7 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, use_Div_parP_n, true);
   OPTION(optsc, Ohmslaw_use_ve, false);
   OPTION(optsc, VePsi_perp, true);
-
+  OPTION(optsc, scale_ExB, 1.0);
   thermal_force = optsc["thermal_force"]
                     .doc("Force on electrons due to temperature gradients")
                     .withDefault<bool>(true);
@@ -1939,10 +1939,16 @@ int Hermes::rhs(BoutReal t) {
   // Calculate the resistivity
   
   Field3D Te32= pow(Te,1.5);
-  mesh->communicate(Te32, Ne, phi, Pe, Vi);
+  Te32.applyBoundary("neumann");
+  mesh->communicate(Te32);
+  Te32.applyParallelBoundary(parbc);
+  
   tau_e = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_e0) , Te32) , Ne);
-  nu = resistivity_multiply / (1.96 * tau_e * mi_me);
 
+  nu = resistivity_multiply / (1.96 * tau_e * mi_me);
+  nu.applyBoundary("neumann");
+  mesh->communicate(nu);
+  nu.applyParallelBoundary(parbc);
 
   
   if (!currents) {
@@ -2018,8 +2024,8 @@ int Hermes::rhs(BoutReal t) {
 
         // tau_e = (Cs0 / rho_s0) * tau_e0 * pow(Te, 1.5) / Ne;
         Field3D Te32= pow(Te,1.5);
+	Te32.applyBoundary("neumann");
         mesh->communicate(Te32, Ne, phi, Pe, Vi);
-
 	tau_e = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_e0) , Te32) , Ne);
 	
 	nu = resistivity_multiply / (1.96 * tau_e * mi_me);
@@ -2251,15 +2257,22 @@ int Hermes::rhs(BoutReal t) {
       kappa_epar.applyBoundary("neumann");
       mesh->communicate(kappa_epar);
       kappa_epar.applyParallelBoundary(parbc);
+      
       Field3D gradTe = Grad_parP(Te);
+      gradTe.applyBoundary("neumann");
       mesh->communicate(gradTe);
       gradTe.applyParallelBoundary(parbc);
+      
       Field3D Te32 = pow(Te,1.5);
+      Te32.applyBoundary("neumann");
       mesh->communicate(Te32);
+      Te32.applyParallelBoundary(parbc);
+      
       Field3D q_SH = mul_all(kappa_epar,gradTe);      
       Field3D q_fl = mul_all(kappa_limit_alpha,mul_all(sqrt(mi_me),mul_all(Ne,Te32)));
       Field3D one;
       set_all(one, 1.0);
+
       Field3D denom = one + abs(div_all(q_SH,q_fl));
       denom.applyBoundary("neumann");
       mesh->communicate(denom);
@@ -2292,8 +2305,6 @@ int Hermes::rhs(BoutReal t) {
     }
   }
 
-  if(currents){ nu.applyBoundary(t); }
-
   if (FiniteElMass){
     Ve = add_all(VePsi , Vi);
   }
@@ -2308,7 +2319,7 @@ int Hermes::rhs(BoutReal t) {
     // ExB drift, only if electric field is evolved
     // ddt(Ne) = bracket(Ne, phi, BRACKET_ARAKAWA) * bracket_factor;
     if (use_Div_n_bxGrad_f_B_XPPM){
-      auto tmp = -Div_n_bxGrad_f_B_XPPM(Ne, phi, ne_bndry_flux, poloidal_flows,true) * bracket_factor;
+      auto tmp = -Div_n_bxGrad_f_B_XPPM(Ne, phi, ne_bndry_flux, poloidal_flows,true) * bracket_factor*scale_ExB;
       if(TE_Ne){
 	TE_Ne_ExB = tmp;
       }
@@ -2450,9 +2461,9 @@ int Hermes::rhs(BoutReal t) {
 
 	  if (use_Div_n_bxGrad_f_B_XPPM){
 	    ddt(Vort) -= Div_n_bxGrad_f_B_XPPM(0.5 * Vort, phi, vort_bndry_flux,
-                                             poloidal_flows, false) * bracket_factor;
+                                             poloidal_flows, false) * bracket_factor * scale_ExB;
 	  } else {
-	    ddt(Vort) -= bracket(0.5*Vort, phi, BRACKET_ARAKAWA) * bracket_factor; 
+	    ddt(Vort) -= bracket(0.5*Vort, phi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB; 
 	  }
 
 
@@ -2475,9 +2486,9 @@ int Hermes::rhs(BoutReal t) {
           // delp2 phi v_ExB term
 	  if (use_Div_n_bxGrad_f_B_XPPM){
 	    ddt(Vort) -= Div_n_bxGrad_f_B_XPPM(DelpPhi_2B2, phi + Pi, vort_bndry_flux,
-                                               poloidal_flows) * bracket_factor;
+                                               poloidal_flows) * bracket_factor * scale_ExB;
 	  } else {
-	    ddt(Vort) -= bracket(DelpPhi_2B2, phi + Pi, BRACKET_ARAKAWA) * bracket_factor;
+	    ddt(Vort) -= bracket(DelpPhi_2B2, phi + Pi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
 	  }
 
 	  
@@ -2494,10 +2505,10 @@ int Hermes::rhs(BoutReal t) {
           // use simplified polarization term from i.e. GBS
 	  if (use_Div_n_bxGrad_f_B_XPPM){
 	    vort_ExB = Div_n_bxGrad_f_B_XPPM(Vort, phi, vort_bndry_flux,
-                                               poloidal_flows, false) * bracket_factor;    
+                                               poloidal_flows, false) * bracket_factor * scale_ExB;    
 	    ddt(Vort) -= vort_ExB;
 	  } else {
-	    vort_ExB = bracket(Vort, phi, BRACKET_ARAKAWA) * bracket_factor;
+	    vort_ExB = bracket(Vort, phi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
 	    ddt(Vort) -= vort_ExB;
 	  }
 
@@ -2621,7 +2632,7 @@ int Hermes::rhs(BoutReal t) {
       //ddt(VePsi) -= bracket(phi, vdiff, BRACKET_ARAKAWA)*bracket_factor;  // ExB advection
 
       if (VePsi_perp){
-	auto tmp = Div_n_bxGrad_f_B_XPPM(VePsi, phi, false,poloidal_flows) * bracket_factor;
+	auto tmp = Div_n_bxGrad_f_B_XPPM(VePsi, phi, false,poloidal_flows) * bracket_factor * scale_ExB;
 	if(TE_VePsi){
 	  TE_VePsi_perp = tmp;
 	}
@@ -2661,9 +2672,9 @@ int Hermes::rhs(BoutReal t) {
       // ExB drift, only if electric field calculated
       if (use_Div_n_bxGrad_f_B_XPPM){
 	ddt(NVi) = -Div_n_bxGrad_f_B_XPPM(NVi, phi, ne_bndry_flux,
-                                        poloidal_flows) * bracket_factor; 
+                                        poloidal_flows) * bracket_factor * scale_ExB; 
       } else {
-	ddt(NVi) = -bracket(NVi, phi, BRACKET_ARAKAWA) * bracket_factor;
+	ddt(NVi) = -bracket(NVi, phi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
       }
 
       
@@ -2738,9 +2749,9 @@ int Hermes::rhs(BoutReal t) {
       if(fci_transform){
          
 	    if (use_Div_n_bxGrad_f_B_XPPM){
-	      ddt(Pe) = -Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux, poloidal_flows, true) * bracket_factor;
+	      ddt(Pe) = -Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux, poloidal_flows, true) * bracket_factor * scale_ExB;
 	    } else {
-	      ddt(Pe) = -bracket(Pe, phi, BRACKET_ARAKAWA) * bracket_factor;
+	      ddt(Pe) = -bracket(Pe, phi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
 	    }
 
 
@@ -3007,9 +3018,9 @@ int Hermes::rhs(BoutReal t) {
       if(fci_transform){
            
 	    if (use_Div_n_bxGrad_f_B_XPPM){
-	      ddt(Pi) = -Div_n_bxGrad_f_B_XPPM(Pi, phi, pe_bndry_flux, poloidal_flows, true) * bracket_factor;
+	      ddt(Pi) = -Div_n_bxGrad_f_B_XPPM(Pi, phi, pe_bndry_flux, poloidal_flows, true) * bracket_factor*scale_ExB;
 	    } else {
-	      ddt(Pi) = -bracket(Pi, phi, BRACKET_ARAKAWA) * bracket_factor;
+	      ddt(Pi) = -bracket(Pi, phi, BRACKET_ARAKAWA) * bracket_factor*scale_ExB;
 	    } 
 	    
       }else{

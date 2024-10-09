@@ -100,7 +100,7 @@ private:
   BoutReal flux_limit_alpha;  // Flux limiter. < 0 disables
   BoutReal kappa_limit_alpha; // Heat flux limiter from SOLPS
   BoutReal eta_limit_alpha;   // Momentum flux limiter from SOLPS
-  
+  BoutReal scale_ExB;
   // Neutral gas model
   NeutralModel *neutrals; // Handles evolution of neutral gas
   bool neutral_friction;
