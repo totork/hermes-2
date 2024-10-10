@@ -2632,7 +2632,7 @@ int Hermes::rhs(BoutReal t) {
       //ddt(VePsi) -= bracket(phi, vdiff, BRACKET_ARAKAWA)*bracket_factor;  // ExB advection
 
       if (VePsi_perp){
-	auto tmp = Div_n_bxGrad_f_B_XPPM(VePsi, phi, false,poloidal_flows) * bracket_factor * scale_ExB;
+	auto tmp = Div_n_bxGrad_f_B_XPPM(vdiff, phi, false,poloidal_flows) * bracket_factor * scale_ExB;
 	if(TE_VePsi){
 	  TE_VePsi_perp = tmp;
 	}
