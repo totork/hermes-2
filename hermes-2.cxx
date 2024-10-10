@@ -2636,7 +2636,7 @@ int Hermes::rhs(BoutReal t) {
 	if(TE_VePsi){
 	  TE_VePsi_perp = tmp;
 	}
-	ddt(VePsi) += tmp;
+	ddt(VePsi) -= tmp;
       }
 
       // Should also have ion polarisation advection here
