@@ -2325,7 +2325,7 @@ int Hermes::rhs(BoutReal t) {
       }
       ddt(Ne) = tmp;
     } else {
-      ddt(Ne) = -bracket(Ne, phi, BRACKET_ARAKAWA) * bracket_factor;
+      ddt(Ne) = -bracket(Ne, phi, BRACKET_ARAKAWA) * bracket_factor*scale_ExB;
     }
     
   } else {
