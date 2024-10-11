@@ -2460,10 +2460,10 @@ int Hermes::rhs(BoutReal t) {
         if (j_pol_pi){
 
 	  if (use_Div_n_bxGrad_f_B_XPPM){
-	    ddt(Vort) -= Div_n_bxGrad_f_B_XPPM(0.5 * Vort, phi, vort_bndry_flux,
+	    vort_ExB = -Div_n_bxGrad_f_B_XPPM(0.5 * Vort, phi, vort_bndry_flux,
                                              poloidal_flows, false) * bracket_factor * scale_ExB;
 	  } else {
-	    ddt(Vort) -= bracket(0.5*Vort, phi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB; 
+	    vort_ExB = -bracket(0.5*Vort, phi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB; 
 	  }
 
 
@@ -2480,17 +2480,18 @@ int Hermes::rhs(BoutReal t) {
             ddt(Vort) -= FCIDiv_a_Grad_perp(0.5 / SQ(coord->Bxy), vEdotGradPi);
           }else{
             Field3D inv_2sqb = 0.5 / SQ(Bxyz);
-            ddt(Vort) -= FCIDiv_a_Grad_perp(inv_2sqb, vEdotGradPi);
+            vort_ExB -= FCIDiv_a_Grad_perp(inv_2sqb, vEdotGradPi);
           }
 
           // delp2 phi v_ExB term
 	  if (use_Div_n_bxGrad_f_B_XPPM){
-	    ddt(Vort) -= Div_n_bxGrad_f_B_XPPM(DelpPhi_2B2, phi + Pi, vort_bndry_flux,
+	    vort_ExB -= Div_n_bxGrad_f_B_XPPM(DelpPhi_2B2, phi + Pi, vort_bndry_flux,
                                                poloidal_flows) * bracket_factor * scale_ExB;
 	  } else {
-	    ddt(Vort) -= bracket(DelpPhi_2B2, phi + Pi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
+	    vort_ExB -= bracket(DelpPhi_2B2, phi + Pi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
 	  }
 
+	  ddt(Vort) += vort_ExB;
 	  
 	  if (parallel_flow && parallel_vort_flow) {
 	    check_all(Ve);
