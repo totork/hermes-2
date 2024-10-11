@@ -2470,10 +2470,15 @@ int Hermes::rhs(BoutReal t) {
 	  
           // V_ExB dot Grad(Pi)
           Field3D vEdotGradPi = bracket(phi, Pi, BRACKET_ARAKAWA) * bracket_factor;
-          vEdotGradPi.applyBoundary("free_o2");
+          vEdotGradPi.applyBoundary("neumann");
+	  mesh->communicate(vEdotGradPi);
+	  vEdotGradPi.applyParallelBoundary(parbc);
+
           // delp2(phi) term
           Field3D DelpPhi_2B2 = 0.5 * Delp2(phi) / SQ(Bxyz);
-          DelpPhi_2B2.applyBoundary("free_o2");
+          DelpPhi_2B2.applyBoundary("neumann");
+	  mesh->communicate(DelpPhi_2B2);
+	  DelpPhi_2B2.applyParallelBoundary(parbc);
 
 
           if(!fci_transform){
@@ -2493,14 +2498,6 @@ int Hermes::rhs(BoutReal t) {
 
 	  ddt(Vort) += vort_ExB;
 	  
-	  if (parallel_flow && parallel_vort_flow) {
-	    check_all(Ve);
-	    Field3D vortve = mul_all(Vort, Ve);
-	    vortve.applyBoundary("neumann_o2");
-	    mesh->communicate(vortve);
-	    vortve.applyParallelBoundary(parbc);
-	    ddt(Vort) -= Div_parP(vortve);
-	  }
 	  
         }else if (j_pol_simplified) {
           // use simplified polarization term from i.e. GBS
@@ -2737,6 +2734,13 @@ int Hermes::rhs(BoutReal t) {
     if (anomalous_nu > 0.0) {
       ddt(NVi) += FCIDiv_a_Grad_perp(mul_all(Ne, a_nu3d), Vi);
     }
+
+    if (VePsi_hyperXZ>0.0){
+      auto tmp = -VePsi_hyperXZ*((SQ(SQ(coord->dx)))*D4DX4(NVi) + (SQ(SQ(coord->dz)))*D4DZ4(NVi));
+
+      ddt(NVi) += tmp;
+    }
+
 
   }
 
