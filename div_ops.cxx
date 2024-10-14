@@ -27,11 +27,11 @@
 
 #include <bout/assert.hxx>
 #include <bout/mesh.hxx>
-#include <derivs.hxx>
-#include <difops.hxx>
-#include <globals.hxx>
-#include <output.hxx>
-#include <utils.hxx>
+#include <bout/derivs.hxx>
+#include <bout/difops.hxx>
+#include <bout/globals.hxx>
+#include <bout/output.hxx>
+#include <bout/utils.hxx>
 
 #include <bout/index_derivs.hxx>
 
@@ -1430,7 +1430,7 @@ Field3D CustomStencil::apply(const Field3D &a, const std::string &region) {
 BoutReal CustomStencil::apply(const Field3D &a, const Ind3D &i) {
   BoutReal result = 0;
   for (size_t c = 0; c < coefs.size(); ++c) {
-    result += coefs[c][i] * a[i.xp(xoffset[c]).zpm(zoffset[c])];
+    result += coefs[c][i] * a[i.offset(xoffset[c], 0, zoffset[c])];
   }
   return result;
 }
