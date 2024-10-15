@@ -1564,7 +1564,7 @@ int Hermes::rhs(BoutReal t) {
   alloc_all(Pe);
   BOUT_FOR(i, Ne.getRegion("RGN_ALL")) {
     // Field3D Ne = floor_all(Ne, 1e-5);
-    floor_all(Ne, 1e-5, i);
+    floor_all(Ne, 1e-2, i);
 
     if (!evolve_te) {
       copy_all(Pe, Ne, i); // Fixed electron temperature
@@ -1603,8 +1603,8 @@ int Hermes::rhs(BoutReal t) {
     for (int j = mesh->ystart; j <= mesh->yend; j++) {
       for (int k = 0; k < mesh->LocalNz; k++) {
         BoutReal ne_bndry = 0.5 * (Ne(1, j, k) + Ne(2, j, k));
-        if (ne_bndry < 1e-5)
-          ne_bndry = 1e-5;
+        if (ne_bndry < 1e-2)
+          ne_bndry = 1e-2;
         BoutReal pe_bndry = 0.5 * (Pe(1, j, k) + Pe(2, j, k));
         BoutReal pi_bndry = 0.5 * (Pi(1, j, k) + Pi(2, j, k));
 
@@ -1630,8 +1630,8 @@ int Hermes::rhs(BoutReal t) {
     for (int j = mesh->ystart; j <= mesh->yend; j++) {
       for (int k = 0; k < mesh->LocalNz; k++) {
         BoutReal ne_bndry = 0.5 * (Ne(n - 1, j, k) + Ne(n - 2, j, k));
-        if (ne_bndry < 1e-5)
-          ne_bndry = 1e-5;
+        if (ne_bndry < 1e-2)
+          ne_bndry = 1e-2;
         BoutReal pe_bndry = 0.5 * (Pe(n - 1, j, k) + Pe(n - 2, j, k));
         BoutReal pi_bndry = 0.5 * (Pi(n - 1, j, k) + Pi(n - 2, j, k));
 
