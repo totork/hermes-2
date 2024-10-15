@@ -3371,21 +3371,7 @@ Field3D Hermes::Grad_parP(const Field3D &f) {
 }
 
 Field3D Hermes::Div_parP(const Field3D &f) {
-  auto* coords = mesh->getCoordinates();
-  Field3D result;
-  result.allocate();
-  const auto fup = f.yup();
-  const auto fdown = f.ydown();
-  BOUT_FOR(i, f.getRegion("RGN_NOBNDRY")) {
-    // for(auto &i : f.getRegion("RGN_NOBNDRY")) {
-    auto yp = i.yp();
-    auto ym = i.ym();
-    result[i] = (fup[yp] / coords->Bxy.yup()[yp] -
-                 fdown[ym] / coords->Bxy.ydown()[ym]) *
-                coords->Bxy[i] / (coords->dy[i] * sqrt(coords->g_22[i]));
-  }
-  return result;
-  //return Div_par(f) + 0.5*beta_e*coord->Bxy*bracket(psi, f/coord->Bxy, BRACKET_ARAKAWA);
+  return Div_par(f);
 }
 
 Field3D MinMod(const Field3D &f) {
