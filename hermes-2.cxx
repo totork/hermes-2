@@ -971,23 +971,18 @@ int Hermes::init(bool restarting) {
   // Normalise
   coord->Bxy /= Bnorm;
   // Metric is in grid file - just need to normalise
-  if (norm_dxdydz){
-    coord->dx /= rho_s0;                                                                                                                                                                                              coord->dy /= rho_s0;                                                                                                                                                                                      
-    coord->dz /= rho_s0;
-  }
   //CONTRAVARIANT
 
-  coord->g11 *= (rho_s0 * rho_s0);
-  coord->g22 *= (rho_s0 * rho_s0);
-  coord->g33 *= (rho_s0 * rho_s0);
-  coord->g12 *= (rho_s0 * rho_s0);
-  coord->g13 *= (rho_s0 * rho_s0);
-  coord->g23 *= (rho_s0 * rho_s0);
-
+  mul_all_inp(coord->g11, rho_s0 * rho_s0);
+  mul_all_inp(coord->g22, rho_s0 * rho_s0);
+  mul_all_inp(coord->g33, rho_s0 * rho_s0);
+  mul_all_inp(coord->g12, rho_s0 * rho_s0);
+  mul_all_inp(coord->g13, rho_s0 * rho_s0);
+  mul_all_inp(coord->g23, rho_s0 * rho_s0);
 
 
   //Jacobi matrix
-  coord->J /= rho_s0 * rho_s0 * rho_s0;
+  div_all_inp(coord->J, rho_s0 * rho_s0 * rho_s0);
   
 
   //LIKE IN D'haeseleer
@@ -998,13 +993,12 @@ int Hermes::init(bool restarting) {
 
   
   //COVARIANT
-  coord->g_11 /= rho_s0 * rho_s0;
-  coord->g_22 /= rho_s0 * rho_s0;                  // In m^2
-  coord->g_33 /= rho_s0 * rho_s0;
-  coord->g_12 /= rho_s0 * rho_s0;
-  coord->g_13 /= rho_s0 * rho_s0;
-  coord->g_23 /= rho_s0 * rho_s0;
-  
+  div_all_inp(coord->g_11, rho_s0 * rho_s0);
+  div_all_inp(coord->g_22, rho_s0 * rho_s0); // In m^2
+  div_all_inp(coord->g_33, rho_s0 * rho_s0);
+  div_all_inp(coord->g_12, rho_s0 * rho_s0);
+  div_all_inp(coord->g_13, rho_s0 * rho_s0);
+  div_all_inp(coord->g_23, rho_s0 * rho_s0);
   
   coord->geometry(); // Calculate other metrics
 
