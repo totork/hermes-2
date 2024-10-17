@@ -73,7 +73,7 @@ private:
   Field3D psi;        // Electromagnetic potential (-A_||)
   Field3D phi;        // Electrostatic potential
 
-
+  
   // DEBUG VARIABLES
   Field3D a;
   Field3D b;
@@ -83,7 +83,7 @@ private:
   Field3D TE_VePsi_pe_par,TE_VePsi_resistivity,TE_VePsi_anom,TE_VePsi_j_par,TE_VePsi_thermal_force,TE_VePsi_par_adv,TE_VePsi_hyper,TE_VePsi_perp,TE_VePsi_numdiff;
   Field3D TE_Ne_ExB, TE_Ne_parflow,TE_Ne_anom,TE_Ne_dia,TE_Ne_hyper;
   Field3D debug_denom;
-  
+  Field3D J_up,J_down;
   Field3D vort_dia,vort_ExB,vort_jpar,vort_parflow,vort_anom,vort_hyper;
   
   // Limited variables

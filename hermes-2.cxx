@@ -983,8 +983,15 @@ int Hermes::init(bool restarting) {
 
   //Jacobi matrix
   div_all_inp(coord->J, rho_s0 * rho_s0 * rho_s0);
-  
 
+  J_up = -1.0;
+  J_down = -1.0;
+
+  for (const auto& ind : Ne.getRegion("RGN_NOBNDRY")) {
+    J_up[ind] = coord->J.yup()[ind];
+    J_down[ind] = coord->J.ydown()[ind];
+  }
+  
   //LIKE IN D'haeseleer
 
   //subscripts = ()_i -> covariant
@@ -1034,7 +1041,7 @@ int Hermes::init(bool restarting) {
     Bxyz = exp_all(logBxyz);
     SAVE_ONCE(Bxyz);
     ASSERT1(min(Bxyz) > 0.0);
-
+    SAVE_ONCE(J_down,J_up);
     fwd_bndry_mask = BoutMask(mesh, false);
     bwd_bndry_mask = BoutMask(mesh, false);
     for (const auto &bndry_par : mesh->getBoundariesPar(BoundaryParType::fwd)) {
@@ -1400,6 +1407,7 @@ int Hermes::init(bool restarting) {
   debug_VePsisheath = 0.0;
   debug_phisheath = 0.0;
   debug_denom = 0.0;
+
   TE_VePsi_pe_par = 0.0;
   TE_VePsi_resistivity = 0.0;
   TE_VePsi_anom = 0.0;
