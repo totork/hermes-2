@@ -530,6 +530,7 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, Ohmslaw_use_ve, false);
   OPTION(optsc, VePsi_perp, true);
   OPTION(optsc, scale_ExB, 1.0);
+  OPTION(optsc, J_equalize, false);
   thermal_force = optsc["thermal_force"]
                     .doc("Force on electrons due to temperature gradients")
                     .withDefault<bool>(true);
@@ -986,7 +987,14 @@ int Hermes::init(bool restarting) {
 
   J_up = -1.0;
   J_down = -1.0;
-
+  if(J_equalize){
+    // CORRECTION FOR WRONG ZOIDBERG, SET THE UP AND DOWN J TO BE THE SAME VALUES AS THE CENTER J
+    for (const auto& ind : Ne.getRegion("RGN_NOBNDRY")) {
+      coord->J.yup()[ind] = coord->J[ind];
+      coord->J.ydown()[ind] = coord->J[ind];
+    }
+  }
+  
   for (const auto& ind : Ne.getRegion("RGN_NOBNDRY")) {
     J_up[ind] = coord->J.yup()[ind];
     J_down[ind] = coord->J.ydown()[ind];

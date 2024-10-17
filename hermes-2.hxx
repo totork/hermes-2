@@ -85,7 +85,7 @@ private:
   Field3D debug_denom;
   Field3D J_up,J_down;
   Field3D vort_dia,vort_ExB,vort_jpar,vort_parflow,vort_anom,vort_hyper;
-  
+  bool J_equalize;
   // Limited variables
   Field3D Telim, Tilim;
 
