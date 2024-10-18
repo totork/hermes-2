@@ -987,26 +987,24 @@ int Hermes::init(bool restarting) {
 
   J_up = -1.0;
   J_down = -1.0;
-  if(J_equalize){
-    // CORRECTION FOR WRONG ZOIDBERG, SET THE UP AND DOWN J TO BE THE SAME VALUES AS THE CENTER J
-    for (const auto& ind : Ne.getRegion("RGN_NOBNDRY")) {
-      coord->J.yup()[ind] = coord->J[ind];
-      coord->J.ydown()[ind] = coord->J[ind];
-    }
-  }
-  
-  for (const auto& ind : Ne.getRegion("RGN_NOBNDRY")) {
-    J_up[ind] = coord->J.yup()[ind];
-    J_down[ind] = coord->J.ydown()[ind];
-  }
-  
+  g_11_up = -1.0;
+  g_11_down = -1.0;
+  g_22_up = -1.0;
+  g_22_down = -1.0;
+  g_33_up = -1.0;
+  g_33_down = -1.0; 
+  g_13_down = -1.0;
+  g_13_up = -1.0;
+  g_12_down = -1.0;
+  g_12_up = -1.0;
+  g_23_down = -1.0;
+  g_23_up = -1.0;
   //LIKE IN D'haeseleer
 
   //subscripts = ()_i -> covariant
 
   //superscripts = ()^j -> contravariant
 
-  
   //COVARIANT
   div_all_inp(coord->g_11, rho_s0 * rho_s0);
   div_all_inp(coord->g_22, rho_s0 * rho_s0); // In m^2
@@ -1014,6 +1012,67 @@ int Hermes::init(bool restarting) {
   div_all_inp(coord->g_12, rho_s0 * rho_s0);
   div_all_inp(coord->g_13, rho_s0 * rho_s0);
   div_all_inp(coord->g_23, rho_s0 * rho_s0);
+
+  if(J_equalize){
+    // CORRECTION FOR WRONG ZOIDBERG, SET THE UP AND DOWN J TO BE THE SAME VALUES AS THE CENTER J                                                                                                                  
+    for (const auto& ind : Ne.getRegion("RGN_NOBNDRY")) {
+      coord->J.yup()[ind] = coord->J[ind];
+      coord->J.ydown()[ind] = coord->J[ind];
+
+      coord->g_11.ydown()[ind] = coord->g_11[ind];
+      coord->g11.ydown()[ind] = coord->g11[ind];
+      coord->g_11.yup()[ind] = coord->g_11[ind];
+      coord->g11.yup()[ind] = coord->g11[ind];
+
+      coord->g_22.ydown()[ind] = coord->g_22[ind];
+      coord->g22.ydown()[ind] = coord->g22[ind];
+      coord->g_22.yup()[ind] = coord->g_22[ind];
+      coord->g22.yup()[ind] = coord->g22[ind];
+
+      coord->g_33.ydown()[ind] = coord->g_33[ind];
+      coord->g33.ydown()[ind] = coord->g33[ind];
+      coord->g_33.yup()[ind] = coord->g_33[ind];
+      coord->g33.yup()[ind] = coord->g33[ind];
+
+      coord->g_13.ydown()[ind] = coord->g_13[ind];
+      coord->g13.ydown()[ind] = coord->g13[ind];
+      coord->g_13.yup()[ind] = coord->g_13[ind];
+      coord->g13.yup()[ind] = coord->g13[ind];
+
+      coord->g_12.ydown()[ind] = coord->g_12[ind];
+      coord->g12.ydown()[ind] = coord->g12[ind];
+      coord->g_12.yup()[ind] = coord->g_12[ind];
+      coord->g12.yup()[ind] = coord->g12[ind];
+
+      coord->g_23.ydown()[ind] = coord->g_23[ind];
+      coord->g23.ydown()[ind] = coord->g23[ind];
+      coord->g_23.yup()[ind] = coord->g_23[ind];
+      coord->g23.yup()[ind] = coord->g23[ind];
+      
+    }
+  }
+
+
+  
+  for (const auto& ind : Ne.getRegion("RGN_NOBNDRY")) {
+    J_up[ind] = coord->J.yup()[ind.yp()];
+    J_down[ind] = coord->J.ydown()[ind.ym()];
+    g_11_up[ind] = coord->g_11.yup()[ind.yp()];
+    g_11_down[ind] = coord->g_11.ydown()[ind.ym()];
+    g_22_up[ind] = coord->g_22.yup()[ind.yp()];
+    g_22_down[ind] = coord->g_22.ydown()[ind.ym()];
+    g_33_up[ind] = coord->g_33.yup()[ind.yp()];
+    g_33_down[ind] = coord->g_33.ydown()[ind.ym()];
+    g_13_up[ind] = coord->g_13.yup()[ind.yp()];
+    g_13_down[ind] = coord->g_13.ydown()[ind.ym()];
+    g_12_up[ind] = coord->g_12.yup()[ind.yp()];
+    g_12_down[ind] = coord->g_12.ydown()[ind.ym()];
+    g_23_up[ind] = coord->g_23.yup()[ind.yp()];
+    g_23_down[ind] = coord->g_23.ydown()[ind.ym()];
+    
+  }
+
+
   
   coord->geometry(); // Calculate other metrics
 
@@ -1049,7 +1108,8 @@ int Hermes::init(bool restarting) {
     Bxyz = exp_all(logBxyz);
     SAVE_ONCE(Bxyz);
     ASSERT1(min(Bxyz) > 0.0);
-    SAVE_ONCE(J_down,J_up);
+    SAVE_ONCE( J_down , J_up , g_11_up , g_11_down , g_22_down , g_22_up , g_33_down , g_33_up);
+    SAVE_ONCE(g_13_down , g_13_up , g_12_down , g_12_up , g_23_down , g_23_up);
     fwd_bndry_mask = BoutMask(mesh, false);
     bwd_bndry_mask = BoutMask(mesh, false);
     for (const auto &bndry_par : mesh->getBoundariesPar(BoundaryParType::fwd)) {
