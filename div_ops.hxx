@@ -58,7 +58,7 @@ const Field3D Div_f_v_no_y(const Field3D& n_in, const Field3D& vx,const Field3D&
 
 const Field3D Div_par_diffusion_index(const Field3D &f, bool bndry_flux=true);
 
-const Field3D Div_n_bxGrad_f_B_XPPM(const Field3D &n, const Field3D &f, bool bndry_flux=true, bool poloidal=false, bool positive=false);
+const Field3D Div_n_bxGrad_f_B_XPPM(const Field3D &n, const Field3D &f, bool bndry_flux, bool poloidal, bool positive, const Field3D &bf);
 
 const Field3D Div_Perp_Lap_FV_Index(const Field3D &a, const Field3D &f, bool xflux);
 

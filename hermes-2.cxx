@@ -2438,7 +2438,7 @@ int Hermes::rhs(BoutReal t) {
     // ExB drift, only if electric field is evolved
     // ddt(Ne) = bracket(Ne, phi, BRACKET_ARAKAWA) * bracket_factor;
     if (use_Div_n_bxGrad_f_B_XPPM){
-      auto tmp = -Div_n_bxGrad_f_B_XPPM(Ne, phi, ne_bndry_flux, poloidal_flows,true) * bracket_factor*scale_ExB;
+      auto tmp = -Div_n_bxGrad_f_B_XPPM(Ne, phi, ne_bndry_flux, poloidal_flows,true,bracket_factor) * scale_ExB;
       if(TE_Ne){
 	TE_Ne_ExB = tmp;
       }
@@ -2578,13 +2578,13 @@ int Hermes::rhs(BoutReal t) {
       // Using the Boussinesq approximation
       if(!fci_transform){
         ddt(Vort) -= Div_n_bxGrad_f_B_XPPM(0.5 * Vort, phi, vort_bndry_flux,
-                                           poloidal_flows, false);
+                                           poloidal_flows, false , bracket_factor);
       }else{//fci used
         if (j_pol_pi){
 
 	  if (use_Div_n_bxGrad_f_B_XPPM){
 	    vort_ExB = -Div_n_bxGrad_f_B_XPPM(0.5 * Vort, phi, vort_bndry_flux,
-                                             poloidal_flows, false) * bracket_factor * scale_ExB;
+					      poloidal_flows, false , bracket_factor) * scale_ExB;
 	  } else {
 	    vort_ExB = -bracket(0.5*Vort, phi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB; 
 	  }
@@ -2614,7 +2614,7 @@ int Hermes::rhs(BoutReal t) {
           // delp2 phi v_ExB term
 	  if (use_Div_n_bxGrad_f_B_XPPM){
 	    vort_ExB -= Div_n_bxGrad_f_B_XPPM(DelpPhi_2B2, phi + Pi, vort_bndry_flux,
-                                               poloidal_flows) * bracket_factor * scale_ExB;
+					      poloidal_flows, false , bracket_factor) * scale_ExB;
 	  } else {
 	    vort_ExB -= bracket(DelpPhi_2B2, phi + Pi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
 	  }
@@ -2626,7 +2626,7 @@ int Hermes::rhs(BoutReal t) {
           // use simplified polarization term from i.e. GBS
 	  if (use_Div_n_bxGrad_f_B_XPPM){
 	    vort_ExB = Div_n_bxGrad_f_B_XPPM(Vort, phi, vort_bndry_flux,
-                                               poloidal_flows, false) * bracket_factor * scale_ExB;    
+					     poloidal_flows, false , bracket_factor) * scale_ExB;    
 	    ddt(Vort) -= vort_ExB;
 	  } else {
 	    vort_ExB = bracket(Vort, phi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
@@ -2753,7 +2753,7 @@ int Hermes::rhs(BoutReal t) {
       //ddt(VePsi) -= bracket(phi, vdiff, BRACKET_ARAKAWA)*bracket_factor;  // ExB advection
 
       if (VePsi_perp){
-	auto tmp = Div_n_bxGrad_f_B_XPPM(VePsi, phi, false,poloidal_flows) * bracket_factor * scale_ExB;
+	auto tmp = Div_n_bxGrad_f_B_XPPM(VePsi, phi, false,poloidal_flows , false, bracket_factor) * scale_ExB;
 	if(TE_VePsi){
 	  TE_VePsi_perp = tmp;
 	}
@@ -2793,7 +2793,7 @@ int Hermes::rhs(BoutReal t) {
       // ExB drift, only if electric field calculated
       if (use_Div_n_bxGrad_f_B_XPPM){
 	ddt(NVi) = -Div_n_bxGrad_f_B_XPPM(NVi, phi, ne_bndry_flux,
-                                        poloidal_flows) * bracket_factor * scale_ExB; 
+					  poloidal_flows , false , bracket_factor) * scale_ExB; 
       } else {
 	ddt(NVi) = -bracket(NVi, phi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
       }
@@ -2877,7 +2877,7 @@ int Hermes::rhs(BoutReal t) {
       if(fci_transform){
          
 	    if (use_Div_n_bxGrad_f_B_XPPM){
-	      ddt(Pe) = -Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux, poloidal_flows, true) * bracket_factor * scale_ExB;
+	      ddt(Pe) = -Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux, poloidal_flows, true , bracket_factor) * scale_ExB;
 	    } else {
 	      ddt(Pe) = -bracket(Pe, phi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
 	    }
@@ -2886,7 +2886,7 @@ int Hermes::rhs(BoutReal t) {
 	    
       }else{
 	if (use_Div_n_bxGrad_f_B_XPPM){
-	  ddt(Pe) = -Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux, poloidal_flows, true) * bracket_factor;
+	  ddt(Pe) = -Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux, poloidal_flows, true , bracket_factor);
 	} else {
 	  ddt(Pe) = -bracket(Pe, phi, BRACKET_ARAKAWA) * bracket_factor;
 	}
@@ -3146,14 +3146,14 @@ int Hermes::rhs(BoutReal t) {
       if(fci_transform){
            
 	    if (use_Div_n_bxGrad_f_B_XPPM){
-	      ddt(Pi) = -Div_n_bxGrad_f_B_XPPM(Pi, phi, pe_bndry_flux, poloidal_flows, true) * bracket_factor*scale_ExB;
+	      ddt(Pi) = -Div_n_bxGrad_f_B_XPPM(Pi, phi, pe_bndry_flux, poloidal_flows, true , bracket_factor) * scale_ExB;
 	    } else {
 	      ddt(Pi) = -bracket(Pi, phi, BRACKET_ARAKAWA) * bracket_factor*scale_ExB;
 	    } 
 	    
       }else{
             // Divergence of heat flux due to ExB advection
-            ddt(Pi) = -Div_n_bxGrad_f_B_XPPM(Pi, phi, pe_bndry_flux, poloidal_flows, true);
+	ddt(Pi) = -Div_n_bxGrad_f_B_XPPM(Pi, phi, pe_bndry_flux, poloidal_flows, true, bracket_factor);
       }
     } else {
       ddt(Pi) = 0.0;
