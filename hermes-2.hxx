@@ -78,7 +78,7 @@ private:
   Field3D a;
   Field3D b;
   Field3D d;
-  Field3D debug_visheath,debug_VePsisheath;
+  Field3D debug_visheath,debug_VePsisheath,debug_vesheath;
   Field3D debug_phisheath;
   Field3D TE_VePsi_pe_par,TE_VePsi_resistivity,TE_VePsi_anom,TE_VePsi_j_par,TE_VePsi_thermal_force,TE_VePsi_par_adv,TE_VePsi_hyper,TE_VePsi_perp,TE_VePsi_numdiff;
   Field3D TE_Ne_ExB, TE_Ne_parflow,TE_Ne_anom,TE_Ne_dia,TE_Ne_hyper;
