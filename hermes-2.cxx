@@ -1476,6 +1476,7 @@ int Hermes::init(bool restarting) {
   vort_hyper = 0.0;
   vort_anom = 0.0;
   debug_visheath = 0.0;
+  debug_soundspeed = 0.0;
   debug_VePsisheath = 0.0;
   debug_phisheath = 0.0;
   debug_denom = 0.0;
@@ -1515,7 +1516,7 @@ int Hermes::init(bool restarting) {
   if (verbose) {
     // Save additional fields
     SAVE_REPEAT(Jpar); // Parallel current
-
+    SAVE_REPEAT(debug_soundspeed);
     SAVE_REPEAT(tau_e, tau_i);
 
     if(kappa_limit_alpha>0.0){
@@ -1722,7 +1723,10 @@ int Hermes::rhs(BoutReal t) {
       sound_speed[i] = floor(sound_speed[i], floor_num_cs);
     }
   }
-
+  if(verbose){
+    debug_soundspeed = sound_speed;
+  }
+  
   // Set radial boundary conditions on Te, Ti, Vi
   //
   if (mesh->firstX()) {
