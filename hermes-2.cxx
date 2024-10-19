@@ -1477,6 +1477,7 @@ int Hermes::init(bool restarting) {
   vort_anom = 0.0;
   debug_visheath = 0.0;
   debug_vesheath = 0.0;
+  debug_sheathexp = 0.0;
   debug_soundspeed = 0.0;
   debug_VePsisheath = 0.0;
   debug_phisheath = 0.0;
@@ -1533,7 +1534,7 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(vort_jpar);
     SAVE_REPEAT(vort_anom);
     SAVE_REPEAT(vort_hyper);
-    SAVE_REPEAT(debug_visheath,debug_vesheath);
+    SAVE_REPEAT(debug_visheath,debug_vesheath,debug_sheathexp);
     SAVE_REPEAT(NVi_Div_parP_n);
     SAVE_REPEAT(debug_phisheath);
     SAVE_REPEAT(debug_VePsisheath);
@@ -2249,8 +2250,9 @@ int Hermes::rhs(BoutReal t) {
 
           BoutReal vesheath =
             bndry_par->dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-phi_te);
-
+	  
 	  if (verbose){
+	    debug_sheathexp(x,y,z) = exp(-phi_te);
 	    debug_vesheath(x,y,z) = vesheath;
 	  }
           // J = n*(Vi - Ve)
