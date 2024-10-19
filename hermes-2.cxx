@@ -531,6 +531,7 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, VePsi_perp, true);
   OPTION(optsc, scale_ExB, 1.0);
   OPTION(optsc, J_equalize, false);
+  OPTION(optsc, VorticitySource, false);
   thermal_force = optsc["thermal_force"]
                     .doc("Force on electrons due to temperature gradients")
                     .withDefault<bool>(true);
@@ -790,6 +791,9 @@ int Hermes::init(bool restarting) {
   NeSource /= Omega_ci;
   Sn = NeSource;
 
+  auto& optvort = opt["Vort"];
+  VortSource = optvort["source"].doc("Additional vorticity source").withDefault(Field3D{0.0});
+  
   // Inflowing density carries momentum
   OPTION(optne, density_inflow, false);
 
@@ -1546,6 +1550,9 @@ int Hermes::init(bool restarting) {
 
     // Sources added to Ne, Pe and Pi equations
     SAVE_REPEAT(NeSource, PeSource, PiSource);
+    if(VorticitySource){
+      SAVE_REPEAT(VortSource);
+    }
   }
 
   zero_all(phi);
@@ -2679,6 +2686,10 @@ int Hermes::rhs(BoutReal t) {
       auto tmp = -z_hyper_viscos * SQ(SQ(coord->dz)) * D4DZ4(Vort);
       vort_hyper += tmp;
       ddt(Vort) += tmp;
+    }
+
+    if(VorticitySource){
+      ddt(Vort) += VortSource;
     }
   }
 
