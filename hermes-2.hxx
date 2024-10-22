@@ -244,6 +244,9 @@ private:
 
   bool bool_VePsi_hyper,bool_NVi_hyper;
   Field3D VePsi_hyper, NVi_hyper;
+
+  bool bool_Vort_hyper;
+  Field3D Vort_hyper;
   
   BoutReal scale_num_cs; // Scale numerical sound speed
   BoutReal floor_num_cs; // Apply a floor to the numerical sound speed

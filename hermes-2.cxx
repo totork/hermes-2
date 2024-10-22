@@ -812,6 +812,16 @@ int Hermes::init(bool restarting) {
   }
   SAVE_ONCE(NVi_hyper);
 
+  OPTION(optsc, bool_Vort_hyper, false);
+  Vort_hyper = optsc["Vort_hyper"].doc("Hyperdiffusion of vorticity").withDefault(Field3D{0.0});
+  if(bool_Vort_hyper ){
+    Vort_hyper.applyBoundary("neumann_o2");
+    mesh->communicate(Vort_hyper);
+    Vort_hyper.applyParallelBoundary(parbc);
+  }
+  SAVE_ONCE(Vort_hyper);
+
+  
   
   if (ramp_mesh) {
     Jpar0 = 0.0;
@@ -2770,18 +2780,12 @@ int Hermes::rhs(BoutReal t) {
       // Sink of vorticity due to ion-neutral friction
       ddt(Vort) -= ion_neutral_rate * Vort;
     }
-    
-    if (x_hyper_viscos > 0) {
-      vort_hyper = -x_hyper_viscos * SQ(SQ(coord->dx)) * D4DX4(Vort);;
+   
+    if(bool_Vort_hyper){
+      vort_hyper = -Vort_hyper * (SQ(SQ(coord->dz)) * D4DZ4(Vort) + SQ(SQ(coord->dx)) * D4DX4(Vort));
       ddt(Vort) += vort_hyper;
     }
-
-    if (z_hyper_viscos > 0) {
-      auto tmp = -z_hyper_viscos * SQ(SQ(coord->dz)) * D4DZ4(Vort);
-      vort_hyper += tmp;
-      ddt(Vort) += tmp;
-    }
-
+    
     if(VorticitySource){
       ddt(Vort) += VortSource;
     }
