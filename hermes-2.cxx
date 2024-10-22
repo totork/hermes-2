@@ -641,9 +641,9 @@ int Hermes::init(bool restarting) {
                      .doc("Numerical Ve hyper-diffusion in X-Z plane. < 0 => off.")
                      .withDefault(-1.0);
 
-  OPTION(optsc, ne_hyper_z, -1.0);
-  OPTION(optsc, pe_hyper_z, -1.0);
-  OPTION(optsc, pi_hyper_z, -1.0);
+
+
+  
   OPTION(optsc, low_n_diffuse, false);
   OPTION(optsc, low_n_diffuse_perp, false);
 
@@ -763,6 +763,39 @@ int Hermes::init(bool restarting) {
     a_nu3d.ydown() = anomalous_D;
   }
 
+  OPTION(optsc, bool_ne_hyper, false);
+  ne_hyper = optsc["ne_hyper"].doc("Hyperdiffusion of density").withDefault(Field3D{0.0});
+  if(bool_ne_hyper){
+    //ne_hyper /= rho_s0*rho_s0*Omega_ci;
+    ne_hyper.applyBoundary("neumann_o2");
+    mesh->communicate(ne_hyper);
+    ne_hyper.applyParallelBoundary(parbc);
+  }
+  SAVE_ONCE(ne_hyper);
+  
+  OPTION(optsc, bool_pe_hyper, false);
+  pe_hyper = optsc["pe_hyper"].doc("Hyperdiffusion of electron pressure").withDefault(Field3D{0.0});
+  if(bool_pe_hyper){
+    //pe_hyper /=	rho_s0*rho_s0*Omega_ci;
+    pe_hyper.applyBoundary("neumann_o2");
+    mesh->communicate(pe_hyper);
+    pe_hyper.applyParallelBoundary(parbc);
+  }
+  SAVE_ONCE(pe_hyper);
+
+  OPTION(optsc, bool_pi_hyper, false);
+  pi_hyper = optsc["pi_hyper"].doc("Hyperdiffusion of ion pressure").withDefault(Field3D{0.0});
+  if(bool_pi_hyper ){
+    //pi_hyper /=	rho_s0*rho_s0*Omega_ci;
+    pi_hyper.applyBoundary("neumann_o2");
+    mesh->communicate(pi_hyper);
+    pi_hyper.applyParallelBoundary(parbc);
+  }
+  SAVE_ONCE(pi_hyper);
+
+
+
+  
   if (ramp_mesh) {
     Jpar0 = 0.0;
   } else {
@@ -2588,8 +2621,8 @@ int Hermes::rhs(BoutReal t) {
   
   ddt(Ne) += NeSource;
 
-  if (ne_hyper_z > 0.0) {
-    auto tmp = -ne_hyper_z *( (SQ(SQ(coord->dz)))  * D4DZ4(Ne) + SQ(SQ(coord->dx))*D4DX4(Ne)  );
+  if (bool_ne_hyper) {
+    auto tmp = -ne_hyper * ( (SQ(SQ(coord->dz)))  * D4DZ4(Ne) + SQ(SQ(coord->dx))*D4DX4(Ne)  );
     if (TE_Ne){
       TE_Ne_hyper = tmp;
     }
@@ -3012,13 +3045,10 @@ int Hermes::rhs(BoutReal t) {
       ddt(Pe) += TE_Pe_ohmic;
     }
 
-    if (pe_hyper_z > 0.0) {
-      if (norm_dxdydz){
-	ddt(Pe) -= pe_hyper_z * D4DZ4(Pe);
-      } else {
-	TE_Pe_hyper = -pe_hyper_z * ( (SQ(SQ(coord->dz)))  * D4DZ4(Pe) + SQ(SQ(coord->dx))*D4DX4(Pe)  );
-	ddt(Pe) += TE_Pe_hyper;
-      }
+    if (bool_pe_hyper) {
+      auto tmp = ( (SQ(SQ(coord->dz)))  * D4DZ4(Pe) + SQ(SQ(coord->dx))*D4DX4(Pe)  );
+      TE_Pe_hyper = -pe_hyper * tmp;
+      ddt(Pe) += TE_Pe_hyper;
     }
 
     ///////////////////////////////////
@@ -3280,12 +3310,9 @@ int Hermes::rhs(BoutReal t) {
     }
 
 
-    if (pi_hyper_z > 0.0) {
-      if (norm_dxdydz){
-        ddt(Pi) -= pi_hyper_z * D4DZ4(Pi);
-      } else {
-	ddt(Pi) -= pi_hyper_z * ( (SQ(SQ(coord->dz)))  * D4DZ4(Pi) + SQ(SQ(coord->dx))*D4DX4(Pi)  );
-      }
+    if (bool_pi_hyper) {
+      auto tmp = -pi_hyper * ( (SQ(SQ(coord->dz)))  * D4DZ4(Pi) + SQ(SQ(coord->dx))*D4DX4(Pi)  );
+      ddt(Pi) += tmp;
     }
 
     //////////////////////

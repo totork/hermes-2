@@ -238,8 +238,8 @@ private:
   BoutReal z_hyper_viscos, x_hyper_viscos, y_hyper_viscos; // 4th-order derivatives
   bool low_n_diffuse; // Diffusion in parallel direction at low density
   bool low_n_diffuse_perp; // Diffusion in perpendicular direction at low density
-  BoutReal ne_hyper_z, pe_hyper_z; // Hyper-diffusion
-  BoutReal pi_hyper_z;
+  bool bool_ne_hyper, bool_pe_hyper, bool_pi_hyper;
+  Field3D ne_hyper, pe_hyper,pi_hyper; // Hyper-diffusion
   BoutReal scale_num_cs; // Scale numerical sound speed
   BoutReal floor_num_cs; // Apply a floor to the numerical sound speed
   bool vepsi_dissipation; // Dissipation term in VePsi equation
