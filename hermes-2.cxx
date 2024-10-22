@@ -792,8 +792,25 @@ int Hermes::init(bool restarting) {
     pi_hyper.applyParallelBoundary(parbc);
   }
   SAVE_ONCE(pi_hyper);
+  
+  OPTION(optsc, bool_VePsi_hyper, false);
+  VePsi_hyper = optsc["VePsi_hyper"].doc("Hyperdiffusion of VePsi").withDefault(Field3D{0.0});
+  if(bool_VePsi_hyper ){
+    //pi_hyper /=       rho_s0*rho_s0*Omega_ci;                                                                                                                                                            
+    VePsi_hyper.applyBoundary("neumann_o2");
+    mesh->communicate(VePsi_hyper);
+    VePsi_hyper.applyParallelBoundary(parbc);
+  }
+  SAVE_ONCE(VePsi_hyper);
 
-
+  OPTION(optsc, bool_NVi_hyper, false);
+  NVi_hyper = optsc["NVi_hyper"].doc("Hyperdiffusion of ion momentum").withDefault(Field3D{0.0});
+  if(bool_NVi_hyper ){
+    NVi_hyper.applyBoundary("neumann_o2");
+    mesh->communicate(NVi_hyper);
+    NVi_hyper.applyParallelBoundary(parbc);
+  }
+  SAVE_ONCE(NVi_hyper);
 
   
   if (ramp_mesh) {
@@ -2861,8 +2878,8 @@ int Hermes::rhs(BoutReal t) {
       }
     }
 
-    if (VePsi_hyperXZ>0.0){
-      auto tmp = -VePsi_hyperXZ*((SQ(SQ(coord->dx)))*D4DX4(VePsi) + (SQ(SQ(coord->dz)))*D4DZ4(VePsi));
+    if (bool_VePsi_hyper){
+      auto tmp = -VePsi_hyper*((SQ(SQ(coord->dx)))*D4DX4(VePsi) + (SQ(SQ(coord->dz)))*D4DZ4(VePsi));
       if(TE_VePsi){
 	TE_VePsi_hyper = tmp;
       }
@@ -2946,8 +2963,8 @@ int Hermes::rhs(BoutReal t) {
       ddt(NVi) += FCIDiv_a_Grad_perp(mul_all(Ne, a_nu3d), Vi);
     }
 
-    if (VePsi_hyperXZ>0.0){
-      auto tmp = -VePsi_hyperXZ*((SQ(SQ(coord->dx)))*D4DX4(NVi) + (SQ(SQ(coord->dz)))*D4DZ4(NVi));
+    if (bool_NVi_hyper){
+      auto tmp = -NVi_hyper*((SQ(SQ(coord->dx)))*D4DX4(NVi) + (SQ(SQ(coord->dz)))*D4DZ4(NVi));
 
       ddt(NVi) += tmp;
     }
