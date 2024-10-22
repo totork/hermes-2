@@ -584,7 +584,8 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, drift_wave, false);
   OPTION(optsc, norm_dxdydz, false);
   OPTION(optsc, TE_VePsi, false);
-  OPTION(optsc, TE_Ne,false);
+  OPTION(optsc, TE_Ne, false);
+  OPTION(optsc, TE_Pe, false);
   
   // Cross-field transport
   classical_diffusion = optsc["classical_diffusion"]
@@ -1510,6 +1511,23 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(TE_Ne_ExB,TE_Ne_parflow,TE_Ne_anom,TE_Ne_dia,TE_Ne_hyper);
   }
 
+  TE_Pe_ExB = 0.0;
+  TE_Pe_parflow = 0.0;
+  TE_Pe_anom = 0.0;
+  TE_Pe_dia = 0.0;
+  TE_Pe_hyper = 0.0;
+  TE_Pe_energ_balance = 0.0;
+  TE_Pe_cond = 0.0;
+  TE_Pe_thermal_flux = 0.0;
+  TE_Pe_ohmic = 0.0;
+  TE_Pe_thermal_force = 0.0;
+  TE_Pe_par_p_term = 0.0;
+  if (TE_Pe){
+    SAVE_REPEAT(TE_Pe_ExB, TE_Pe_parflow, TE_Pe_anom, TE_Pe_dia, TE_Pe_hyper, TE_Pe_energ_balance);
+    SAVE_REPEAT(TE_Pe_cond, TE_Pe_thermal_flux, TE_Pe_ohmic, TE_Pe_thermal_force, TE_Pe_par_p_term);
+  }
+
+  
   
   
   SAVE_REPEAT(a,b,d);
