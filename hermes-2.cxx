@@ -1522,9 +1522,10 @@ int Hermes::init(bool restarting) {
   TE_Pe_ohmic = 0.0;
   TE_Pe_thermal_force = 0.0;
   TE_Pe_par_p_term = 0.0;
+  TE_Pe_numdiff = 0.0;
   if (TE_Pe){
     SAVE_REPEAT(TE_Pe_ExB, TE_Pe_parflow, TE_Pe_anom, TE_Pe_dia, TE_Pe_hyper, TE_Pe_energ_balance);
-    SAVE_REPEAT(TE_Pe_cond, TE_Pe_thermal_flux, TE_Pe_ohmic, TE_Pe_thermal_force, TE_Pe_par_p_term);
+    SAVE_REPEAT(TE_Pe_cond, TE_Pe_thermal_flux, TE_Pe_ohmic, TE_Pe_thermal_force, TE_Pe_par_p_term,TE_Pe_numdiff);
   }
 
   
@@ -2916,9 +2917,11 @@ int Hermes::rhs(BoutReal t) {
       if(fci_transform){
          
 	    if (use_Div_n_bxGrad_f_B_XPPM){
-	      ddt(Pe) = -Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux, poloidal_flows, true , bracket_factor) * scale_ExB;
+	      TE_Pe_ExB = -Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux, poloidal_flows, true , bracket_factor) * scale_ExB;
+	      ddt(Pe) = TE_Pe_ExB;
 	    } else {
-	      ddt(Pe) = -bracket(Pe, phi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
+	      TE_Pe_ExB = -bracket(Pe, phi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
+	      ddt(Pe) = TE_Pe_ExB;
 	    }
 
 
@@ -2943,10 +2946,8 @@ int Hermes::rhs(BoutReal t) {
         check_all(Pe);
         check_all(Ve);
         Field3D peve = mul_all(Pe,Ve);
-        Field3D tmp = Div_parP(peve);
-        tmp.name = "Div_parP(peve)";
-	d = -tmp;
-        ddt(Pe) -= tmp;
+        TE_Pe_parflow = -Div_parP(peve);
+        ddt(Pe) += TE_Pe_parflow;
       } else {
         if (currents) {
           ddt(Pe) -= FV::Div_par(Pe, Ve, sqrt(mi_me) * sound_speed);
@@ -2958,22 +2959,22 @@ int Hermes::rhs(BoutReal t) {
 
     if (j_diamag) { // Diamagnetic flow
       // Magnetic drift (curvature) divergence.
-      ddt(Pe) += (5. / 3) * fci_curvature(mul_all(Pe , Te),use_bracket);
+      TE_Pe_dia = (5. / 3) * fci_curvature(mul_all(Pe , Te),use_bracket);
+      ddt(Pe) += TE_Pe_dia;
 
       // This term energetically balances diamagnetic term
       // in the vorticity equation
       // ddt(Pe) -= (2. / 3) * Pe * (Curlb_B * Grad(phi));
-      ddt(Pe) -= (2. / 3) * Pe * fci_curvature(phi,use_bracket);
+      TE_Pe_energ_balance = -(2. / 3) * Pe * fci_curvature(phi,use_bracket);
+      ddt(Pe) += TE_Pe_energ_balance;
     }
 
     // Parallel heat conduction
     if (thermal_conduction) {
       if (fci_transform) {
-        check_all(kappa_epar);
-        auto tmp = (2. / 3) * Div_par_K_Grad_par(kappa_epar, Te);
-        tmp.name = "(2. / 3) * Div_par_K_Grad_par(kappa_epar, Te);";
-	a = tmp;
-	ddt(Pe) += tmp;
+        //check_all(kappa_epar);
+        TE_Pe_cond = (2. / 3) * Div_par_K_Grad_par(kappa_epar, Te);
+        ddt(Pe) += TE_Pe_cond;
       } else {
         ddt(Pe) += (2. / 3) * FV::Div_par_K_Grad_par(kappa_epar, Te);
       }
@@ -2983,7 +2984,8 @@ int Hermes::rhs(BoutReal t) {
       // Parallel heat convection
       if (fci_transform) {
         Field3D tejpar = mul_all(Te,Jpar);
-        ddt(Pe) += (2. / 3) * 0.71 * Div_parP(tejpar);
+	TE_Pe_thermal_flux = (2. / 3) * 0.71 * Div_parP(tejpar);
+        ddt(Pe) += TE_Pe_thermal_flux;
       } else {
         ddt(Pe) += (2. / 3) * 0.71 * Div_par(Te * Jpar);
       }
@@ -2991,14 +2993,16 @@ int Hermes::rhs(BoutReal t) {
 
     if (currents && resistivity) {
       // Ohmic heating
-      ddt(Pe) += nu * Jpar * (Jpar - Jpar0) / Ne;
+      TE_Pe_ohmic = nu * Jpar * (Jpar - Jpar0) / Ne;
+      ddt(Pe) += TE_Pe_ohmic;
     }
 
     if (pe_hyper_z > 0.0) {
       if (norm_dxdydz){
 	ddt(Pe) -= pe_hyper_z * D4DZ4(Pe);
       } else {
-	ddt(Pe) -= pe_hyper_z * ( (SQ(SQ(coord->dz)))  * D4DZ4(Pe) + SQ(SQ(coord->dx))*D4DX4(Pe)  );
+	TE_Pe_hyper = -pe_hyper_z * ( (SQ(SQ(coord->dz)))  * D4DZ4(Pe) + SQ(SQ(coord->dx))*D4DX4(Pe)  );
+	ddt(Pe) += TE_Pe_hyper;
       }
     }
 
@@ -3056,17 +3060,16 @@ int Hermes::rhs(BoutReal t) {
 
     // Transfer and source terms
     if (thermal_force) {
-      auto tmp = (2. / 3) * 0.71 * Jpar * Grad_parP(Te);
-      tmp.name = "thermal force";
-      ddt(Pe) -= tmp;
+      TE_Pe_thermal_force = -(2. / 3) * 0.71 * Jpar * Grad_parP(Te);
+      
+      ddt(Pe) += TE_Pe_thermal_force;
     }
 
     if (pe_par_p_term) {
       // This term balances energetically the pressure term
       // in Ohm's law
-      auto tmp = (2. / 3) * Pe * Div_parP(Ve);
-      b = -tmp;
-      ddt(Pe) -= tmp;
+      TE_Pe_par_p_term = -(2. / 3) * Pe * Div_parP(Ve);
+      ddt(Pe) += TE_Pe_par_p_term;
     }
 
     //////////////////////
@@ -3085,19 +3088,21 @@ int Hermes::rhs(BoutReal t) {
 
     //////////////////////
     // Anomalous diffusion
-
+    TE_Pe_anom = 0.0;
     if ((anomalous_D > 0.0) && anomalous_D_pepi) {
-      ddt(Pe) += FCIDiv_a_Grad_perp(mul_all(a_d3d, Te), Ne);
+      TE_Pe_anom += FCIDiv_a_Grad_perp(mul_all(a_d3d, Te), Ne);
     }
     if (anomalous_chi > 0.0) {
-      ddt(Pe) += (2. / 3) * FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Te);
+      TE_Pe_anom += (2. / 3) * FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Te);
     }
+    ddt(Pe) += TE_Pe_anom;
 
     // hyper diffusion
     if (numdiff > 0.0) {
       BOUT_FOR(i, Pe.getRegion("RGN_NOBNDRY")) {
-        ddt(Pe)[i] += numdiff*(Pe.ydown()[i.ym()] - 2.*Pe[i] + Pe.yup()[i.yp()]);
+	TE_Pe_numdiff[i] = numdiff*(Pe.ydown()[i.ym()] - 2.*Pe[i] + Pe.yup()[i.yp()]);
       }
+      ddt(Pe) += TE_Pe_numdiff;
     }
 
     //////////////////////
