@@ -532,6 +532,8 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, scale_ExB, 1.0);
   OPTION(optsc, J_equalize, false);
   OPTION(optsc, VorticitySource, false);
+  OPTION(optsc, floor_kappa_ipar, -1.0);
+  OPTION(optsc, floor_kappa_epar,-1.0);
   thermal_force = optsc["thermal_force"]
                     .doc("Force on electrons due to temperature gradients")
                     .withDefault<bool>(true);
@@ -1725,7 +1727,7 @@ int Hermes::rhs(BoutReal t) {
 
     floor_all(Te, 0.01, i);
     // ASSERT0(Te[i] > 1e-10);
-
+    
     mul_all(Pe, Te, Ne, i);
 
     if (!evolve_ti) {
@@ -2459,7 +2461,20 @@ int Hermes::rhs(BoutReal t) {
       }
     }
   }
+  
+  if(floor_kappa_epar>0.0){
+    BOUT_FOR(i, Te.getRegion("RGN_ALL")){
+      floor_all(kappa_epar,floor_kappa_epar,i);
+    } 
+  }
 
+  if(floor_kappa_ipar>0.0){
+    BOUT_FOR(i, Te.getRegion("RGN_ALL")){
+      floor_all(kappa_ipar,floor_kappa_ipar,i);
+    }
+  }
+
+  
   if (FiniteElMass){
     Ve = add_all(VePsi , Vi);
   }
@@ -2496,17 +2511,17 @@ int Hermes::rhs(BoutReal t) {
   // Parallel flow
   if (parallel_flow) {
  
-    check_all(Ne);
-
+    //check_all(Ne);
+ 
     if (!evolve_ni) {
-      check_all(Ve);
+      //check_all(Ve);
       Field3D neve = mul_all(Ne, Ve);
-      check_all(neve);
+      //check_all(neve);
       ddt(Ne) -= Div_parP(neve);
     } else {
-      check_all(Vi);
+      //check_all(Vi);
       Field3D nevi = mul_all(Ne, Vi);
-      check_all(nevi);
+      //check_all(nevi);
       auto tmp = -Div_parP(nevi);
       if(TE_Ne){
 	TE_Ne_parflow = tmp;
@@ -2943,8 +2958,8 @@ int Hermes::rhs(BoutReal t) {
     if (parallel_flow_p_term) {
       // Parallel flow
       if (fci_transform){
-        check_all(Pe);
-        check_all(Ve);
+        //check_all(Pe);
+        //check_all(Ve);
         Field3D peve = mul_all(Pe,Ve);
         TE_Pe_parflow = -Div_parP(peve);
         ddt(Pe) += TE_Pe_parflow;
@@ -3206,8 +3221,8 @@ int Hermes::rhs(BoutReal t) {
     // Parallel flow
     if (parallel_flow_p_term) {
       if (fci_transform) {
-        check_all(Pi);
-        check_all(Vi);
+        //check_all(Pi);
+        //check_all(Vi);
         Field3D pivi = mul_all(Pi,Vi);
         ddt(Pi) -= Div_parP(pivi);
       } else {
