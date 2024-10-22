@@ -1785,7 +1785,7 @@ int Hermes::rhs(BoutReal t) {
     /// printf("%f\n", Te[i]);
     div_all(Vi, NVi, Ne, i);
 
-    floor_all(Te, 0.01, i);
+    floor_all(Te, 0.05, i);
     // ASSERT0(Te[i] > 1e-10);
     
     mul_all(Pe, Te, Ne, i);
@@ -1795,7 +1795,7 @@ int Hermes::rhs(BoutReal t) {
     }
 
     div_all(Ti, Pi, Ne, i);
-    floor_all(Ti, 0.01, i);
+    floor_all(Ti, 0.05, i);
     mul_all(Pi, Ti, Ne, i);
     div_all(Te, Pe, Ne, i);
     // ASSERT0(Te[i] > 1e-10);
@@ -1855,10 +1855,10 @@ int Hermes::rhs(BoutReal t) {
         Ti(n - 1, j, k) = 2. * ti_bndry - Ti(n - 2, j, k);
         Vi(n - 1, j, k) = Vi(n - 2, j, k);
 
-        if (te_bndry < 0.1 / Tnorm)
-          te_bndry = 0.1 / Tnorm;
-        if (ti_bndry < 0.1 / Tnorm)
-          ti_bndry = 0.1 / Tnorm;
+        if (te_bndry < 0.05)
+          te_bndry = 0.05;
+        if (ti_bndry < 0.05)
+          ti_bndry = 0.05;
 
         Te(n - 1, j, k) = 2. * te_bndry - Te(n - 2, j, k);
         Ti(n - 1, j, k) = 2. * ti_bndry - Ti(n - 2, j, k);
@@ -2555,7 +2555,7 @@ int Hermes::rhs(BoutReal t) {
       }
       ddt(Ne) = tmp;
     } else {
-      auto tmp = -bracket(Ne, phi, BRACKET_ARAKAWA) * bracket_factor*scale_ExB;
+      auto tmp = -bracket(phi,Ne, BRACKET_ARAKAWA) * bracket_factor*scale_ExB;
       if(TE_Ne){
 	TE_Ne_ExB = tmp;
       }
@@ -2697,7 +2697,7 @@ int Hermes::rhs(BoutReal t) {
 	    vort_ExB = -Div_n_bxGrad_f_B_XPPM(0.5 * Vort, phi, vort_bndry_flux,
 					      poloidal_flows, false , bracket_factor) * scale_ExB;
 	  } else {
-	    vort_ExB = -bracket(0.5*Vort, phi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB; 
+	    vort_ExB = -bracket(phi,0.5*Vort, BRACKET_ARAKAWA) * bracket_factor * scale_ExB; 
 	  }
 
 
@@ -2740,7 +2740,7 @@ int Hermes::rhs(BoutReal t) {
 					     poloidal_flows, false , bracket_factor) * scale_ExB;    
 	    ddt(Vort) -= vort_ExB;
 	  } else {
-	    vort_ExB = bracket(Vort, phi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
+	    vort_ExB = bracket(phi,Vort, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
 	    ddt(Vort) -= vort_ExB;
 	  }
 
@@ -2904,7 +2904,7 @@ int Hermes::rhs(BoutReal t) {
 	ddt(NVi) = -Div_n_bxGrad_f_B_XPPM(NVi, phi, ne_bndry_flux,
 					  poloidal_flows , false , bracket_factor) * scale_ExB; 
       } else {
-	ddt(NVi) = -bracket(NVi, phi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
+	ddt(NVi) = -bracket(phi,NVi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
       }
 
       
@@ -2989,7 +2989,7 @@ int Hermes::rhs(BoutReal t) {
 	      TE_Pe_ExB = -Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux, poloidal_flows, true , bracket_factor) * scale_ExB;
 	      ddt(Pe) = TE_Pe_ExB;
 	    } else {
-	      TE_Pe_ExB = -bracket(Pe, phi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
+	      TE_Pe_ExB = -bracket(phi,Pe, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
 	      ddt(Pe) = TE_Pe_ExB;
 	    }
 
@@ -2999,7 +2999,7 @@ int Hermes::rhs(BoutReal t) {
 	if (use_Div_n_bxGrad_f_B_XPPM){
 	  ddt(Pe) = -Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux, poloidal_flows, true , bracket_factor);
 	} else {
-	  ddt(Pe) = -bracket(Pe, phi, BRACKET_ARAKAWA) * bracket_factor;
+	  ddt(Pe) = -bracket(phi,Pe, BRACKET_ARAKAWA) * bracket_factor;
 	}
 	
 
@@ -3258,7 +3258,7 @@ int Hermes::rhs(BoutReal t) {
 	    if (use_Div_n_bxGrad_f_B_XPPM){
 	      ddt(Pi) = -Div_n_bxGrad_f_B_XPPM(Pi, phi, pe_bndry_flux, poloidal_flows, true , bracket_factor) * scale_ExB;
 	    } else {
-	      ddt(Pi) = -bracket(Pi, phi, BRACKET_ARAKAWA) * bracket_factor*scale_ExB;
+	      ddt(Pi) = -bracket(phi,Pi, BRACKET_ARAKAWA) * bracket_factor*scale_ExB;
 	    } 
 	    
       }else{
