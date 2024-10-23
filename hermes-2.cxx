@@ -2866,7 +2866,7 @@ int Hermes::rhs(BoutReal t) {
 	if(use_Div_n_bxGrad_f_B_XPPM){
 	  TE_VePsi_perp = Div_n_bxGrad_f_B_XPPM(VePsi, phi, false,poloidal_flows , false, bracket_factor) * scale_ExB;
 	} else {
-	  TE_VePsi_perp = bracket(phi,vdiff) * bracket_factor * scale_ExB;
+	  TE_VePsi_perp = bracket(phi,vdiff,BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
 	}
 	ddt(VePsi) += TE_VePsi_perp;
       }
