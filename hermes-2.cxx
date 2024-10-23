@@ -2862,11 +2862,13 @@ int Hermes::rhs(BoutReal t) {
       //ddt(VePsi) -= bracket(phi, vdiff, BRACKET_ARAKAWA)*bracket_factor;  // ExB advection
 
       if (VePsi_perp){
-	auto tmp = Div_n_bxGrad_f_B_XPPM(VePsi, phi, false,poloidal_flows , false, bracket_factor) * scale_ExB;
-	if(TE_VePsi){
-	  TE_VePsi_perp = tmp;
+	// The signs are swapped because vdiff is Vi-Ve and not Ve-Vi 
+	if(use_Div_n_bxGrad_f_B_XPPM){
+	  TE_VePsi_perp = Div_n_bxGrad_f_B_XPPM(VePsi, phi, false,poloidal_flows , false, bracket_factor) * scale_ExB;
+	} else {
+	  TE_VePsi_perp = bracket(phi,vdiff) * bracket_factor * scale_ExB;
 	}
-	ddt(VePsi) += tmp;
+	ddt(VePsi) += TE_VePsi_perp;
       }
 
       // Should also have ion polarisation advection here
