@@ -143,7 +143,8 @@ private:
   bool resistivity; // Resistivity: Psi -> Pe
   bool thermal_force; // Force due to temperature gradients
   bool electron_viscosity; // Electron parallel viscosity
-  bool ion_viscosity;   // Ion viscosity
+  bool ion_viscosity,ion_viscosity_simple;   // Ion viscosity
+  BoutReal ion_viscosity_kappa;
   bool ion_viscosity_par; // Parallel part of ion viscosity
   bool electron_neutral;   // Include electron-neutral collisions in resistivity
   bool ion_neutral;        // Include ion-neutral collisions in ion collision time

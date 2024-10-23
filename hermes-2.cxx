@@ -542,6 +542,7 @@ int Hermes::init(bool restarting) {
 
   OPTION(optsc, electron_viscosity, true);
   ion_viscosity = optsc["ion_viscosity"].doc("Include ion viscosity?").withDefault<bool>(true);
+  ion_viscosity_simple = optsc["ion_viscosity_simple"].doc("Include ion viscosity for a simple slab geometry?").withDefault<bool>(false);
   ion_viscosity_par = optsc["ion_viscosity_par"].doc("Include parallel diffusion of ion momentum?").withDefault<bool>(ion_viscosity);
 
   electron_neutral = optsc["electron_neutral"]
@@ -1209,6 +1210,14 @@ int Hermes::init(bool restarting) {
   B32 = mul_all(B12, coord->Bxy); // B^(3/2)
   B42 = SQ_all(coord->Bxy);
 
+  B12.applyBoundary("neumann");
+  B32.applyBoundary("neumann");
+  B42.applyBoundary("neumann");
+  mesh->communicate(B12,B32,B42);
+  B12.applyParallelBoundary(parbc);
+  B32.applyParallelBoundary(parbc);
+  B42.applyParallelBoundary(parbc);
+  
   /////////////////////////////////////////////////////////
   // Neutral models
 
@@ -1592,7 +1601,15 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(TE_Pe_cond, TE_Pe_thermal_flux, TE_Pe_ohmic, TE_Pe_thermal_force, TE_Pe_par_p_term,TE_Pe_numdiff);
   }
 
-  
+  if (ion_viscosity){
+    Pi_ci = 0.0;
+    if(ion_viscosity_simple){
+      OPTION(optsc,ion_viscosity_kappa, 0.0);
+      if(optsc,ion_viscosity_kappa=0.0){
+	throw BoutException("Simple viscosity chosen but no curvature given!");
+      }
+    }
+  }
   
   
   SAVE_REPEAT(a,b,d);
@@ -2545,6 +2562,17 @@ int Hermes::rhs(BoutReal t) {
     Ve = add_all(VePsi , Vi);
   }
 
+  ///////////////////////////////////////////////////////////
+  // Ion viscosity
+  
+  if (ion_viscosity){
+    if(ion_viscosity_simple){
+      Pi_ci = -2.0 / B12 * Grad_parP(mul_all(B12,Vi));
+      Pi_ci *= 0.96 * Pi * tau_i;
+    } else {
+      throw BoutException("Full ion viscosity not yet implemented!")
+    }
+  }
   
   ///////////////////////////////////////////////////////////
   // Density
