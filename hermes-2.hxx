@@ -254,6 +254,10 @@ private:
   bool vort_dissipation; // Dissipation term in Vorticity equation
   bool phi_dissipation; // Dissipation term in Vorticity equation
 
+  bool NVi_supsonic_dissipation;
+  BoutReal NVi_supsonic_factor;
+  Field3D NVi_dampening;
+  
   BoutReal VePsi_hyperXZ;
   
   BoutReal ne_num_diff;

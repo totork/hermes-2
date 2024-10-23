@@ -534,6 +534,8 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, VorticitySource, false);
   OPTION(optsc, floor_kappa_ipar, -1.0);
   OPTION(optsc, floor_kappa_epar,-1.0);
+  OPTION(optsc, NVi_supsonic_dissipation, false);
+  OPTION(optsc, NVi_supsonic_factor, 1.0);
   thermal_force = optsc["thermal_force"]
                     .doc("Force on electrons due to temperature gradients")
                     .withDefault<bool>(true);
@@ -1545,7 +1547,7 @@ int Hermes::init(bool restarting) {
   debug_VePsisheath = 0.0;
   debug_phisheath = 0.0;
   debug_denom = 0.0;
-
+  NVi_dampening = 0.0;
   TE_VePsi_pe_par = 0.0;
   TE_VePsi_resistivity = 0.0;
   TE_VePsi_anom = 0.0;
@@ -1602,6 +1604,10 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(debug_soundspeed);
     SAVE_REPEAT(tau_e, tau_i);
 
+    if(NVi_supsonic_dissipation){
+      SAVE_REPEAT(NVi_dampening);
+    }
+    
     if(kappa_limit_alpha>0.0){
       SAVE_REPEAT(debug_denom);
     }
@@ -2973,6 +2979,12 @@ int Hermes::rhs(BoutReal t) {
       auto tmp = -NVi_hyper*((SQ(SQ(coord->dx)))*D4DX4(NVi) + (SQ(SQ(coord->dz)))*D4DZ4(NVi));
 
       ddt(NVi) += tmp;
+    }
+
+    if(NVi_supsonic_dissipation){
+      Field3D tmp = floor((abs(Vi) - sound_speed),0.0);
+      NVi_dampening = -(Vi/abs(Vi))*NVi_supsonic_factor * (exp(tmp)-1.0);
+      ddt(NVi) += NVi_dampening;
     }
 
 
