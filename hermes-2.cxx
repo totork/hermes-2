@@ -2932,7 +2932,7 @@ int Hermes::rhs(BoutReal t) {
       } else {
 	TE_NVi_ExB = -bracket(phi,NVi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
       }
-      ddt(NVi) += TE_NVi_ExB;
+      ddt(NVi) = TE_NVi_ExB;
 
       
     } else {
