@@ -2971,6 +2971,12 @@ int Hermes::rhs(BoutReal t) {
       ddt(NVi) += TE_NVi_pe_par;
     }
 
+    if(ion_viscosity_par){
+      auto tmp = Div_par_K_Grad_par(div_all(mul_all(Pi,tau_i),coord->Bxy),mul_all(B12,Vi));
+      TE_NVi_viscos = 1.28*B12*tmp;
+      ddt(NVi) += TE_NVi_viscos;
+    }
+
     // Parallel numerical diffusion
     
     if (numdiff > 0.0) {
@@ -2988,6 +2994,8 @@ int Hermes::rhs(BoutReal t) {
       ddt(NVi) += FCIDiv_a_Grad_perp(NVi_tauB2, TiTediff);
     }
     */
+    
+    
     TE_NVi_anom = 0.0;
     if ((anomalous_D > 0.0) && anomalous_D_nvi) {
       TE_NVi_anom += FCIDiv_a_Grad_perp(mul_all(Vi, a_d3d), Ne);
