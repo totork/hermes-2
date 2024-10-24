@@ -2998,7 +2998,7 @@ int Hermes::rhs(BoutReal t) {
       TE_NVi_anom += FCIDiv_a_Grad_perp(mul_all(Ne, a_nu3d), Vi); 
     }
 
-    if((anomalous_nu > 0.0) | ((anomalous_D > 0.0) && anomalous_D_nvi)){
+    if((anomalous_nu > 0.0) || ((anomalous_D > 0.0) && anomalous_D_nvi)){
       ddt(NVi) += TE_NVi_anom;
     }
 
