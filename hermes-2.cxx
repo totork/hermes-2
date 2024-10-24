@@ -2928,11 +2928,11 @@ int Hermes::rhs(BoutReal t) {
       // ddt(NVi) = bracket(NVi, phi, BRACKET_ARAKAWA) * bracket_factor;
       // ExB drift, only if electric field calculated
       if (use_Div_n_bxGrad_f_B_XPPM){
-	ddt(NVi) = -Div_n_bxGrad_f_B_XPPM(NVi, phi, ne_bndry_flux,
-					  poloidal_flows , false , bracket_factor) * scale_ExB; 
+	TE_NVi_ExB = -Div_n_bxGrad_f_B_XPPM(NVi, phi, ne_bndry_flux , poloidal_flows , false , bracket_factor) * scale_ExB;
       } else {
-	ddt(NVi) = -bracket(phi,NVi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
+	TE_NVi_ExB = -bracket(phi,NVi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
       }
+      ddt(NVi) += TE_NVi_ExB;
 
       
     } else {
@@ -2947,35 +2947,38 @@ int Hermes::rhs(BoutReal t) {
     
     if (j_diamag) {
       // Magnetic drift
-      ddt(NVi) -= fci_curvature(mul_all(NVi , Ti),use_bracket);
+      TE_NVi_dia = -fci_curvature(mul_all(NVi , Ti),use_bracket);
+      ddt(NVi) += TE_NVi_dia;
     }
 
     // FV with added dissipation
     if (MMS_Ne_ParDiff <= 0.0){
       if (use_Div_parP_n){
-	NVi_Div_parP_n = Div_parP_n(Ne, Vi, sound_speed, fwd_bndry_mask, bwd_bndry_mask);
-	ddt(NVi) -= NVi_Div_parP_n;
+	TE_NVi_parflow = -Div_parP_n(Ne, Vi, sound_speed, fwd_bndry_mask, bwd_bndry_mask);
       } else {
+	
 	auto nvivi = mul_all(NVi,Vi);
-	ddt(NVi) -= Div_par(nvivi);
+	TE_NVi_parflow = -Div_par(nvivi);
       }
+      ddt(NVi) += TE_NVi_parflow;
 
     }
 
     // Ignoring polarisation drift for now
     if (pe_par) {
       Field3D peppi = add_all(Pe, Pi);
-      ddt(NVi) -= Grad_parP(peppi);
+      TE_NVi_pe_par = -Grad_parP(peppi);
+      ddt(NVi) += TE_NVi_pe_par;
     }
 
-    // Ion-neutral friction
-
+    // Parallel numerical diffusion
+    
     if (numdiff > 0.0) {
+      TE_NVi_numdiff = 0.0;
       for(auto &i : NVi.getRegion("RGN_NOBNDRY")) {
-        ddt(NVi)[i] += numdiff*(NVi.ydown()[i.ym()] - 2.*NVi[i] + NVi.yup()[i.yp()]);
+        TE_NVi_numdiff[i] += numdiff*(NVi.ydown()[i.ym()] - 2.*NVi[i] + NVi.yup()[i.yp()]);
       }
-      // ddt(NVi) += numdiff * Div_par_diffusion_index(NVi);
-
+      ddt(NVi) += TE_NVi_numdiff;
     }
     /*
     if (classical_diffusion) {
@@ -2986,18 +2989,22 @@ int Hermes::rhs(BoutReal t) {
       ddt(NVi) += FCIDiv_a_Grad_perp(NVi_tauB2, TiTediff);
     }
     */
+    TE_NVi_anom = 0.0;
     if ((anomalous_D > 0.0) && anomalous_D_nvi) {
-      ddt(NVi) += FCIDiv_a_Grad_perp(mul_all(Vi, a_d3d), Ne);
+      TE_NVi_anom += FCIDiv_a_Grad_perp(mul_all(Vi, a_d3d), Ne);
     }
 
     if (anomalous_nu > 0.0) {
-      ddt(NVi) += FCIDiv_a_Grad_perp(mul_all(Ne, a_nu3d), Vi);
+      TE_NVi_anom += FCIDiv_a_Grad_perp(mul_all(Ne, a_nu3d), Vi); 
+    }
+
+    if((anomalous_nu > 0.0) | ((anomalous_D > 0.0) && anomalous_D_nvi)){
+      ddt(NVi) += TE_NVi_anom;
     }
 
     if (bool_NVi_hyper){
-      auto tmp = -NVi_hyper*((SQ(SQ(coord->dx)))*D4DX4(NVi) + (SQ(SQ(coord->dz)))*D4DZ4(NVi));
-
-      ddt(NVi) += tmp;
+      TE_NVi_hyper = -NVi_hyper*((SQ(SQ(coord->dx)))*D4DX4(NVi) + (SQ(SQ(coord->dz)))*D4DZ4(NVi));
+      ddt(NVi) += TE_NVi_hyper;
     }
 
     if(NVi_supsonic_dissipation){
