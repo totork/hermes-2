@@ -1209,6 +1209,7 @@ int Hermes::init(bool restarting) {
   B32 = mul_all(B12, coord->Bxy); // B^(3/2)
   B42 = SQ_all(coord->Bxy);
 
+  
   /////////////////////////////////////////////////////////
   // Neutral models
 
@@ -1540,6 +1541,7 @@ int Hermes::init(bool restarting) {
   vort_parflow = 0.0;
   vort_hyper = 0.0;
   vort_anom = 0.0;
+  vort_classical = 0.0;
   debug_visheath = 0.0;
   debug_vesheath = 0.0;
   debug_sheathexp = 0.0;
@@ -1620,7 +1622,7 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(vort_ExB);
     SAVE_REPEAT(vort_jpar);
     SAVE_REPEAT(vort_anom);
-    SAVE_REPEAT(vort_hyper);
+    SAVE_REPEAT(vort_hyper,vort_classical);
     SAVE_REPEAT(debug_visheath,debug_vesheath,debug_sheathexp);
     SAVE_REPEAT(NVi_Div_parP_n);
     SAVE_REPEAT(debug_phisheath);
@@ -2616,6 +2618,7 @@ int Hermes::rhs(BoutReal t) {
 
   
   Field3D TiTediff, tauemimeSQB;
+  /*
   if (classical_diffusion) {
     // Classical perpendicular diffusion
     // The only term here comes from the resistive drift
@@ -2643,6 +2646,7 @@ int Hermes::rhs(BoutReal t) {
     ddt(Ne) += FCIDiv_a_Grad_perp(Dn, Ne);
     ddt(Ne) += FCIDiv_a_Grad_perp(Ne_tauB2, TiTediff);
   }
+  */
   if (anomalous_D > 0.0) {
     auto tmp = FCIDiv_a_Grad_perp(a_d3d, Ne);
     if (TE_Ne){
@@ -2767,11 +2771,12 @@ int Hermes::rhs(BoutReal t) {
     if (classical_diffusion) {
       TRACE("Vort:classical_diffusion");
       // Perpendicular viscosity
-      Field3D tilim_3 = 0.3*Ti;
-      Field3D tauisqB = tau_i * SQ(coord->Bxy);
+      Field3D tilim_3 = mul_all(0.3,Ti);
+      Field3D tauisqB = mul_all(tau_i , B12);
 
       Field3D mu = div_all(tilim_3 , tauisqB);
-      ddt(Vort) += FCIDiv_a_Grad_perp(mu, Vort);
+      vort_classical = FCIDiv_a_Grad_perp(mu, Vort);
+      ddt(Vort) += vort_classical;
     }
 
   
@@ -2958,7 +2963,7 @@ int Hermes::rhs(BoutReal t) {
       // ddt(NVi) += numdiff * Div_par_diffusion_index(NVi);
 
     }
-
+    /*
     if (classical_diffusion) {
       // Using same cross-field drift as in density equation
       Field3D ViDn = mul_all(Vi,Dn);
@@ -2966,7 +2971,7 @@ int Hermes::rhs(BoutReal t) {
       Field3D NVi_tauB2 = div_all(NVi, tauemimeSQB);
       ddt(NVi) += FCIDiv_a_Grad_perp(NVi_tauB2, TiTediff);
     }
-
+    */
     if ((anomalous_D > 0.0) && anomalous_D_nvi) {
       ddt(NVi) += FCIDiv_a_Grad_perp(mul_all(Vi, a_d3d), Ne);
     }
@@ -3154,7 +3159,7 @@ int Hermes::rhs(BoutReal t) {
 
     //////////////////////
     // Classical diffusion
-
+    /*
     if (classical_diffusion) {
 
       // Combined resistive drift and cross-field heat diffusion
@@ -3165,6 +3170,7 @@ int Hermes::rhs(BoutReal t) {
       ddt(Pe) += (2. / 3) * (FCIDiv_a_Grad_perp(nu_rho2, PePi) +
                              (11. / 12) * FCIDiv_a_Grad_perp(nu_rho2Ne, Te));
     }
+    */
 
     //////////////////////
     // Anomalous diffusion
@@ -3352,7 +3358,7 @@ int Hermes::rhs(BoutReal t) {
 
     //////////////////////
     // Classical diffusion
-
+    /*
     if (classical_diffusion) {
       Field3D Pi_B2tau, PePi, nu_rho2, nu_rho2Ne;
       alloc_all(Pi_B2tau);
@@ -3402,6 +3408,7 @@ int Hermes::rhs(BoutReal t) {
                    * (Grad_perp_vort * Grad(phiPi));
       }
     }
+    */
 
     //////////////////////
     // Anomalous diffusion
