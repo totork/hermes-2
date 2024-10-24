@@ -2974,9 +2974,8 @@ int Hermes::rhs(BoutReal t) {
     // Parallel numerical diffusion
     
     if (numdiff > 0.0) {
-      TE_NVi_numdiff = 0.0;
       for(auto &i : NVi.getRegion("RGN_NOBNDRY")) {
-        TE_NVi_numdiff[i] += numdiff*(NVi.ydown()[i.ym()] - 2.*NVi[i] + NVi.yup()[i.yp()]);
+        TE_NVi_numdiff[i] = numdiff*(NVi.ydown()[i.ym()] - 2.*NVi[i] + NVi.yup()[i.yp()]);
       }
       ddt(NVi) += TE_NVi_numdiff;
     }
