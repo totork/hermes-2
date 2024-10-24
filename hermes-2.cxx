@@ -590,7 +590,7 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, TE_VePsi, false);
   OPTION(optsc, TE_Ne, false);
   OPTION(optsc, TE_Pe, false);
-  
+  OPTION(optsc, TE_NVi,false);
   // Cross-field transport
   classical_diffusion = optsc["classical_diffusion"]
                           .doc("Collisional cross-field diffusion, including viscosity")
@@ -1594,7 +1594,21 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(TE_Pe_cond, TE_Pe_thermal_flux, TE_Pe_ohmic, TE_Pe_thermal_force, TE_Pe_par_p_term,TE_Pe_numdiff);
   }
 
+  TE_NVi_ExB = 0.0;
+  TE_NVi_dia = 0.0;
+  TE_NVi_parflow = 0.0;
+  TE_NVi_pe_par = 0.0;
+  TE_NVi_viscos = 0.0;
+  TE_NVi_numdiff = 0.0;
+  TE_NVi_classical = 0.0;
+  TE_NVi_hyper = 0.0;
+  TE_NVi_anom = 0.0;
+
   
+  if (TE_NVi){
+    SAVE_REPEAT(TE_NVi_ExB, TE_NVi_dia, TE_NVi_parflow,TE_NVi_pe_par,TE_NVi_viscos);
+    SAVE_REPEAT(TE_NVi_numdiff,TE_NVi_classical,TE_NVi_hyper,TE_NVi_anom);
+  }
   
   
   SAVE_REPEAT(a,b,d);
