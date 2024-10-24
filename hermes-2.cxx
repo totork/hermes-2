@@ -1541,6 +1541,7 @@ int Hermes::init(bool restarting) {
   vort_parflow = 0.0;
   vort_hyper = 0.0;
   vort_anom = 0.0;
+  vort_numdiff = 0.0;
   vort_classical = 0.0;
   debug_visheath = 0.0;
   debug_vesheath = 0.0;
@@ -1636,7 +1637,7 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(vort_ExB);
     SAVE_REPEAT(vort_jpar);
     SAVE_REPEAT(vort_anom);
-    SAVE_REPEAT(vort_hyper,vort_classical);
+    SAVE_REPEAT(vort_hyper,vort_classical,vort_numdiff);
     SAVE_REPEAT(debug_visheath,debug_vesheath,debug_sheathexp);
     SAVE_REPEAT(NVi_Div_parP_n);
     SAVE_REPEAT(debug_phisheath);
@@ -2813,6 +2814,13 @@ int Hermes::rhs(BoutReal t) {
     
     if(VorticitySource){
       ddt(Vort) += VortSource;
+    }
+
+    if (numdiff > 0.0) {
+      for(auto &i : NVi.getRegion("RGN_NOBNDRY")) {
+        vort_numdiff[i] = numdiff*(Vort.ydown()[i.ym()] - 2.*Vort[i] + Vort.yup()[i.yp()]);
+      }
+      ddt(Vort) += vort_numdiff;
     }
   }
 
