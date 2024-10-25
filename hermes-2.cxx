@@ -536,6 +536,8 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, floor_kappa_epar,-1.0);
   OPTION(optsc, NVi_supsonic_dissipation, false);
   OPTION(optsc, NVi_supsonic_factor, 1.0);
+  OPTION(optsc, Ve_supsonic_dissipation, false);
+  OPTION(optsc, Ve_supsonic_factor, 1.0);
   thermal_force = optsc["thermal_force"]
                     .doc("Force on electrons due to temperature gradients")
                     .withDefault<bool>(true);
@@ -1551,6 +1553,7 @@ int Hermes::init(bool restarting) {
   debug_phisheath = 0.0;
   debug_denom = 0.0;
   NVi_dampening = 0.0;
+  Ve_dampening = 0.0;
   TE_VePsi_pe_par = 0.0;
   TE_VePsi_resistivity = 0.0;
   TE_VePsi_anom = 0.0;
@@ -1623,6 +1626,10 @@ int Hermes::init(bool restarting) {
 
     if(NVi_supsonic_dissipation){
       SAVE_REPEAT(NVi_dampening);
+    }
+    
+    if(Ve_supsonic_dissipation){
+      SAVE_REPEAT(Ve_dampening);
     }
     
     if(kappa_limit_alpha>0.0){
@@ -2924,6 +2931,14 @@ int Hermes::rhs(BoutReal t) {
       }
       ddt(VePsi) += tmp;
     }
+
+    if(Ve_supsonic_dissipation){
+      Field3D tmp = floor((abs(Ve) - sound_speed),0.0);
+      Ve_dampening = -(Ve/abs(Ve))*Ve_supsonic_factor * (exp(tmp)-1.0);
+      ddt(VePsi) += Ve_dampening;
+    }
+
+    
 
   }
 
