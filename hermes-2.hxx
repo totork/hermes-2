@@ -81,7 +81,7 @@ private:
   Field3D debug_visheath,debug_VePsisheath,debug_vesheath,debug_sheathexp;
   Field3D debug_phisheath;
   Field3D TE_VePsi_pe_par,TE_VePsi_resistivity,TE_VePsi_anom,TE_VePsi_j_par,TE_VePsi_thermal_force,TE_VePsi_par_adv,TE_VePsi_hyper,TE_VePsi_perp,TE_VePsi_numdiff;
-  Field3D TE_Ne_ExB, TE_Ne_parflow, TE_Ne_anom, TE_Ne_dia, TE_Ne_hyper;
+  Field3D TE_Ne_ExB, TE_Ne_parflow, TE_Ne_anom, TE_Ne_dia, TE_Ne_hyper,TE_Ne_numdiff;
   Field3D TE_Pe_ExB, TE_Pe_parflow, TE_Pe_anom, TE_Pe_dia, TE_Pe_hyper, TE_Pe_energ_balance, TE_Pe_cond, TE_Pe_thermal_flux, TE_Pe_ohmic, TE_Pe_thermal_force, TE_Pe_par_p_term, TE_Pe_numdiff;
   Field3D TE_NVi_ExB, TE_NVi_dia, TE_NVi_parflow,TE_NVi_pe_par,TE_NVi_viscos,TE_NVi_numdiff,TE_NVi_classical,TE_NVi_hyper,TE_NVi_anom;
   Field3D debug_denom,debug_soundspeed;

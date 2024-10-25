@@ -1584,8 +1584,9 @@ int Hermes::init(bool restarting) {
   TE_Ne_anom = 0.0;
   TE_Ne_dia = 0.0;
   TE_Ne_hyper = 0.0;
+  TE_Ne_numdiff = 0.0;
   if (TE_Ne){
-    SAVE_REPEAT(TE_Ne_ExB,TE_Ne_parflow,TE_Ne_anom,TE_Ne_dia,TE_Ne_hyper);
+    SAVE_REPEAT(TE_Ne_ExB,TE_Ne_parflow,TE_Ne_anom,TE_Ne_dia,TE_Ne_hyper,TE_Ne_numdiff);
   }
 
   TE_Pe_ExB = 0.0;
@@ -2698,8 +2699,9 @@ int Hermes::rhs(BoutReal t) {
 
   if (bool_numdiff) {
     BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")) {
-      ddt(Ne)[i] += numdiff[i]*(Ne.ydown()[i.ym()] - 2.*Ne[i] + Ne.yup()[i.yp()]);
+      TE_Ne_numdiff[i] = numdiff[i]*(Ne.ydown()[i.ym()] - 2.*Ne[i] + Ne.yup()[i.yp()]);
     }
+    ddt(Ne) += TE_Ne_numdiff;
   }
   ///////////////////////////////////////////////////////////
   // Vorticity
