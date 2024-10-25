@@ -2466,24 +2466,13 @@ int Hermes::rhs(BoutReal t) {
     // sqrt_all(Te)), Ne));
     tau_e[i] = tau_e1 * (Te[i] * sqrt(Te[i]) / Ne[i]);
     tau_e.yup()[i] = tau_e1 * (Te.yup()[i] * sqrt(Te.yup()[i]) / Ne.yup()[i]);
-    tau_e.ydown()[i] =
-        tau_e1 * (Te.ydown()[i] * sqrt(Te.ydown()[i]) / Ne.ydown()[i]);
+    tau_e.ydown()[i] = tau_e1 * (Te.ydown()[i] * sqrt(Te.ydown()[i]) / Ne.ydown()[i]);
 
     // Normalised ion-ion collision time
     tau_i[i] = tau_i1 * (Ti[i] * sqrt(Ti[i])) / Ne[i];
     tau_i.yup()[i] = tau_i1 * (Ti.yup()[i] * sqrt(Ti.yup()[i])) / Ne.yup()[i];
-    tau_i.ydown()[i] =
-        tau_i1 * (Ti.ydown()[i] * sqrt(Ti.ydown()[i])) / Ne.ydown()[i];
+    tau_i.ydown()[i] = tau_i1 * (Ti.ydown()[i] * sqrt(Ti.ydown()[i])) / Ne.ydown()[i];
 
-    if (ion_neutral && (neutrals || (ion_neutral_rate > 0.0))) {
-      // Include ion-neutral collisions in collision time
-      // Add collision frequencies (1/tau_i + neutral rate)
-      tau_i[i] = tau_i[i] / (1 + (tau_i[i] * neutral_rate[i]));
-      tau_i.yup()[i] =
-          tau_i.yup()[i] / (1 + (tau_i.yup()[i] * neutral_rate.yup()[i]));
-      tau_i.ydown()[i] =
-          tau_i.ydown()[i] / (1 + (tau_i.ydown()[i] * neutral_rate.ydown()[i]));
-    }
   }
   // tau_e = mul_all((Cs0 / rho_s0) * tau_e0, div_all(mul_all(Te, sqrt_all(Te)),
   // Ne)); tau_i = mul_all((Cs0 / rho_s0) * tau_i0, div_all(mul_all(Ti,
