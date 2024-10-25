@@ -234,7 +234,7 @@ private:
   
   // Numerical dissipation
 
-  BoutReal numdiff, hyper, hyperpar; ///< Numerical dissipation
+  BoutReal hyper, hyperpar; ///< Numerical dissipation
   int low_pass_z; // Fourier filter in Z 
   BoutReal z_hyper_viscos, x_hyper_viscos, y_hyper_viscos; // 4th-order derivatives
   bool low_n_diffuse; // Diffusion in parallel direction at low density
@@ -248,6 +248,9 @@ private:
 
   bool bool_Vort_hyper;
   Field3D Vort_hyper;
+
+  bool bool_numdiff;
+  Field3D numdiff;
   
   BoutReal scale_num_cs; // Scale numerical sound speed
   BoutReal floor_num_cs; // Apply a floor to the numerical sound speed

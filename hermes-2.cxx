@@ -825,7 +825,14 @@ int Hermes::init(bool restarting) {
   }
   SAVE_ONCE(Vort_hyper);
 
-  
+  OPTION(optsc, bool_numdiff, false);
+  numdiff = optsc["numdiff"].doc("Parallel numerical diffusion").withDefault(Field3D{0.0});
+  if(bool_numdiff ){
+    numdiff.applyBoundary("neumann_o2");
+    mesh->communicate(numdiff);
+    numdiff.applyParallelBoundary(parbc);
+  }
+  SAVE_ONCE(numdiff);
   
   if (ramp_mesh) {
     Jpar0 = 0.0;
@@ -2689,9 +2696,9 @@ int Hermes::rhs(BoutReal t) {
   }
   
 
-  if (numdiff > 0.0) {
+  if (bool_numdiff) {
     BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")) {
-      ddt(Ne)[i] += numdiff*(Ne.ydown()[i.ym()] - 2.*Ne[i] + Ne.yup()[i.yp()]);
+      ddt(Ne)[i] += numdiff[i]*(Ne.ydown()[i.ym()] - 2.*Ne[i] + Ne.yup()[i.yp()]);
     }
   }
   ///////////////////////////////////////////////////////////
@@ -2823,9 +2830,9 @@ int Hermes::rhs(BoutReal t) {
       ddt(Vort) += VortSource;
     }
 
-    if (numdiff > 0.0) {
+    if (bool_numdiff) {
       for(auto &i : NVi.getRegion("RGN_NOBNDRY")) {
-        vort_numdiff[i] = numdiff*(Vort.ydown()[i.ym()] - 2.*Vort[i] + Vort.yup()[i.yp()]);
+        vort_numdiff[i] = numdiff[i]*(Vort.ydown()[i.ym()] - 2.*Vort[i] + Vort.yup()[i.yp()]);
       }
       ddt(Vort) += vort_numdiff;
     }
@@ -2914,9 +2921,9 @@ int Hermes::rhs(BoutReal t) {
       // Should also have ion polarisation advection here
     }
 
-    if (numdiff > 0.0) {
+    if (bool_numdiff) {
       for(auto &i : VePsi.getRegion("RGN_NOBNDRY")) {
-	auto tmp = numdiff*(VePsi.ydown()[i.ym()] - 2.*VePsi[i] + VePsi.yup()[i.yp()]);
+	auto tmp = numdiff[i]*(VePsi.ydown()[i.ym()] - 2.*VePsi[i] + VePsi.yup()[i.yp()]);
 	if(TE_VePsi){
 	  TE_VePsi_numdiff[i] = tmp;
 	}
@@ -3002,9 +3009,9 @@ int Hermes::rhs(BoutReal t) {
 
     // Parallel numerical diffusion
     
-    if (numdiff > 0.0) {
+    if (bool_numdiff) {
       for(auto &i : NVi.getRegion("RGN_NOBNDRY")) {
-        TE_NVi_numdiff[i] = numdiff*(NVi.ydown()[i.ym()] - 2.*NVi[i] + NVi.yup()[i.yp()]);
+        TE_NVi_numdiff[i] = numdiff[i]*(NVi.ydown()[i.ym()] - 2.*NVi[i] + NVi.yup()[i.yp()]);
       }
       ddt(NVi) += TE_NVi_numdiff;
     }
@@ -3235,9 +3242,9 @@ int Hermes::rhs(BoutReal t) {
     ddt(Pe) += TE_Pe_anom;
 
     // hyper diffusion
-    if (numdiff > 0.0) {
+    if (bool_numdiff) {
       BOUT_FOR(i, Pe.getRegion("RGN_NOBNDRY")) {
-	TE_Pe_numdiff[i] = numdiff*(Pe.ydown()[i.ym()] - 2.*Pe[i] + Pe.yup()[i.yp()]);
+	TE_Pe_numdiff[i] = numdiff[i]*(Pe.ydown()[i.ym()] - 2.*Pe[i] + Pe.yup()[i.yp()]);
       }
       ddt(Pe) += TE_Pe_numdiff;
     }
@@ -3473,9 +3480,9 @@ int Hermes::rhs(BoutReal t) {
     }
 
     // hyper diffusion
-    if (numdiff > 0.0) {
+    if (bool_numdiff) {
       BOUT_FOR(i, Pi.getRegion("RGN_NOBNDRY")) {
-        ddt(Pi)[i] += numdiff*(Pi.ydown()[i.ym()] - 2.*Pi[i] + Pi.yup()[i.yp()]);
+        ddt(Pi)[i] += numdiff[i]*(Pi.ydown()[i.ym()] - 2.*Pi[i] + Pi.yup()[i.yp()]);
       }
     }
 
