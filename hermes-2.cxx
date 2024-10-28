@@ -3629,7 +3629,7 @@ struct myGrad2Par2{
   Field3D A = 1.0, C = 1.0;
   Field3D operator()(const Field3D &input){
     TRACE("myInversionOperator");
-    Field3D thisresult = A + Div_par_K_Grad_par(C , input);
+    Field3D thisresult = A * input + Div_par_K_Grad_par(C , input);
     thisresult.setBoundaryTo(input);
     return thisresult;
   };
