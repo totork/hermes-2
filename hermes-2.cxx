@@ -3646,7 +3646,7 @@ int Hermes::precon(BoutReal t, BoutReal gamma, BoutReal delta) {
   Field3D dT = ddt(Pe);
   dT.applyBoundary("neumann_o2");
   mesh->communicate(dT);
-  dT.applyParallelBoundary("neumann_o2");
+  dT.applyParallelBoundary(parbc);
 
   ddt(Pe) = thissolver.invert(dT);
   return 0;
