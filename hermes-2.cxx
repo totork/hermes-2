@@ -36,7 +36,7 @@
 #include <bout/assert.hxx>
 #include <bout/fv_ops.hxx>
 #include <cmath>
-
+#include <bout/invertable_operator.hxx>
 
 // OpenADAS interface Atomicpp by T.Body
 #include "atomicpp/ImpuritySpecies.hxx"
@@ -3615,31 +3615,40 @@ int Hermes::rhs(BoutReal t) {
 
 /*!
  * Preconditioner. Solves the heat conduction
- *
+ 
+ 
+
+
  * @param[in] t  The simulation time
  * @param[in] gamma   Factor in front of the Jacobian in (I - gamma*J). Related
  * to timestep
  * @param[in] delta   Not used here
  */
+
+struct myGrad2Par2{
+  Field3D A = 1.0, C = 1.0;
+  Field3D operator()(const Field3D &input){
+    TRACE("myInversionOperator");
+    Field3D thisresult = A * input + Div_par_K_Grad_par(C , input);
+    thisresult.setBoundaryTo(input);
+    return thisresult;
+  };
+};
+
 int Hermes::precon(BoutReal t, BoutReal gamma, BoutReal delta) {
-  static std::unique_ptr<InvertPar> inv{nullptr};
-  if (!inv) {
-    // Initialise parallel inversion class
-    auto inv = InvertPar::create();
-    inv->setCoefA(1.0);
-  }
-  if (thermal_conduction) {
-    // Set the coefficient in front of Grad2_par2
-    inv->setCoefB(-(2. / 3) * gamma * kappa_epar);
-    Field3D dT = ddt(Pe);
-    dT.applyBoundary("neumann");
-    ddt(Pe) = inv->solve(dT);
-  }
+  bout::inversion::InvertableOperator<Field3D> thissolver;
+  myGrad2Par2 preconoperator;
+  preconoperator.A = 1.0;
+  preconoperator.C = -mul_all(2.0/3.0,mul_all(gamma,kappa_epar));
+  thissolver.setOperatorFunction(preconoperator);
+  thissolver.setup();
 
-  // Neutral gas preconditioning
-  if (neutrals)
-    neutrals->precon(t, gamma, delta);
+  Field3D dT = ddt(Pe);
+  dT.applyBoundary("neumann_o2");
+  mesh->communicate(dT);
+  dT.applyParallelBoundary("neumann_o2");
 
+  ddt(Pe) = thissolver.invert(dT);
   return 0;
 }
 
