@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.9...3.12)
+project(hermes-2-wave-1d-y LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 14)
+find_package(bout++ REQUIRED)
+add_executable(wave-1d-y main.cxx wave.cxx div_ops.cxx loadmetric.cxx radiation.cxx neutral-model.cxx 		  diffusion2d.cxx  atomicpp/ImpuritySpecies.cxx atomicpp/Prad.cxx atomicpp/RateCoefficient.cxx atomicpp/sharedFunctions.cxx)
+target_link_libraries(hermes-2-wave-1d-y PRIVATE bout++::bout++)
