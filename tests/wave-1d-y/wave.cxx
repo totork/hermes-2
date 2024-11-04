@@ -13,6 +13,7 @@ private:
   Field3D f_solution, g_solution, f_source, g_source;
   Field3D this_y;
   Field3D a;
+  Field3D bndry_f,bndry_g;
 protected:
   int init(bool restarting) override {
     auto& opt = Options::root();
@@ -29,13 +30,13 @@ protected:
     solver->add(f, "f");
     solver->add(g, "g");
     a = 0.0;
+    bndry_f = 0.0;
+    bndry_g = 0.0;
+    SAVE_REPEAT(bndry_f,bndry_g);
     return 0;
   }
 
   int rhs(BoutReal time) override {
-    auto& opt = Options::root();
-    auto& optf = opt["f"];
-    auto& optg = opt["g"];
     f_solution = this_y - sin(time)*cos(0.5*this_y) + cos(this_y);
     g_solution = this_y*this_y + sin(this_y) + cos(time)*cos(0.1*this_y*this_y);
     
@@ -46,7 +47,6 @@ protected:
     g.applyBoundary();
     
     mesh->communicate(f, g);
-
     for (const auto &bndry_par :
            mesh->getBoundariesPar()) {
       for (bndry_par->first(); !bndry_par->isDone(); bndry_par->next()) {
@@ -58,16 +58,16 @@ protected:
 	if (bndry_par->dir > 0.0){
 	  //Parallel boundary in the forward parallel direction
 	  //Use cells to interpolate value
-	  f_parvalue = (f_solution(xx,yy+1,zz)+f_solution(xx,yy,zz))/2.0;
-	  g_parvalue = (g_solution(xx,yy+1,zz)+g_solution(xx,yy,zz))/2.0;
+	  bndry_f(xx,yy,zz) = (f_solution(xx,yy+1,zz)+f_solution(xx,yy,zz))/2.0;
+	  bndry_g(xx,yy,zz) = (g_solution(xx,yy+1,zz)+g_solution(xx,yy,zz))/2.0;
 	} else {
-	  f_parvalue = (f_solution(xx,yy-1,zz)+f_solution(xx,yy,zz))/2.0;
-	  g_parvalue = (g_solution(xx,yy-1,zz)+g_solution(xx,yy,zz))/2.0;
+	  bndry_f(xx,yy,zz) = (f_solution(xx,yy-1,zz)+f_solution(xx,yy,zz))/2.0;
+	  bndry_g(xx,yy,zz) = (g_solution(xx,yy-1,zz)+g_solution(xx,yy,zz))/2.0;
 	}
 	
-	f.ynext(bndry_par->dir)(xx,yy+bndry_par->dir,zz) = f_parvalue;
-	g.ynext(bndry_par->dir)(xx,yy+bndry_par->dir,zz) = g_parvalue;
-        
+	f.ynext(bndry_par->dir)(xx,yy+bndry_par->dir,zz) = bndry_f(xx,yy,zz);
+	g.ynext(bndry_par->dir)(xx,yy+bndry_par->dir,zz) = bndry_g(xx,yy,zz);
+
       }
     }
     //Set the parallel boundary conditions
