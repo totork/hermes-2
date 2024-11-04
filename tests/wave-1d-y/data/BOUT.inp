@@ -2,8 +2,8 @@
 # Input file for 1D wave MMS test
 #
 
-nout =200      # Number of output timesteps
-timestep = 0.1  #Time between outputs
+nout =400      # Number of output timesteps
+timestep = 0.2  #Time between outputs
 
 
 MXG = 2

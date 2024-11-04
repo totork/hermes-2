@@ -76,8 +76,8 @@ protected:
 
     //Time evolution
     
-    ddt(f) = Div_par(g) + f_source ;
-    ddt(g) = Div_par(f) + g_source ;
+    ddt(f) = Div_par(g)  ;
+    ddt(g) = Div_par(f)  ;
     
     return 0;
   }
