@@ -1,7 +1,9 @@
 //#include <bout/derivs.hxx>
 
 #include <bout/physicsmodel.hxx>
-
+#include <field_factory.hxx>
+#include "parallel_boundary_region.hxx"
+#include "boundary_region.hxx"
 
 
 
@@ -45,6 +47,29 @@ protected:
     
     mesh->communicate(f, g);
 
+    for (const auto &bndry_par :
+           mesh->getBoundariesPar()) {
+      for (bndry_par->first(); !bndry_par->isDone(); bndry_par->next()) {
+	int xx = bndry_par->ind().x();
+        int yy = bndry_par->ind().y();
+        int zz = bndry_par->ind().z();
+	BoutReal f_parvalue = 0.0;
+	BoutReal g_parvalue = 0.0;
+	if (bndry_par->dir > 0.0){
+	  //Parallel boundary in the forward parallel direction
+	  //Use cells to interpolate value
+	  f_parvalue = (f_solution(xx,yy+1,zz)+f_solution(xx,yy,zz))/2.0;
+	  g_parvalue = (g_solution(xx,yy+1,zz)+g_solution(xx,yy,zz))/2.0;
+	} else {
+	  f_parvalue = (f_solution(xx,yy-1,zz)+f_solution(xx,yy,zz))/2.0;
+	  g_parvalue = (g_solution(xx,yy-1,zz)+g_solution(xx,yy,zz))/2.0;
+	}
+	
+	f.ynext(bndry_par->dir)(xx,yy+bndry_par->dir,zz) = f_parvalue;
+	g.ynext(bndry_par->dir)(xx,yy+bndry_par->dir,zz) = g_parvalue;
+        
+      }
+    }
     //Set the parallel boundary conditions
 
     
