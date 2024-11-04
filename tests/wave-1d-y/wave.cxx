@@ -9,7 +9,8 @@ class Wave1D : public PhysicsModel {
 private:
   Field3D f, g; // Evolving variables
   Field3D f_solution, g_solution, f_source, g_source;
-
+  Field3D this_y;
+  Field3D a;
 protected:
   int init(bool restarting) override {
     auto& opt = Options::root();
@@ -19,56 +20,39 @@ protected:
     g_solution = optg["solution"].withDefault(Field3D{0.0});
     f_source = optf["source"].withDefault(Field3D{0.0});
     g_source = optg["source"].withDefault(Field3D{0.0});
-   
-    SAVE_REPEAT(f_solution, g_solution, f_source, g_source);
+    this_y = opt["this_y"].withDefault(Field3D{0.0});
+    SAVE_ONCE(this_y);
+    SAVE_REPEAT(f_solution, g_solution, f_source, g_source,a);
     // Tell BOUT++ to solve f and g
     solver->add(f, "f");
     solver->add(g, "g");
-    
+    a = 0.0;
     return 0;
   }
 
-  int rhs(BoutReal UNUSED(t)) override {
+  int rhs(BoutReal time) override {
     auto& opt = Options::root();
     auto& optf = opt["f"];
     auto& optg = opt["g"];
-    f_solution = optf["solution"].withDefault(Field3D{0.0});
-    g_solution = optg["solution"].withDefault(Field3D{0.0});
-    f_source = optf["source"].withDefault(Field3D{0.0});
-    g_source = optg["source"].withDefault(Field3D{0.0});
+    f_solution = this_y - sin(time)*cos(0.5*this_y) + cos(this_y);
+    g_solution = this_y*this_y + sin(this_y) + cos(time)*cos(0.1*this_y*this_y);
+    
+    f_source = 0.2*this_y*sin(0.1*this_y*this_y)*cos(time) - 2*this_y - cos(time)*cos(0.5*this_y) - cos(this_y);
+    g_source = -0.5*sin(time)*sin(0.5*this_y) - sin(time)*cos(0.1*this_y*this_y) + sin(this_y) - 1.0;
     
     f.applyBoundary();
     g.applyBoundary();
-    mesh->communicate(f, g); // Communicate guard cells
-
     
-    
-    //set parallel Boundary conditions
-    /*
-    for (const auto& ind : f.getRegion("RGN_NOBNDRY")){
-      if ((mesh->lastY()) && (ind.y() == mesh->yend)){
-	f(ind.x(),ind.y(),ind.z()) = f_solution(ind.x(),ind.y(),ind.z());
-	g(ind.x(),ind.y(),ind.z()) = g_solution(ind.x(),ind.y(),ind.z());
+    mesh->communicate(f, g);
 
-	f(ind.x(),ind.y()-1,ind.z()) = f_solution(ind.x(),ind.y()-1,ind.z());
-        g(ind.x(),ind.y()-1,ind.z()) = g_solution(ind.x(),ind.y()-1,ind.z());
-      }
-      if ((mesh->firstY()) && (ind.y() == mesh->ystart)){
-	f(ind.x(),ind.y(),ind.z()) = f_solution(ind.x(),ind.y(),ind.z());
-        g(ind.x(),ind.y(),ind.z()) = g_solution(ind.x(),ind.y(),ind.z());
+    //Set the parallel boundary conditions
 
-	f(ind.x(),ind.y()+1,ind.z()) = f_solution(ind.x(),ind.y()+1,ind.z());
-        g(ind.x(),ind.y()+1,ind.z()) = g_solution(ind.x(),ind.y()+1,ind.z());
-      }
-    }
-    */
-    g.applyParallelBoundary();
-    f.applyParallelBoundary();
     
 
     //Time evolution
-    ddt(f) = Grad_par(g) + f_source;
-    ddt(g) = Grad_par(f) + g_source;
+    
+    ddt(f) = Div_par(g) + f_source ;
+    ddt(g) = Div_par(f) + g_source ;
     
     return 0;
   }
