@@ -10,7 +10,7 @@ MXG = 2
 MYG = 2
 
 #grid = "MMS_straight_slab.fci.grid.nc"
-grid = "MMS_straight_slab_256.fci.grid.nc"
+grid = "MMS_straight_slab_64.fci.grid.nc"
 
 this_y = y / (2*pi)
 
