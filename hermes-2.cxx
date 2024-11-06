@@ -2931,7 +2931,7 @@ int Hermes::rhs(BoutReal t) {
     }
 
     if(Ve_supsonic_dissipation){
-      Field3D tmp = floor((abs(Ve) - sound_speed),0.0);
+      Field3D tmp = floor((abs(Ve) - sqrt(mi_me)*sound_speed),0.0);
       Ve_dampening = -(Ve/abs(Ve))*Ve_supsonic_factor * (exp(tmp)-1.0);
       ddt(VePsi) += Ve_dampening;
     }
