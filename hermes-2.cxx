@@ -1699,18 +1699,6 @@ int Hermes::init(bool restarting) {
   // Magnetic field in boundary
   auto& Bxy = mesh->getCoordinates()->Bxy;
 
-  for (RangeIterator r = mesh->iterateBndryLowerY(); !r.isDone(); r++) {
-    for (int jz = 0; jz < mesh->LocalNz; jz++) {
-      Bxy.ydown()(r.ind, mesh->ystart - 1, jz) = Bxy(r.ind, mesh->ystart, jz);
-      Bxy(r.ind, mesh->ystart - 1, jz) = Bxy(r.ind, mesh->ystart, jz);
-    }
-  }
-  for (RangeIterator r = mesh->iterateBndryUpperY(); !r.isDone(); r++) {
-    for (int jz = 0; jz < mesh->LocalNz; jz++) {
-      Bxy.yup()(r.ind, mesh->yend + 1, jz) = Bxy(r.ind, mesh->yend, jz);
-      Bxy(r.ind, mesh->yend + 1, jz) = Bxy(r.ind, mesh->yend, jz);
-    }
-  }
 
   opt["Pn"].setConditionallyUsed();
   opt["Nn"].setConditionallyUsed();
@@ -2531,22 +2519,6 @@ int Hermes::rhs(BoutReal t) {
     // Ion parallel heat conduction
     kappa_ipar = mul_all(mul_all(mul_all(3.9, Ti), Ne), tau_i);
 
-    // Boundary conditions on heat conduction coefficients
-    for (RangeIterator r = mesh->iterateBndryLowerY(); !r.isDone(); r++) {
-      for (int jz = 0; jz < mesh->LocalNz; jz++) {
-        ASSERT0(fci_transform == false);
-        kappa_epar(r.ind, mesh->ystart - 1, jz) = kappa_epar(r.ind, mesh->ystart, jz);
-        kappa_ipar(r.ind, mesh->ystart - 1, jz) = kappa_ipar(r.ind, mesh->ystart, jz);
-      }
-    }
-
-    for (RangeIterator r = mesh->iterateBndryUpperY(); !r.isDone(); r++) {
-      for (int jz = 0; jz < mesh->LocalNz; jz++) {
-        ASSERT0(fci_transform == false);
-        kappa_epar(r.ind, mesh->yend + 1, jz) = kappa_epar(r.ind, mesh->yend, jz);
-        kappa_ipar(r.ind, mesh->yend + 1, jz) = kappa_ipar(r.ind, mesh->yend, jz);
-      }
-    }
   }
   
   if(floor_kappa_epar>0.0){
