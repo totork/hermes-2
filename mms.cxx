@@ -229,10 +229,6 @@ int main(int argc, char** argv) {
         });
       }
     }
-    if (mesh) {
-      mesh->outputVars(dump);
-      dump["BOUT_VERSION"].force(bout::version::as_double);
-    }
 
       std::string outname = fmt::format(
           "{}/BOUT.{}.{}.nc",
