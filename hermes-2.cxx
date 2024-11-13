@@ -1992,10 +1992,10 @@ int Hermes::rhs(BoutReal t) {
       // Set boundary from temperature, to be consistent with j=0 at sheath
 
       // Sheath multiplier Te -> phi (2.84522 for Deuterium if Ti = 0)
-      phi_boundary2d =
-          ((log(0.5 * sqrt(mi_me / PI)) + log(sqrt(Te / (Te + Ti)))) * Te);
+      phi_boundary2d = DC((log(0.5 * sqrt(mi_me / PI)) + log(sqrt(Te / (Te + Ti)))) * Te);
 
-      phi_boundary3d = phi_boundary2d;
+      
+      phi_boundary3d = 3.0 * Te;
     }
 
     if (phi3d) {
