@@ -1559,6 +1559,7 @@ int Hermes::init(bool restarting) {
   debug_VePsisheath = 0.0;
   debug_phisheath = 0.0;
   debug_denom = 0.0;
+  debug_phibndry3d = 0.0;
   NVi_dampening = 0.0;
   Ve_dampening = 0.0;
   TE_VePsi_pe_par = 0.0;
@@ -1629,7 +1630,7 @@ int Hermes::init(bool restarting) {
   if (verbose) {
     // Save additional fields
     SAVE_REPEAT(Jpar); // Parallel current
-    SAVE_REPEAT(debug_soundspeed);
+    SAVE_REPEAT(debug_soundspeed,debug_phibndry3d);
     SAVE_REPEAT(tau_e, tau_i);
 
     if(NVi_supsonic_dissipation){
@@ -1992,7 +1993,7 @@ int Hermes::rhs(BoutReal t) {
 
       // Sheath multiplier Te -> phi (2.84522 for Deuterium if Ti = 0)
       phi_boundary2d =
-          DC((log(0.5 * sqrt(mi_me / PI)) + log(sqrt(Te / (Te + Ti)))) * Te);
+          ((log(0.5 * sqrt(mi_me / PI)) + log(sqrt(Te / (Te + Ti)))) * Te);
 
       phi_boundary3d = phi_boundary2d;
     }
@@ -2151,6 +2152,7 @@ int Hermes::rhs(BoutReal t) {
           }
         }
         // Hot ion term in vorticity
+	debug_phibndry3d = phi_boundary3d;
         mesh->communicate(phi);
         phi.applyParallelBoundary(parbc);
         phi = sub_all(phi, Pi);

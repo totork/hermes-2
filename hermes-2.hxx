@@ -85,6 +85,7 @@ private:
   Field3D TE_Pe_ExB, TE_Pe_parflow, TE_Pe_anom, TE_Pe_dia, TE_Pe_hyper, TE_Pe_energ_balance, TE_Pe_cond, TE_Pe_thermal_flux, TE_Pe_ohmic, TE_Pe_thermal_force, TE_Pe_par_p_term, TE_Pe_numdiff;
   Field3D TE_NVi_ExB, TE_NVi_dia, TE_NVi_parflow,TE_NVi_pe_par,TE_NVi_viscos,TE_NVi_numdiff,TE_NVi_classical,TE_NVi_hyper,TE_NVi_anom;
   Field3D debug_denom,debug_soundspeed;
+  Field3D debug_phibndry3d;
   Field3D J_up,J_down,g_11_up,g_11_down,g_22_up,g_22_down,g_33_up,g_33_down,g_13_up,g_13_down,g_12_down,g_12_up,g_23_down,g_23_up;
   Field3D vort_dia,vort_ExB,vort_jpar,vort_parflow,vort_anom,vort_hyper,vort_classical,vort_numdiff;
   bool J_equalize;
