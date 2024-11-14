@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.9...3.12)
+project(Diffusion_XYZ LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 14)
+find_package(bout++ REQUIRED)
+add_executable(Diffusion_XYZ Diffusion_XYZ.cxx)
+target_link_libraries(Diffusion_XYZ PRIVATE bout++::bout++)
