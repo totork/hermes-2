@@ -33,13 +33,19 @@ protected:
     return 0;
   }
 
-  int rhs(BoutReal time) override {
-    N.applyBoundary(time);
+  int rhs(BoutReal t) override {
+
     mesh->communicate(N);
 
+    
     // Calculate the solution of N
-    //N_solution = 0.9 + 0.9 * yl + cos(xl) + 0.2*cos(10.0 * time) * sin(5.0 * yl*yl - 2.0*zl);
-     N_solution = 0.9 + 0.9 * yl + 0.2*sin(5.0*yl*yl);
+
+    //N_solution = 0.9*yl + 0.2 * sin(5.0 * yl*yl - 2.0*zl) + sin(7*xl + 1.234)*cos(xl)*cos(10.0*zl) + 0.9;
+
+    N_solution = 0.9 + 0.9 * yl + 0.2 * cos(10.0 * t)*sin(5.0 * yl * yl);
+    
+    //N_solution = 0.9 + 0.9 * yl + cos(xl) + 0.2*cos(10.0 * t) * sin(5.0 * yl*yl - 2.0*zl);
+    // N_solution = 0.9 + 0.9 * yl + 0.2*sin(5.0*yl*yl);
     // Apply parallel boundary conditions by hand
 
     for (const auto &bndry_par :
