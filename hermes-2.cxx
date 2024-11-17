@@ -1653,7 +1653,7 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(vort_ExB);
     SAVE_REPEAT(vort_jpar);
     SAVE_REPEAT(vort_anom);
-    SAVE_REPEAT(vort_hyper,vort_classical,vort_numdiff);
+    SAVE_REPEAT(vort_hyper,vort_classical,vort_numdiff,vort_parflow);
     SAVE_REPEAT(debug_visheath,debug_vesheath,debug_sheathexp);
     SAVE_REPEAT(NVi_Div_parP_n);
     SAVE_REPEAT(debug_phisheath);
@@ -2774,6 +2774,14 @@ int Hermes::rhs(BoutReal t) {
       ddt(Vort) += vort_classical;
     }
 
+    if (parallel_flow && parallel_vort_flow) {
+      Field3D vortve = mul_all(Vort, Ve);
+      vortve.applyBoundary("neumann_o2");
+      mesh->communicate(vortve);
+      vortve.applyParallelBoundary(parbc);
+      vort_parflow = -Div_parP(vortve);
+      ddt(Vort) += vort_parflow;
+    }
   
     if (anomalous_nu > 0.0) {
       TRACE("Vort:anomalous_nu");
