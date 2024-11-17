@@ -64,6 +64,9 @@ private:
   Field3D Vort;       // Vorticity
   Field3D NVi;        // Parallel momentum
 
+  Field3D Pe_yup, Pe_ydown,kappa_epar_yup,kappa_epar_ydown;
+  
+  
   FieldGroup EvolvingVars;
 
   // Auxilliary variables

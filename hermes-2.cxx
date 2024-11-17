@@ -1544,6 +1544,10 @@ int Hermes::init(bool restarting) {
   kappa_epar = 0.0;
   kappa_ipar = 0.0;
   Dn = 0.0;
+  Pe_yup = 0.0;
+  Pe_ydown = 0.0;
+  kappa_epar_yup=0.0;
+  kappa_epar_ydown = 0.0;
   vort_dia = 0.0;
   vort_ExB = 0.0;
   vort_jpar = 0.0;
@@ -1647,7 +1651,7 @@ int Hermes::init(bool restarting) {
     
     SAVE_REPEAT(kappa_epar); // Parallel electron heat conductivity
     SAVE_REPEAT(kappa_ipar); // Parallel ion heat conductivity
-
+    SAVE_REPEAT(Pe_yup, Pe_ydown,kappa_epar_yup,kappa_epar_ydown);
     SAVE_REPEAT(nu);
     SAVE_REPEAT(vort_dia);
     SAVE_REPEAT(vort_ExB);
@@ -2517,6 +2521,9 @@ int Hermes::rhs(BoutReal t) {
       }
       
       kappa_epar = div_all(kappa_epar,denom);
+      kappa_epar.applyBoundary("neumann_o2");
+      mesh->communicate(kappa_epar);
+      kappa_epar.applyParallelBoundary(parbc);
     }
 
     // Ion parallel heat conduction
@@ -3222,7 +3229,15 @@ int Hermes::rhs(BoutReal t) {
       }
       ddt(Pe) += TE_Pe_numdiff;
     }
+    if (verbose){
+      for (const auto& ind : Pe.getRegion("RGN_NOBNDRY")) {
+	Pe_yup[ind] = Pe.yup()[ind.yp()];
+	Pe_ydown[ind] = Pe.ydown()[ind.ym()];
+	kappa_epar_yup[ind] = kappa_epar.yup()[ind.yp()];
+        kappa_epar_ydown[ind] = kappa_epar.ydown()[ind.ym()];
+      }
 
+    }
     //////////////////////
     // Sources
 
