@@ -530,12 +530,14 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, Ohmslaw_use_ve, false);
   OPTION(optsc, VePsi_perp, true);
   OPTION(optsc, scale_ExB, 1.0);
+  OPTION(optsc, set_inner_neumann, false);
   OPTION(optsc, J_equalize, false);
   OPTION(optsc, VorticitySource, false);
   OPTION(optsc, floor_kappa_ipar, -1.0);
   OPTION(optsc, floor_kappa_epar,-1.0);
   OPTION(optsc, NVi_supsonic_dissipation, false);
   OPTION(optsc, NVi_supsonic_factor, 1.0);
+  OPTION(optsc, bool_NVi_upwind, false);
   OPTION(optsc, Ve_supsonic_dissipation, false);
   OPTION(optsc, Ve_supsonic_factor, 1.0);
   thermal_force = optsc["thermal_force"]
@@ -2312,7 +2314,27 @@ int Hermes::rhs(BoutReal t) {
   //
   // NOTE: Have to apply parallel boundary conditions in field aligned coordinates
   // so shift to and then from field aligned
-
+  if(set_inner_neumann){
+    for (const auto &bndry_par : mesh->getBoundariesPar(BoundaryParType::xin)) {
+      for (const auto &pnt : *bndry_par)  {
+          int x = pnt.ind().x();
+          int y = pnt.ind().y();
+          int z = pnt.ind().z();
+	  Ne.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Ne(x, y, z);
+	  Te.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Te(x, y, z);
+          Ti.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Ti(x, y, z);
+          Pe.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Pe(x, y, z);
+          Pi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Pi(x, y, z);
+	  phi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = phi(x, y, z);
+	  NVi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = NVi(x, y, z);
+	  Vort.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Vort(x, y, z);
+	  VePsi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = VePsi(x, y, z);
+	  Ve.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Ve(x, y, z);
+	  Vi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Vi(x, y, z);
+      }
+    }
+  }
+  
   TRACE("Sheath boundaries");
   if (parallel_sheaths){
     switch (par_sheath_model) {
@@ -2588,10 +2610,17 @@ int Hermes::rhs(BoutReal t) {
       //check_all(neve);
       ddt(Ne) -= Div_parP(neve);
     } else {
-      //check_all(Vi);
+      Field3D tmp = 0.0;
       Field3D nevi = mul_all(Ne, Vi);
-      //check_all(nevi);
-      auto tmp = -Div_parP(nevi);
+      if(bool_NVi_upwind==false){
+	tmp = -Div_parP(nevi);
+      } else {
+	for(auto &i : Ne.getRegion("RGN_NOBNDRY")) {
+	  tmp [i] -= Ve[i] * (Ne[i] - Ne.yup()[i.yp()])/sqrt(coord->g_22[i]);
+	}
+
+      }
+     
       if(TE_Ne){
 	TE_Ne_parflow = tmp;
       }
