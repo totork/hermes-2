@@ -6,6 +6,90 @@
 #include "parallel_boundary_region.hxx"
 #include "boundary_region.hxx"
 #include "../../div_ops.hxx"
+#include <algorithm> // For std::max
+#include <initializer_list>
+
+
+template <typename T, typename... Args>
+T calculateMax(T first, Args... args) {
+    return std::max({first, static_cast<T>(args)...});
+}
+
+
+Field3D MinMod(const Field3D &f) {
+  // get gradient in y direction, avoiding numerical issues
+  Field3D result;
+  result.allocate();
+  BOUT_FOR(i, f.getRegion("RGN_NOBNDRY")) {
+    const BoutReal fp = f.yup()[i.yp()];
+    const BoutReal fm = f.ydown()[i.ym()];
+    const BoutReal fi = f[i];
+    const BoutReal gp = fp - fi;
+    const BoutReal gm = fi - fm;
+    if ((gp * gm) < 0) {
+      result[i] = 0;
+    } else if (abs(gp) < abs(gm)) {
+      result[i] = gp;
+    } else {
+      result[i] = gm;
+    }
+    ASSERT2(std::isfinite(result[i]));
+  }
+  result.applyBoundary("neumann_o2");
+  return result;
+}
+
+Field3D Div_parP_f(const Field3D &f, const Field3D &v,
+                           Field3D &sound_speed) {
+ throw BoutException("NI");
+}
+
+Field3D Div_parP_n(const Field3D &n, const Field3D &v,
+                           Field3D &sound_speed) {
+  auto parbc = "parallel_neumann_o2";
+  Field3D gn = MinMod(n);
+  Field3D gv = MinMod(v);
+  n.getMesh()->communicate(gn, gv, sound_speed);
+  gn.applyParallelBoundary(parbc);
+  gv.applyParallelBoundary(parbc);
+  sound_speed.applyParallelBoundary(parbc);
+  Field3D result{0.0};
+
+  auto coord = n.getCoordinates();
+  BOUT_FOR(i, n.getRegion("RGN_ALL")) {
+    const auto ip = i.yp();
+    const auto im = i.ym();
+
+    // const BoutReal iVi =
+    //     1 / (coord->dx[i] * coord->dy[i] * coord->dz[i] * coord->J[i]);
+    // const BoutReal Ai =
+    //     coord->dx[i] * coord->dz[i] * coord->J[i] / sqrt(coord->g_22[i]);
+    // Area / Volume
+    const BoutReal AoVi = 1 / (coord->dy[i] * sqrt(coord->g_22[i]));
+
+    const BoutReal niR = n[i] + gn[i] / 2;
+    const BoutReal viR = v[i] + gv[i] / 2;
+    const BoutReal npL = n.yup()[ip] - gn.yup()[ip];
+    const BoutReal vpL = v.yup()[ip] - gv.yup()[ip];
+    const BoutReal niL = n[i] - gn[i] / 2;
+    const BoutReal viL = v[i] - gv[i] / 2;
+    const BoutReal nmR = n.ydown()[im] - gn.ydown()[im];
+    const BoutReal vmR = v.ydown()[im] - gv.ydown()[im];
+    const BoutReal amaxp = calculateMax(
+        abs(v[i]), abs(v.yup()[ip]), sound_speed[i], sound_speed.yup()[ip]);
+    const BoutReal amaxm = calculateMax(abs(v[i]), abs(v.ydown()[im]),
+                                     sound_speed[i], sound_speed.ydown()[im]);
+    BoutReal Gnvp = 0.5 * (niR * SQ(viR) + npL * SQ(vpL)) +
+                    0.5 * amaxp * (niR * viR - npL * vpL);
+    BoutReal Gnvm = 0.5 * (nmR * SQ(vmR) + niL * SQ(viL)) +
+                    0.5 * amaxm * (nmR * vmR - niL * viL);
+    ASSERT1(std::isfinite(Gnvp));
+    ASSERT1(std::isfinite(Gnvm));
+    result[i] = AoVi * (Gnvp - Gnvm);
+  }
+  return result;
+}
+
 
 void setRegions(Field3D &f) {
   f.yup().setRegion("RGN_YPAR_+1");
@@ -226,10 +310,13 @@ protected:
   }
 
   int rhs(BoutReal t) override {
-
+    n.applyBoundary("neumann_o2");
+    p.applyBoundary("neumann_o2");
+    nv.applyBoundary("neumann_o2");
     mesh->communicate(n,p,nv);
-
-    
+    n.applyParallelBoundary("parallel_neumann_o2");
+    p.applyParallelBoundary("parallel_neumann_o2");
+    nv.applyParallelBoundary("parallel_neumann_o2");
     // Calculate the solution of N
     
     n_solution= -0.1 * sin(t - 2.0*yl) + 1;
@@ -238,7 +325,14 @@ protected:
 
     
     nv_solution = 0.1 * sin(2.0 * t + yl);
-    
+
+    n_solution.applyBoundary("neumann_o2");
+    p_solution.applyBoundary("neumann_o2");
+    nv_solution.applyBoundary("neumann_o2");
+    mesh->communicate(n_solution,p_solution,nv_solution);
+    n_solution.applyParallelBoundary("parallel_neumann_o2");
+    p_solution.applyParallelBoundary("parallel_neumann_o2");
+    nv_solution.applyParallelBoundary("parallel_neumann_o2");
     // Apply parallel boundary conditions by hand
     
     for (const auto &bndry_par :
@@ -285,10 +379,12 @@ protected:
     ddt(p) = -Div_par(p_v) - (gamma - 1.0) * p * Div_par(v);
 
     // Momentum equation
-    ddt(nv) = -Div_par(nv_v) - Grad_par(p) ;
+    ddt(nv) = -Div_parP_n(n,v,cs) - Grad_par(p) ;
     
     return 0;
   }
 };
 
 BOUTMAIN(fluid); // Create a main() function
+
+
