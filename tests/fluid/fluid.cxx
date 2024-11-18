@@ -286,6 +286,9 @@ private:
   BoutReal gamma;
   Field3D xl,yl,zl;
   Field3D bndry_n,bndry_p,bndry_nv;
+  BoutReal Dy;
+  Field3D Diss;
+  bool dissipation;
 protected:
   int init(bool restarting) override {
     auto& opt = Options::root();
@@ -294,7 +297,16 @@ protected:
     zl=opt["zl"].withDefault(Field3D{0.0});
     
     gamma = opt["gamma"].doc("Adiabatic index (ratio of specific heats)").withDefault(5. / 3);
-
+    Diss = 0.0;
+    Dy = 0.0;
+    Dy=opt["Dy"].withDefault(0.0);
+    dissipation = opt["dissipation"].withDefault<bool>(false);
+    Diss = 1.0 * Dy;
+    
+    Diss.applyBoundary("neumann_o2");
+    mesh->communicate(Diss);
+    Diss.applyParallelBoundary("parallel_neumann_o2");
+    
     n_solution=0.0;
     p_solution = 0.0;
     nv_solution = 0.0;
@@ -303,7 +315,7 @@ protected:
     bndry_p = 0.0;
     bndry_nv = 0.0;
     
-    SAVE_REPEAT(n_solution,p_solution,nv_solution);
+    SAVE_REPEAT(n_solution,p_solution,nv_solution,bndry_n,bndry_p,bndry_nv);
     
     SOLVE_FOR(n, p, nv);
     return 0;
@@ -313,10 +325,7 @@ protected:
     n.applyBoundary("neumann_o2");
     p.applyBoundary("neumann_o2");
     nv.applyBoundary("neumann_o2");
-    mesh->communicate(n,p,nv);
-    n.applyParallelBoundary("parallel_neumann_o2");
-    p.applyParallelBoundary("parallel_neumann_o2");
-    nv.applyParallelBoundary("parallel_neumann_o2");
+    
     // Calculate the solution of N
     
     n_solution= -0.1 * sin(t - 2.0*yl) + 1;
@@ -344,22 +353,24 @@ protected:
 	BoutReal N_parvalue = 0.0;
 	if (bndry_par->dir > 0.0){
 	  
-	  bndry_n(xx,yy,zz) = (n_solution(xx,yy+1,zz));
-	  bndry_p(xx,yy,zz) = (p_solution(xx,yy+1,zz));
-	  bndry_nv(xx,yy,zz) = (nv_solution(xx,yy+1,zz));
+	  bndry_n(xx,yy,zz) = (n_solution(xx,yy,zz));
+	  bndry_p(xx,yy,zz) = (p_solution(xx,yy,zz));
+	  bndry_nv(xx,yy,zz) = (nv_solution(xx,yy,zz));
 	} else {
 	  //bndry_N(xx,yy,zz) = (N_solution(xx,yy-1,zz)+N_solution(xx,yy,zz))/2.0;
-	  bndry_n(xx,yy,zz) = (n_solution(xx,yy-1,zz));
-	  bndry_p(xx,yy,zz) = (p_solution(xx,yy-1,zz));
-	  bndry_nv(xx,yy,zz) = (nv_solution(xx,yy-1,zz));
+	  bndry_n(xx,yy,zz) = (n_solution(xx,yy,zz));
+	  bndry_p(xx,yy,zz) = (p_solution(xx,yy,zz));
+	  bndry_nv(xx,yy,zz) = (nv_solution(xx,yy,zz));
 	}
-	n.ynext(bndry_par->dir)(xx,yy+bndry_par->dir,zz) = bndry_n(xx,yy,zz);
-	p.ynext(bndry_par->dir)(xx,yy+bndry_par->dir,zz) = bndry_p(xx,yy,zz);
-	nv.ynext(bndry_par->dir)(xx,yy+bndry_par->dir,zz) = bndry_nv(xx,yy,zz);
-	
+	//n.ynext(bndry_par->dir)(xx,yy+bndry_par->dir,zz) = bndry_n(xx,yy,zz);
+	//p.ynext(bndry_par->dir)(xx,yy+bndry_par->dir,zz) = bndry_p(xx,yy,zz);
+	//nv.ynext(bndry_par->dir)(xx,yy+bndry_par->dir,zz) = bndry_nv(xx,yy,zz);
+	n(xx,yy,zz) = bndry_n(xx,yy,zz);
+	p(xx,yy,zz) = bndry_p(xx,yy,zz);
+	nv(xx,yy,zz) = bndry_nv(xx,yy,zz);
       }
     }
-    
+    mesh->communicate(n,p,nv);
     Field3D v = div_all(nv,n);
 
     // Calculate sound speed
@@ -379,8 +390,13 @@ protected:
     ddt(p) = -Div_par(p_v) - (gamma - 1.0) * p * Div_par(v);
 
     // Momentum equation
-    ddt(nv) = -Div_parP_n(n,v,cs) - Grad_par(p) ;
-    
+    //ddt(nv) = -Div_parP_n(n,v,cs) - Grad_par(p) ;
+    ddt(nv) = -Div_par(nv_v) - Grad_par(p);
+    if(dissipation){
+      ddt(nv) += Div_par_K_Grad_par(Diss,nv);
+      //ddt(p) += Div_par_K_Grad_par(Diss,p);
+      //ddt(n) += Div_par_K_Grad_par(Diss,n);
+    }
     return 0;
   }
 };
