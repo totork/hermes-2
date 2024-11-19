@@ -397,14 +397,14 @@ protected:
 
     
     
-    Field3D v = div_all(nv_solution,n);
+    Field3D v = div_all(nv,n);
 
     // Calculate sound speed
     Field3D cs = sqrt(mul_all(gamma,div_all(p,n)));
 
     Field3D n_v = mul_all(n,v);
     Field3D p_v = mul_all(p,v);
-    Field3D nv_v = mul_all(nv_solution,v);
+    Field3D nv_v = mul_all(nv,v);
     
     ddt(n) = 0.0;
     ddt(p) = 0.0;
@@ -417,7 +417,7 @@ protected:
 
     // Momentum equation
     //ddt(nv) = -Div_parP_n(n,v,cs) - Grad_par(p) ;
-    //ddt(nv) = -Div_par(nv_v) - Grad_par(p);
+    ddt(nv) = -Div_par(nv_v) - Grad_par(p);
     if(dissipation){
       ddt(nv) += Div_par_K_Grad_par(Diss,nv);
       //ddt(p) += Div_par_K_Grad_par(Diss,p);
