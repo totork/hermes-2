@@ -1,0 +1,71 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 14.0' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[      1882,         61]
+NotebookOptionsPosition[      1314,         43]
+NotebookOutlinePosition[      1713,         59]
+CellTagsIndexPosition[      1670,         56]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+
+Cell[CellGroupData[{
+Cell[BoxData[
+ RowBox[{"<<", "Axial`"}]], "Input",
+ CellChangeTimes->{{3.9410005336133223`*^9, 3.941000541398674*^9}},
+ CellLabel->"In[39]:=",ExpressionUUID->"9f707231-815c-446a-a783-4c26634eb7ef"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "Get", "noopen", 
+   "\"Cannot open \\!\\(\\*RowBox[{\\\"\\\\\\\"Axial`\\\\\\\"\\\"}]\\).\"", 2,
+    39, 4, 27054665595476147593, "Local"},
+  "MessageTemplate"]], "Message", "MSG",
+ CellChangeTimes->{3.9410005425863657`*^9},
+ CellLabel->
+  "During evaluation of \
+In[39]:=",ExpressionUUID->"9daf83df-9159-468c-990d-37915ba5f057"],
+
+Cell[BoxData["$Failed"], "Output",
+ CellChangeTimes->{3.941000542607087*^9},
+ CellLabel->"Out[39]=",ExpressionUUID->"f7bf69d3-e1c4-4e95-9dce-23fdb14b24e7"]
+}, Open  ]]
+},
+WindowSize->{1918.5, 1011.75},
+WindowMargins->{{0, Automatic}, {Automatic, 0}},
+FrontEndVersion->"14.0 for Linux x86 (64-bit) (December 12, 2023)",
+StyleDefinitions->"Default.nb",
+ExpressionUUID->"ee53c5d0-dbab-4b20-a961-e0f5716cf87c"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[CellGroupData[{
+Cell[580, 22, 197, 3, 29, "Input",ExpressionUUID->"9f707231-815c-446a-a783-4c26634eb7ef"],
+Cell[780, 27, 360, 9, 28, "Message",ExpressionUUID->"9daf83df-9159-468c-990d-37915ba5f057"],
+Cell[1143, 38, 155, 2, 55, "Output",ExpressionUUID->"f7bf69d3-e1c4-4e95-9dce-23fdb14b24e7"]
+}, Open  ]]
+}
+]
+*)
+
+(* End of internal cache information *)
+

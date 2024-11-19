@@ -339,11 +339,28 @@ protected:
     p_solution.applyBoundary("neumann_o2");
     nv_solution.applyBoundary("neumann_o2");
     mesh->communicate(n_solution,p_solution,nv_solution);
-    n_solution.applyParallelBoundary("parallel_neumann_o2");
-    p_solution.applyParallelBoundary("parallel_neumann_o2");
-    nv_solution.applyParallelBoundary("parallel_neumann_o2");
+    //n_solution.applyParallelBoundary("parallel_neumann_o2");
+    //p_solution.applyParallelBoundary("parallel_neumann_o2");
+    //nv_solution.applyParallelBoundary("parallel_neumann_o2");
     // Apply parallel boundary conditions by hand
-    
+    /*
+    for (const auto &bndry_par :
+	   mesh->getBoundariesPar()) {
+      for (const auto &pnt : *bndry_par) {
+	int xx = pnt.ind().x();
+	int yy = pnt.ind().y();
+	int zz = pnt.ind().z();
+	n(xx,yy,zz) = n_solution(xx,yy,zz);
+	p(xx,yy,zz) = p_solution(xx,yy,zz);
+	nv(xx,yy,zz) = nv_solution(xx,yy,zz);
+      }
+    }
+    */
+    mesh->communicate(n,p,nv);
+    //n.applyParallelBoundary("parallel_neumann_o2");
+    //p.applyParallelBoundary("parallel_neumann_o2");
+    //nv.applyParallelBoundary("parallel_neumann_o2");
+
     for (const auto &bndry_par :
 	   mesh->getBoundariesPar()) {
       for (const auto &pnt : *bndry_par) {
@@ -352,33 +369,42 @@ protected:
 	int zz = pnt.ind().z();
 	BoutReal N_parvalue = 0.0;
 	if (bndry_par->dir > 0.0){
-	  
-	  bndry_n(xx,yy,zz) = (n_solution(xx,yy,zz));
-	  bndry_p(xx,yy,zz) = (p_solution(xx,yy,zz));
-	  bndry_nv(xx,yy,zz) = (nv_solution(xx,yy,zz));
+	  bndry_n(xx,yy,zz) = (n_solution(xx,yy+1,zz));
+	  bndry_p(xx,yy,zz) = (p_solution(xx,yy+1,zz));
+	  bndry_nv(xx,yy,zz) = (nv_solution(xx,yy+1,zz));
 	} else {
 	  //bndry_N(xx,yy,zz) = (N_solution(xx,yy-1,zz)+N_solution(xx,yy,zz))/2.0;
-	  bndry_n(xx,yy,zz) = (n_solution(xx,yy,zz));
-	  bndry_p(xx,yy,zz) = (p_solution(xx,yy,zz));
-	  bndry_nv(xx,yy,zz) = (nv_solution(xx,yy,zz));
+	  bndry_n(xx,yy,zz) = (n_solution(xx,yy-1,zz));
+	  bndry_p(xx,yy,zz) = (p_solution(xx,yy-1,zz));
+	  bndry_nv(xx,yy,zz) = (nv_solution(xx,yy-1,zz));
 	}
-	//n.ynext(bndry_par->dir)(xx,yy+bndry_par->dir,zz) = bndry_n(xx,yy,zz);
-	//p.ynext(bndry_par->dir)(xx,yy+bndry_par->dir,zz) = bndry_p(xx,yy,zz);
-	//nv.ynext(bndry_par->dir)(xx,yy+bndry_par->dir,zz) = bndry_nv(xx,yy,zz);
-	n(xx,yy,zz) = bndry_n(xx,yy,zz);
-	p(xx,yy,zz) = bndry_p(xx,yy,zz);
-	nv(xx,yy,zz) = bndry_nv(xx,yy,zz);
+	n.ynext(bndry_par->dir)(xx,yy+bndry_par->dir,zz) = bndry_n(xx,yy,zz);
+	p.ynext(bndry_par->dir)(xx,yy+bndry_par->dir,zz) = bndry_p(xx,yy,zz);
+	nv.ynext(bndry_par->dir)(xx,yy+bndry_par->dir,zz) = bndry_nv(xx,yy,zz);
+	n_solution.ynext(bndry_par->dir)(xx,yy+bndry_par->dir,zz) = bndry_n(xx,yy,zz);
+	p_solution.ynext(bndry_par->dir)(xx,yy+bndry_par->dir,zz) = bndry_p(xx,yy,zz);
+        nv_solution.ynext(bndry_par->dir)(xx,yy+bndry_par->dir,zz) = bndry_nv(xx,yy,zz);
+
+
       }
     }
-    mesh->communicate(n,p,nv);
-    Field3D v = div_all(nv,n);
+
+
+
+
+
+
+
+    
+    
+    Field3D v = div_all(nv_solution,n);
 
     // Calculate sound speed
     Field3D cs = sqrt(mul_all(gamma,div_all(p,n)));
 
     Field3D n_v = mul_all(n,v);
     Field3D p_v = mul_all(p,v);
-    Field3D nv_v = mul_all(nv,v);
+    Field3D nv_v = mul_all(nv_solution,v);
     
     ddt(n) = 0.0;
     ddt(p) = 0.0;
@@ -391,7 +417,7 @@ protected:
 
     // Momentum equation
     //ddt(nv) = -Div_parP_n(n,v,cs) - Grad_par(p) ;
-    ddt(nv) = -Div_par(nv_v) - Grad_par(p);
+    //ddt(nv) = -Div_par(nv_v) - Grad_par(p);
     if(dissipation){
       ddt(nv) += Div_par_K_Grad_par(Diss,nv);
       //ddt(p) += Div_par_K_Grad_par(Diss,p);
