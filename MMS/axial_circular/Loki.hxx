@@ -39,12 +39,15 @@ private:
   // The variables that should be evolved                                                                                                                                                                  
   Field3D Ne, NVi, Pe, Pi, VePsi, Vort;
   FieldGroup EvolvingVars;
+
+  // Solution Variables
+  Field3D Ne_solution, Ne_source, Ne_bndry;
   // Switched for what fields to evolve                                                                                                                                                                    
   bool evolve_Ne, evolve_NVi, evolve_Pe, evolve_Pi, evolve_VePsi, evolve_Vort;
 
   //Switches for all terms in the Ne equation                                                                                                                                                              
 
-  bool Ne_ExB, Ne_diamagnetic, Ne_vpar, Ne_collisional ,Ne_diffusion_perp, Ne_diffusion_par , Ne_sources;
+  bool Ne_ExB, Ne_diamagnetic, Ne_vpar, Ne_gradpar ,Ne_collisional ,Ne_diffusion_perp, Ne_diffusion_par , Ne_sources;
 
   //Additional (important) variables                                                                                                                                                                       
 
@@ -54,10 +57,14 @@ private:
 
   Field3D D_perp,D_par;
 
-
-
+  // Support variables
+  bool upwind;
+  Field3D xl,yl,zl;
+  Field3D g_22;
+  
+  
   //////////////////////////////////////////////////////////////////
-
+  
   //                         New operators
 
   std::unique_ptr<FCI::dagp_fv> _FCIDiv_a_Grad_perp;

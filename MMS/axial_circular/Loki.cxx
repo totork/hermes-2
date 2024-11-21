@@ -16,6 +16,7 @@
 #include <cmath>
 
 
+
 template <typename T, typename... Args>
 T calculateMax(T first, Args... args) {
     return std::max({first, static_cast<T>(args)...});
@@ -238,21 +239,44 @@ DO_ALL(log)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int Loki::init(bool restarting) {
+  
   auto& opt = Options::root();
   auto& optNe = opt["Ne"];
   auto& optNVi = opt["NVi"];
   auto& optPe = opt["Pe"];
   auto& optPi = opt["Pi"];
   auto& optVePsi = opt["VePsi"];
-  auto& optVort = opt["Vort"];
+  auto& optVort = opt["Vort"];  
+
+  //Support variable initialisation
+
+  xl = opt["xl"].withDefault(Field3D{0.0});
+  yl = opt["yl"].withDefault(Field3D{0.0});
+  zl = opt["zl"].withDefault(Field3D{0.0});
+  SAVE_ONCE(xl,yl,zl);
+
+  auto *coord = mesh->getCoordinates();
+  g_22 = coord->g_22;
+
+
+  Mesh* mesh=Ne.getMesh();
+
+  OPTION(opt, upwind, false);
   
-   
+  Ne_solution = 0.0;
+  Ne_source = 0.0;
+  Ne_bndry = 0.0;
+  SAVE_REPEAT(Ne_solution, Ne_source,Ne_bndry);
+
+  
+  ////////////////////////////////////////////////
+  
   OPTION(opt, evolve_Ne, false);
   OPTION(opt, evolve_NVi, false);
   OPTION(opt, evolve_Pe, false);
@@ -267,12 +291,13 @@ int Loki::init(bool restarting) {
   OPTION(optNe, Ne_diffusion_perp, false);
   OPTION(optNe, Ne_diffusion_par, false);
   OPTION(optNe, Ne_sources, false);
-
+  OPTION(optNe, Ne_gradpar, false);
+  
   if(evolve_Ne){
     SOLVE_FOR(Ne);
     EvolvingVars.add(Ne);
     alloc_all(Ne);
-
+    SAVE_REPEAT(ddt(Ne));
     D_perp = optNe["D_perp"].withDefault(Field3D{0.0});
     D_par = optNe["D_par"].withDefault(Field3D{0.0});
   }
@@ -322,16 +347,40 @@ int Loki::init(bool restarting) {
 
 int Loki::rhs(BoutReal t) {
 
-  mesh->communicate(EvolvingVars);
+  
+  // Calculate the density solution
 
+ 
+  Ne_solution = 2*cos(0.5 - yl)*sin(0. - 0.1*t)*sin(31.41592653589793*(-0.2 + xl))*sin(0.1 - 2*zl);
+
+
+  mesh->communicate(Ne_solution);
+
+  
+  Ne_source = -0.2*cos(0. - 0.1*t)*cos(0.5 - yl)*sin(xl)*sin(0.1 - 6*zl) - (-24.*cos(0.1 - 6*zl)*sin(0. - 0.1*t)*sin(xl)*sin(0.5 - yl) - 74.*cos(0.5 - yl)*sin(0. - 0.1*t)*sin(xl)*sin(0.1 - 6*zl))/(1 + 1.*pow(xl,2));
+  
+  
+  mesh->communicate(Ne);
+
+  
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   //                                   Ne time evolution                                            //  
   ////////////////////////////////////////////////////////////////////////////////////////////////////
 
   //    Ne_ExB, Ne_mag, Ne_vpar, Ne_collisional ,Ne_diffusion , Ne_sources;
-  
+  ddt(Ne) = 0.0;
   if (evolve_Ne){
-    ddt(Ne) = 0.0;
+
+    if (Ne_gradpar){
+      TRACE("Density parallel gradient");
+      if(!upwind){
+	ddt(Ne) += Grad_par(Ne);
+      } else {
+	for(auto &i : Ne.getRegion("RGN_NOBNDRY")) {                                                                                                                                                                                                                            
+        ddt(Ne)[i] +=  (Ne.ydown()[i.ym()] - Ne[i])/sqrt(g_22[i]);                                                                                                                                                                                                               
+	}
+      }
+    }
     
     if (Ne_vpar){
       TRACE("Density parallel velocity");
@@ -339,14 +388,15 @@ int Loki::rhs(BoutReal t) {
       ddt(Ne) += Div_par(neve);
     }
 
-    if(Ne_diffusion_perp){
+    if (Ne_diffusion_perp){
       TRACE("Density perpendicular diffusion");
       //ddt(Ne) += FCIDiv_a_Grad_perp(D_perp,Ne);
     }
     
-    if(Ne_diffusion_par){
+    if (Ne_diffusion_par){
       TRACE("Density parallel diffusion");
       //ddt(Ne) += Div_par_K_Grad_par(D_par,Ne);
+      ddt(Ne) += Grad2_par2(Ne);
     }
 
       

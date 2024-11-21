@@ -23,21 +23,29 @@ Print["Computing MMS Terms"];
 define x,y and parallel derivatives in terms of r,p,z derivative \
 and normalised radial coordinate rn
 *)
-absb[r_] = Sqrt[1 + r^2/q[r]^2];
-pgrad[f_, r_, p_, z_, t_] = (D[f[r,p,z,t],z] + 1/q[r]*D[f[r,p,z,t],p])/absb[r];
+absb[x_] = Sqrt[1 + x^2/q[x]^2];
+pgrad[f_, x_, z_, y_, t_] = (D[f[x,z,y,t],y] + 1/q[x]*D[f[x,z,y,t],z])/absb[x];
+d2dpar2[f_, x_, z_, y_, t_] = (D[D[f[x, z, y, t], y], y] + 2/q[x]*D[D[f[x, z, y, t], y], z] + 
+     1/q[x]^2*D[D[f[x, z, y, t], z], z])/absb[x]^2;
+  
+xn[x_] = (x - xmin)/(xmax - xmin);  
+    (*
+    d2dpar2[f_, x_, z_, y_, t_] = (D[D[f[x, z, y, t], y], y] + 2/q[x]*D[D[f[x, z, y, t], y], z] + 
+     1/q[x]^2*D[D[f[x, z, y, t], z], z])/absb[x]^2;
+    *)
 
 
 (*
 Define normalised rho and MMS solution in terms of mode numbers \
 given above
 *)
-MmsDens[r_, p_, z_, t_] = amp*Sin[kr*r]*Sin[kp*p - php]*Cos[kz*z - phz]*Sin[omega*t - pht];
-MmsUpar[r_, p_, z_, t_]=1;
+MmsDens[x_, z_, y_, t_] = amp*Sin[2.0*Pi*kx*xn[x]]*Sin[kz*z - phz]*Cos[ky*y- phy]*Sin[omega*t - pht];
+MmsUpar[x_, z_, y_, t_]=1;
 
 
 
-pflux[r_, p_, z_, t_]=MmsDens[r, p, z, t]*MmsUpar[r, p, z, t];
-Smms[r_, p_, z_, t_]=D[MmsDens,t]-pgrad[pflux,r,p,z,t];
+pflux[x_, z_, y_, t_]=MmsDens[x, z, y, t];
+Smms[x_, z_, y_, t_]=D[MmsDens[x,z,y,t],t]-d2dpar2[MmsDens,x,z,y,t];
 
 
 Print["Finished MMS Terms"];
