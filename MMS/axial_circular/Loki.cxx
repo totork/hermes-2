@@ -255,18 +255,36 @@ int Loki::init(bool restarting) {
   auto& optVort = opt["Vort"];  
 
   //Support variable initialisation
-
+  x_val= opt["x_val"].withDefault(Field3D{0.0});
   xl = opt["xl"].withDefault(Field3D{0.0});
   yl = opt["yl"].withDefault(Field3D{0.0});
   zl = opt["zl"].withDefault(Field3D{0.0});
-  SAVE_ONCE(xl,yl,zl);
+  SAVE_ONCE(xl,yl,zl,x_val);
 
   auto *coord = mesh->getCoordinates();
   g_22 = coord->g_22;
 
 
   Mesh* mesh=Ne.getMesh();
+  RR=-1.0;
+  ZZ=-1.0;
+  mesh->get(RR, "R");
+  mesh->get(ZZ, "Z");
 
+  theta = 0.0;
+  rho = 0.0;
+  BOUT_FOR(i, Ne.getMesh()->getRegion3D("RGN_ALL")) {
+    //theta[i] = atan(Z[i]/R[i]);
+    theta[i] = atan2(ZZ[i],RR[i]);
+    if (theta[i] < 0.0){
+      theta[i] += 2.0*3.1415926535897935;
+    }
+    rho[i] = sqrt(ZZ[i]*ZZ[i]+RR[i]*RR[i]);
+  }
+  
+
+  SAVE_ONCE(RR,ZZ,theta,rho);
+  
   OPTION(opt, upwind, false);
   
   Ne_solution = 0.0;
@@ -351,14 +369,12 @@ int Loki::rhs(BoutReal t) {
   // Calculate the density solution
 
  
-  Ne_solution = 2*cos(0.5 - yl)*sin(0. - 0.1*t)*sin(31.41592653589793*(-0.2 + xl))*sin(0.1 - 2*zl);
+  Ne_solution = 2*cos(0.5 - yl)*sin(0.3 - 0.1*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl);
 
-
+    
   mesh->communicate(Ne_solution);
 
-  
-  Ne_source = -0.2*cos(0. - 0.1*t)*cos(0.5 - yl)*sin(xl)*sin(0.1 - 6*zl) - (-24.*cos(0.1 - 6*zl)*sin(0. - 0.1*t)*sin(xl)*sin(0.5 - yl) - 74.*cos(0.5 - yl)*sin(0. - 0.1*t)*sin(xl)*sin(0.1 - 6*zl))/(1 + 1.*pow(xl,2));
-  
+  Ne_source = 0.0;
   
   mesh->communicate(Ne);
 

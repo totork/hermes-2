@@ -28,7 +28,7 @@ pgrad[f_, x_, z_, y_, t_] = (D[f[x,z,y,t],y] + 1/q[x]*D[f[x,z,y,t],z])/absb[x];
 d2dpar2[f_, x_, z_, y_, t_] = (D[D[f[x, z, y, t], y], y] + 2/q[x]*D[D[f[x, z, y, t], y], z] + 
      1/q[x]^2*D[D[f[x, z, y, t], z], z])/absb[x]^2;
   
-xn[x_] = (x - xmin)/(xmax - xmin);  
+xn[x_] = (x-xmin)/(xmax-xmin);  
     (*
     d2dpar2[f_, x_, z_, y_, t_] = (D[D[f[x, z, y, t], y], y] + 2/q[x]*D[D[f[x, z, y, t], y], z] + 
      1/q[x]^2*D[D[f[x, z, y, t], z], z])/absb[x]^2;

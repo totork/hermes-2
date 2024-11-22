@@ -61,8 +61,8 @@ private:
   bool upwind;
   Field3D xl,yl,zl;
   Field3D g_22;
-  
-  
+  Field3D RR,ZZ,theta,rho;
+  Field3D x_val;
   //////////////////////////////////////////////////////////////////
   
   //                         New operators
