@@ -25,6 +25,9 @@ and normalised radial coordinate rn
 *)
 absb[x_] = Sqrt[1 + x^2/q[x]^2];
 pgrad[f_, x_, z_, y_, t_] = (D[f[x,z,y,t],y] + 1/q[x]*D[f[x,z,y,t],z])/absb[x];
+
+Laplace_perpe[f_, x_, z_, y_, t_] = D[f[x,z,y,t],{x,2}] + D[f[x,z,y,t],{z,2}]/(x*x) + D[f[x,z,y,t],x]/x;
+
 d2dpar2[f_, x_, z_, y_, t_] = (D[D[f[x, z, y, t], y], y] + 2/q[x]*D[D[f[x, z, y, t], y], z] + 
      1/q[x]^2*D[D[f[x, z, y, t], z], z])/absb[x]^2;
   
