@@ -20,6 +20,7 @@ class Loki;
 #include <bout/constants.hxx>
 #include <bout/mask.hxx> 
 #include <initializer_list>
+#include <bout/fv_ops.hxx>
 
 
 namespace FCI {
@@ -59,6 +60,7 @@ private:
 
   // Support variables
   bool upwind;
+  bool diffusion_perp_FV;
   Field3D xl,yl,zl;
   Field3D g_22;
   Field3D RR,ZZ,theta,rho;

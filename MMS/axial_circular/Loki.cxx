@@ -318,6 +318,7 @@ int Loki::init(bool restarting) {
     SAVE_REPEAT(ddt(Ne));
     D_perp = optNe["D_perp"].withDefault(Field3D{0.0});
     D_par = optNe["D_par"].withDefault(Field3D{0.0});
+    diffusion_perp_FV = optNe["FV"].doc("Use finite volume operator for perpendicular diffusion? Otherwise use d2dx2 ...").withDefault<bool>(false);
   }
 
   if(evolve_NVi){
@@ -369,13 +370,6 @@ int Loki::rhs(BoutReal t) {
   // Calculate the density solution
 
  
-  Ne_solution = 2*cos(0.5 - yl)*sin(0.3 - 0.1*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl);
-
-    
-  mesh->communicate(Ne_solution);
-
-  Ne_source = 0.0;
-  
   mesh->communicate(Ne);
 
   
@@ -406,7 +400,13 @@ int Loki::rhs(BoutReal t) {
 
     if (Ne_diffusion_perp){
       TRACE("Density perpendicular diffusion");
-      //ddt(Ne) += FCIDiv_a_Grad_perp(D_perp,Ne);
+      if(diffusion_perp_FV){
+	throw BoutException("FV for perp diffusion NI");
+	//ddt(Ne) += FCIDiv_a_Grad_perp(D_perp,Ne);
+      } else{
+	ddt(Ne) += D_perp * (D2DX2(Ne) + D2DZ2(Ne));
+      }
+      
     }
     
     if (Ne_diffusion_par){
