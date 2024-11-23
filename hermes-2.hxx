@@ -283,7 +283,7 @@ private:
   bool split_n0_psi;   // Split the n=0 component of Apar (psi)?
   //Laplacian *aparSolver;
   // LaplaceXZ *aparSolver;
-  std::unique_ptr<Laplacian> aparSolver{nullptr};
+  std::unique_ptr<LaplaceXZ> aparSolver{nullptr};
 
   // std::unique_ptr<LaplaceXY> aparXY{nullptr};
   LaplaceXY *aparXY;    // Solves n=0 component

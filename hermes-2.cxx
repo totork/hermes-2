@@ -1016,7 +1016,7 @@ int Hermes::init(bool restarting) {
   phi.setBoundary("phi"); // For y boundaries                                                                                                     
 
   restart.addOnce(phi, "phi");
-  aparSolver = Laplacian::create(&opt["aparSolver"]);
+  aparSolver = LaplaceXZ::create(mesh,&opt["aparSolver"],CELL_CENTRE);
   Ve.setBoundary("Ve");
   nu.setBoundary("nu");
   Jpar.setBoundary("Jpar");
@@ -1347,12 +1347,13 @@ int Hermes::rhs(BoutReal t) {
   if (electromagnetic) {
     if (FiniteElMass) {
       // Solve Helmholtz equation for psi
+      auto tmp = -Ne*0.5*mi_me*beta_e;
       
-      aparSolver->setCoefA(-Ne*0.5*mi_me*beta_e);
-      aparSolver->setCoefC(Field3D(1.0));
-      
-      psi = aparSolver->solve(Field3D(-Ne * VePsi), Field3D(psi));
+      aparSolver->setCoefs(1.0,tmp);
+	
+      psi = aparSolver->solve(-Ne*VePsi, psi);
       mesh->communicate(psi);
+      
       psi.applyParallelBoundary(parbc);
       
       Ve = VePsi - 0.5 * beta_e * mi_me * psi + Vi;
@@ -1361,13 +1362,10 @@ int Hermes::rhs(BoutReal t) {
       mesh->communicate(Ve, psi);
       Ve.applyParallelBoundary(parbc);
       
-      Jpar = mul_all(Ne, sub_all(Vi, Ve));
-      mesh->communicate(Jpar);
-      Jpar.applyParallelBoundary(parbc);
-
     } else {
       throw BoutException("Running without finite electron mass is not possible anymore!");
     }
+    
   } else {
     // Electrostatic
     zero_all(psi);
@@ -1375,6 +1373,11 @@ int Hermes::rhs(BoutReal t) {
     Ve = add_all(VePsi , Vi);
   }
 
+  Jpar = sub_all(NVi,mul_all(Ne,Ve));
+  mesh->communicate(Jpar);
+  Jpar.applyParallelBoundary(parbc);
+    
+  
   //////////////////////////////////////////////////////////////
   // Sheath boundary conditions on Y up and Y down
   
