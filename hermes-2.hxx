@@ -278,8 +278,8 @@ private:
 
   bool bool_NVi_upwind;
   
-  bool bool_ne_hyper, bool_pe_hyper, bool_pi_hyper;
-  Field3D ne_hyper, pe_hyper,pi_hyper; // Hyper-diffusion
+  bool bool_Ne_hyper, bool_Pe_hyper, bool_Pi_hyper;
+  Field3D Ne_hyper, Pe_hyper,Pi_hyper; // Hyper-diffusion
 
   bool bool_VePsi_hyper,bool_NVi_hyper;
   Field3D VePsi_hyper, NVi_hyper;

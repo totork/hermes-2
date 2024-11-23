@@ -320,7 +320,7 @@ int Hermes::init(bool restarting) {
   auto& optvepsi = opt["VePsi"];
   auto& opttransport = opt["Transportcoefficients"];
   auto& optnumerics = opt["Numerics"];
-
+  auto& optsheath = opt["Sheath"];
   
   OPTION(optsc, evolve_plasma, true);
   OPTION(optsc, show_timesteps, false);
@@ -574,51 +574,50 @@ int Hermes::init(bool restarting) {
 
   // Switches to change between different calculation methods
 
-  OPTION(optsc, use_Div_n_bxGrad_f_B_XPPM, true);
-  OPTION(optsc, use_bracket, true);
-  OPTION(optsc, use_Div_parP_n, true);
-  OPTION(optsc, ne_bndry_flux, false);
-  OPTION(optsc, pe_bndry_flux, false);
-  OPTION(optsc, vort_bndry_flux, false);
+  OPTION(optnumerics, use_Div_n_bxGrad_f_B_XPPM, true);
+  OPTION(optnumerics, use_bracket, true);
+  OPTION(optnumerics, use_Div_parP_n, true);
+  OPTION(optnumerics, ne_bndry_flux, false);
+  OPTION(optnumerics, pe_bndry_flux, false);
+  OPTION(optnumerics, vort_bndry_flux, false);
 
   OPTION(optsc, boussinesq, false);
   
   // Switches for different methods to support numerical stability
   
-  OPTION(optsc, floor_kappa_ipar, -1.0);
-  OPTION(optsc, floor_kappa_epar,-1.0);
-  OPTION(optsc, NVi_supsonic_dissipation, false);
-  OPTION(optsc, NVi_supsonic_factor, 1.0);
-  OPTION(optsc, Ve_supsonic_dissipation, false);
-  OPTION(optsc, Ve_supsonic_factor, 1.0);
+  OPTION(optnumerics, floor_kappa_ipar, -1.0);
+  OPTION(optnumerics, floor_kappa_epar,-1.0);
+  OPTION(optnumerics, NVi_supsonic_dissipation, false);
+  OPTION(optnumerics, NVi_supsonic_factor, 1.0);
+  OPTION(optnumerics, Ve_supsonic_dissipation, false);
+  OPTION(optnumerics, Ve_supsonic_factor, 1.0);
 
-  OPTION(optsc, ne_bndry_flux, false);
-  OPTION(optsc, pe_bndry_flux, false);
-  OPTION(optsc, vort_bndry_flux, false);
+  OPTION(optnumerics, ne_bndry_flux, false);
+  OPTION(optnumerics, pe_bndry_flux, false);
+  OPTION(optnumerics, vort_bndry_flux, false);
 
-  OPTION(optsc, flux_limit_alpha, -1);
-  OPTION(optsc, kappa_limit_alpha, -1);
-  OPTION(optsc, eta_limit_alpha, -1);
+  OPTION(optnumerics, flux_limit_alpha, -1);
+  OPTION(optnumerics, kappa_limit_alpha, -1);
+  OPTION(optnumerics, eta_limit_alpha, -1);
   
-  OPTION(optsc, resistivity_multiply, 1.0);
-  OPTION(optsc, electron_weight, 1.0);
+  OPTION(optnumerics, resistivity_multiply, 1.0);
+  OPTION(optnumerics, electron_weight, 1.0);
   
   // Sheath switches
   
-  OPTION(optsc, sheath_model, 0);
-  OPTION(optsc, sheath_gamma_e, 5.5);
-  OPTION(optsc, sheath_gamma_i, 1.0);
+  OPTION(optsheath, sheath_model, 0);
+  OPTION(optsheath, sheath_gamma_e, 5.5);
+  OPTION(optsheath, sheath_gamma_i, 1.0);
 
-  OPTION(optsc, neutral_vwall, 1. / 3);  // 1/3rd Franck-Condon energy at wall
-  OPTION(optsc, sheath_yup, true);       // Apply sheath at yup?
-  OPTION(optsc, sheath_ydown, true);     // Apply sheath at ydown?
-  OPTION(optsc, test_boundaries, false); // Test boundary conditions
-  OPTION(optsc, parallel_sheaths, false); // Apply parallel sheath conditions?
-  OPTION(optsc, par_sheath_model, 0);
-  OPTION(optsc, par_sheath_ve, true)
-  OPTION(optsc, Div_parP_n_sheath_extra, Div_parP_n_sheath_extra);
-  sheath_allow_supersonic =
-      optsc["sheath_allow_supersonic"]
+  OPTION(optsheath, neutral_vwall, 1. / 3);  // 1/3rd Franck-Condon energy at wall
+  OPTION(optsheath, sheath_yup, true);       // Apply sheath at yup?
+  OPTION(optsheath, sheath_ydown, true);     // Apply sheath at ydown?
+  OPTION(optsheath, test_boundaries, false); // Test boundary conditions
+  OPTION(optsheath, parallel_sheaths, false); // Apply parallel sheath conditions?
+  OPTION(optsheath, par_sheath_model, 0);
+  OPTION(optsheath, par_sheath_ve, true)
+  OPTION(optsheath, Div_parP_n_sheath_extra, Div_parP_n_sheath_extra);
+  sheath_allow_supersonic = optsheath["sheath_allow_supersonic"]
           .doc("If plasma is faster than sound speed, go to plasma velocity")
           .withDefault<bool>(true);
 
@@ -635,32 +634,30 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, AA, 2.0); // Ion mass (2 = Deuterium)
   output.write("Normalisation Te={:e}, Ne={:e}, B={:e}\n", Tnorm, Nnorm, Bnorm);
   SAVE_ONCE(Tnorm, Nnorm, Bnorm, AA); // Save
-
   Cs0 = sqrt(qe * Tnorm / (AA * Mp)); // Reference sound speed [m/s]
   Omega_ci = qe * Bnorm / (AA * Mp);  // Ion cyclotron frequency [1/s]
   rho_s0 = Cs0 / Omega_ci;
-
   mi_me = AA * Mp / (electron_weight * Me);
   me_mi = (electron_weight * Me) / (AA * Mp);
   beta_e = qe * Tnorm * Nnorm / (SQ(Bnorm) / (2. * SI::mu0));
-
   output.write("\tmi_me={}, beta_e={}\n", mi_me, beta_e);
   SAVE_ONCE(mi_me, beta_e, me_mi);
-
   output.write("\t Cs={:e}, rho_s={:e}, Omega_ci={:e}\n", Cs0, rho_s0, Omega_ci);
   SAVE_ONCE(Cs0, rho_s0, Omega_ci);
-
   // Collision times
   BoutReal lambda_ei = 24. - log(sqrt(Nnorm / 1e6) / Tnorm);
   BoutReal lambda_ii = 23. - log(sqrt(2. * Nnorm / 1e6) / pow(Tnorm, 1.5));
-
   tau_e0 = 1. / (2.91e-6 * (Nnorm / 1e6) * lambda_ei * pow(Tnorm, -3. / 2));
   tau_i0 =
       sqrt(AA) / (4.78e-8 * (Nnorm / 1e6) * lambda_ii * pow(Tnorm, -3. / 2));
-
   output.write("\ttau_e0={:e}, tau_i0={:e}\n", tau_e0, tau_i0);
 
-  
+
+  // Get the transport parameters
+  anomalous_D = opttransport["anomalous_D"].doc("Anomalous diffusion").withDefault(Field3D{0.0});
+  anomalous_nu = opttransport["anomalous_nu"].doc("Anomalous viscosity").withDefault(Field3D{0.0});
+  anomalous_chi = opttransport["anomalous_chi"].doc("Anomalous condoctivity").withDefault(Field3D{0.0});
+
   if (anomalous_D > 0.0) {
     // Normalise
     anomalous_D /= rho_s0 * rho_s0 * Omega_ci; // m^2/s
@@ -692,38 +689,39 @@ int Hermes::init(bool restarting) {
     a_nu3d.ydown() = anomalous_D;
   }
 
-  OPTION(optsc, bool_ne_hyper, false);
-  ne_hyper = optsc["ne_hyper"].doc("Hyperdiffusion of density").withDefault(Field3D{0.0});
-  if(bool_ne_hyper){
+  
+  OPTION(opttransport, bool_Ne_hyper, false);
+  Ne_hyper = opttransport["Ne_hyper"].doc("Hyperdiffusion of density").withDefault(Field3D{0.0});
+  if(bool_Ne_hyper){
     //ne_hyper /= rho_s0*rho_s0*Omega_ci;
-    ne_hyper.applyBoundary("neumann_o2");
-    mesh->communicate(ne_hyper);
-    ne_hyper.applyParallelBoundary(parbc);
+    Ne_hyper.applyBoundary("neumann_o2");
+    mesh->communicate(Ne_hyper);
+    Ne_hyper.applyParallelBoundary(parbc);
   }
-  SAVE_ONCE(ne_hyper);
+  SAVE_ONCE(Ne_hyper);
   
-  OPTION(optsc, bool_pe_hyper, false);
-  pe_hyper = optsc["pe_hyper"].doc("Hyperdiffusion of electron pressure").withDefault(Field3D{0.0});
-  if(bool_pe_hyper){
+  OPTION(opttransport, bool_Pe_hyper, false);
+  Pe_hyper = opttransport["Pe_hyper"].doc("Hyperdiffusion of electron pressure").withDefault(Field3D{0.0});
+  if(bool_Pe_hyper){
     //pe_hyper /=	rho_s0*rho_s0*Omega_ci;
-    pe_hyper.applyBoundary("neumann_o2");
-    mesh->communicate(pe_hyper);
-    pe_hyper.applyParallelBoundary(parbc);
+    Pe_hyper.applyBoundary("neumann_o2");
+    mesh->communicate(Pe_hyper);
+    Pe_hyper.applyParallelBoundary(parbc);
   }
-  SAVE_ONCE(pe_hyper);
+  SAVE_ONCE(Pe_hyper);
 
-  OPTION(optsc, bool_pi_hyper, false);
-  pi_hyper = optsc["pi_hyper"].doc("Hyperdiffusion of ion pressure").withDefault(Field3D{0.0});
-  if(bool_pi_hyper ){
+  OPTION(opttransport, bool_Pi_hyper, false);
+  Pi_hyper = opttransport["Pi_hyper"].doc("Hyperdiffusion of ion pressure").withDefault(Field3D{0.0});
+  if(bool_Pi_hyper ){
     //pi_hyper /=	rho_s0*rho_s0*Omega_ci;
-    pi_hyper.applyBoundary("neumann_o2");
-    mesh->communicate(pi_hyper);
-    pi_hyper.applyParallelBoundary(parbc);
+    Pi_hyper.applyBoundary("neumann_o2");
+    mesh->communicate(Pi_hyper);
+    Pi_hyper.applyParallelBoundary(parbc);
   }
-  SAVE_ONCE(pi_hyper);
+  SAVE_ONCE(Pi_hyper);
   
-  OPTION(optsc, bool_VePsi_hyper, false);
-  VePsi_hyper = optsc["VePsi_hyper"].doc("Hyperdiffusion of VePsi").withDefault(Field3D{0.0});
+  OPTION(opttransport, bool_VePsi_hyper, false);
+  VePsi_hyper = opttransport["VePsi_hyper"].doc("Hyperdiffusion of VePsi").withDefault(Field3D{0.0});
   if(bool_VePsi_hyper ){
     //pi_hyper /=       rho_s0*rho_s0*Omega_ci;                                                                                                                                                            
     VePsi_hyper.applyBoundary("neumann_o2");
@@ -732,8 +730,8 @@ int Hermes::init(bool restarting) {
   }
   SAVE_ONCE(VePsi_hyper);
 
-  OPTION(optsc, bool_NVi_hyper, false);
-  NVi_hyper = optsc["NVi_hyper"].doc("Hyperdiffusion of ion momentum").withDefault(Field3D{0.0});
+  OPTION(opttransport, bool_NVi_hyper, false);
+  NVi_hyper = opttransport["NVi_hyper"].doc("Hyperdiffusion of ion momentum").withDefault(Field3D{0.0});
   if(bool_NVi_hyper ){
     NVi_hyper.applyBoundary("neumann_o2");
     mesh->communicate(NVi_hyper);
@@ -741,8 +739,8 @@ int Hermes::init(bool restarting) {
   }
   SAVE_ONCE(NVi_hyper);
 
-  OPTION(optsc, bool_Vort_hyper, false);
-  Vort_hyper = optsc["Vort_hyper"].doc("Hyperdiffusion of vorticity").withDefault(Field3D{0.0});
+  OPTION(opttransport, bool_Vort_hyper, false);
+  Vort_hyper = opttransport["Vort_hyper"].doc("Hyperdiffusion of vorticity").withDefault(Field3D{0.0});
   if(bool_Vort_hyper ){
     Vort_hyper.applyBoundary("neumann_o2");
     mesh->communicate(Vort_hyper);
@@ -750,14 +748,15 @@ int Hermes::init(bool restarting) {
   }
   SAVE_ONCE(Vort_hyper);
 
-  OPTION(optsc, bool_numdiff, false);
-  numdiff = optsc["numdiff"].doc("Parallel numerical diffusion").withDefault(Field3D{0.0});
+  OPTION(opttransport, bool_numdiff, false);
+  numdiff = opttransport["numdiff"].doc("Parallel numerical diffusion").withDefault(Field3D{0.0});
   if(bool_numdiff ){
     numdiff.applyBoundary("neumann_o2");
     mesh->communicate(numdiff);
     numdiff.applyParallelBoundary(parbc);
   }
   SAVE_ONCE(numdiff);
+
   
   FieldFactory fact(mesh);
 
@@ -769,9 +768,6 @@ int Hermes::init(bool restarting) {
   Sn = NeSource;
 
   
-  // Inflowing density carries momentum
-  OPTION(optne, density_inflow, false);
-
   PeSource = optpe["source"].withDefault(Field3D{0.0});
   PeSource /= Omega_ci;
   Spe = PeSource;
@@ -779,42 +775,6 @@ int Hermes::init(bool restarting) {
   PiSource = optpi["source"].withDefault(Field3D{0.0});
   PiSource /= Omega_ci;
   Spi = PiSource;
-
-  
-
-
-  
-
-  // Add variables to solver
-  
-
-
-  
-  
-
-  if (electromagnetic || FiniteElMass) {
-    solver->add(VePsi, "VePsi");
-    EvolvingVars.add(VePsi);
-    if (output_ddt) {
-      SAVE_REPEAT(ddt(VePsi));
-    }
-  } else {
-    // If both electrostatic and zero electron mass,
-    // then Ohm's law has no time-derivative terms,
-    // but is calculated from other evolving quantities
-    zero_all(VePsi);
-  }
-
-
-  if (verbose) {
-    SAVE_REPEAT(Ti);
-    if (electron_ion_transfer && evolve_ti) {
-      SAVE_REPEAT(Wi);
-    }
-    if (ion_velocity) {
-      SAVE_REPEAT(Vi);
-    }
-  }
 
   SAVE_ONCE(Sn, Spe, Spi);
   
@@ -1001,20 +961,6 @@ int Hermes::init(bool restarting) {
   }
 
   /////////////////////////////////////////////////////////
-  // Sources (after metric)
-
-  // Multiply sources by g11
-  OPTION(optsc, source_vary_g11, false);
-  if (source_vary_g11) {
-    // Average metric tensor component
-    g11norm = coord->g11 / averageY(coord->g11);
-
-    NeSource *= g11norm;
-    PeSource *= g11norm;
-    PiSource *= g11norm;
-  }
-
-  /////////////////////////////////////////////////////////
   // Read curvature components
   TRACE("Reading curvature");
 
@@ -1110,18 +1056,6 @@ int Hermes::init(bool restarting) {
   kappa_epar = 0.0;
   kappa_ipar = 0.0;
   Dn = 0.0;
-  Pe_yup = 0.0;
-  Pe_ydown = 0.0;
-  kappa_epar_yup=0.0;
-  kappa_epar_ydown = 0.0;
-  vort_dia = 0.0;
-  vort_ExB = 0.0;
-  vort_jpar = 0.0;
-  vort_parflow = 0.0;
-  vort_hyper = 0.0;
-  vort_anom = 0.0;
-  vort_numdiff = 0.0;
-  vort_classical = 0.0;
   debug_visheath = 0.0;
   debug_vesheath = 0.0;
   debug_sheathexp = 0.0;
@@ -1132,66 +1066,6 @@ int Hermes::init(bool restarting) {
   debug_phibndry3d = 0.0;
   NVi_dampening = 0.0;
   Ve_dampening = 0.0;
-  TE_VePsi_pe_par = 0.0;
-  TE_VePsi_resistivity = 0.0;
-  TE_VePsi_anom = 0.0;
-  TE_VePsi_j_par = 0.0;
-  TE_VePsi_thermal_force = 0.0;
-  TE_VePsi_par_adv = 0.0;
-  TE_VePsi_hyper = 0.0;
-  TE_VePsi_perp = 0.0;
-  TE_VePsi_numdiff = 0.0;
-  if (TE_VePsi){
-    SAVE_REPEAT(TE_VePsi_pe_par);
-    SAVE_REPEAT(TE_VePsi_resistivity);
-    SAVE_REPEAT(TE_VePsi_anom);
-    SAVE_REPEAT(TE_VePsi_j_par);
-    SAVE_REPEAT(TE_VePsi_thermal_force);
-    SAVE_REPEAT(TE_VePsi_par_adv);
-    SAVE_REPEAT(TE_VePsi_hyper,TE_VePsi_perp,TE_VePsi_numdiff);
-  }
-  TE_Ne_ExB = 0.0;
-  TE_Ne_parflow = 0.0;
-  TE_Ne_anom = 0.0;
-  TE_Ne_dia = 0.0;
-  TE_Ne_hyper = 0.0;
-  TE_Ne_numdiff = 0.0;
-  if (TE_Ne){
-    SAVE_REPEAT(TE_Ne_ExB,TE_Ne_parflow,TE_Ne_anom,TE_Ne_dia,TE_Ne_hyper,TE_Ne_numdiff);
-  }
-
-  TE_Pe_ExB = 0.0;
-  TE_Pe_parflow = 0.0;
-  TE_Pe_anom = 0.0;
-  TE_Pe_dia = 0.0;
-  TE_Pe_hyper = 0.0;
-  TE_Pe_energ_balance = 0.0;
-  TE_Pe_cond = 0.0;
-  TE_Pe_thermal_flux = 0.0;
-  TE_Pe_ohmic = 0.0;
-  TE_Pe_thermal_force = 0.0;
-  TE_Pe_par_p_term = 0.0;
-  TE_Pe_numdiff = 0.0;
-  if (TE_Pe){
-    SAVE_REPEAT(TE_Pe_ExB, TE_Pe_parflow, TE_Pe_anom, TE_Pe_dia, TE_Pe_hyper, TE_Pe_energ_balance);
-    SAVE_REPEAT(TE_Pe_cond, TE_Pe_thermal_flux, TE_Pe_ohmic, TE_Pe_thermal_force, TE_Pe_par_p_term,TE_Pe_numdiff);
-  }
-
-  TE_NVi_ExB = 0.0;
-  TE_NVi_dia = 0.0;
-  TE_NVi_parflow = 0.0;
-  TE_NVi_pe_par = 0.0;
-  TE_NVi_viscos = 0.0;
-  TE_NVi_numdiff = 0.0;
-  TE_NVi_classical = 0.0;
-  TE_NVi_hyper = 0.0;
-  TE_NVi_anom = 0.0;
-
-  
-  if (TE_NVi){
-    SAVE_REPEAT(TE_NVi_ExB, TE_NVi_dia, TE_NVi_parflow,TE_NVi_pe_par,TE_NVi_viscos);
-    SAVE_REPEAT(TE_NVi_numdiff,TE_NVi_classical,TE_NVi_hyper,TE_NVi_anom);
-  }
   
   
   SAVE_REPEAT(a,b,d);
@@ -1217,28 +1091,12 @@ int Hermes::init(bool restarting) {
     
     SAVE_REPEAT(kappa_epar); // Parallel electron heat conductivity
     SAVE_REPEAT(kappa_ipar); // Parallel ion heat conductivity
-    SAVE_REPEAT(Pe_yup, Pe_ydown,kappa_epar_yup,kappa_epar_ydown);
     SAVE_REPEAT(nu);
-    SAVE_REPEAT(vort_dia);
-    SAVE_REPEAT(vort_ExB);
-    SAVE_REPEAT(vort_jpar);
-    SAVE_REPEAT(vort_anom);
-    SAVE_REPEAT(vort_hyper,vort_classical,vort_numdiff,vort_parflow);
     SAVE_REPEAT(debug_visheath,debug_vesheath,debug_sheathexp);
     SAVE_REPEAT(NVi_Div_parP_n);
     SAVE_REPEAT(debug_phisheath);
     SAVE_REPEAT(debug_VePsisheath);
-  
-    if (ion_viscosity) {
-      // Ion parallel stress tensor
-      SAVE_REPEAT(Pi_ci, Pi_ciperp, Pi_cipar);
-    }
 
-    // Sources added to Ne, Pe and Pi equations
-    SAVE_REPEAT(NeSource, PeSource, PiSource);
-    if(VorticitySource){
-      SAVE_REPEAT(VortSource);
-    }
   }
 
   zero_all(phi);
