@@ -1580,18 +1580,17 @@ int Hermes::rhs(BoutReal t) {
 
   if (evolve_Ne){
 
+    
     if (Ne_ExB){
       TRACE("Density ExB");
       
       if (use_Div_n_bxGrad_f_B_XPPM){
 	TE_Ne_ExB = -Div_n_bxGrad_f_B_XPPM(Ne, phi, ne_bndry_flux, poloidal_flows,true,bracket_factor) * scale_ExB;
-	ddt(Ne) += TE_Ne_ExB;
       } else {
 	TE_Ne_ExB = -bracket(phi,Ne, BRACKET_ARAKAWA) * bracket_factor*scale_ExB;
-	ddt(Ne) += TE_Ne_ExB;
       }
+      ddt(Ne) += TE_Ne_ExB;
     }  // End Ne_ExB
-
 
     
     if (Ne_mag){
@@ -1601,7 +1600,6 @@ int Hermes::rhs(BoutReal t) {
     }  // End Ne_mag
 
 
-    
     if (Ne_parflow){
       TRACE("Density parflow");
       Field3D neve = mul_all(Ne,Ve);
@@ -1609,17 +1607,20 @@ int Hermes::rhs(BoutReal t) {
       ddt(Ne) += TE_Ne_parflow;
     }  // End Ne_parflow
 
+    
     if (Ne_collision){
       TRACE("Density collisions");
       throw BoutException("Density collisions not implemented");
     }  // End Ne_collision
 
+    
     if (Ne_anomalous){
       TRACE("Density anomalous");
       TE_Ne_anomalous = FCIDiv_a_Grad_perp(a_d3d, Ne);
       ddt(Ne) += TE_Ne_anomalous;
     }  // End Ne_anomalous
 
+    
     if (Ne_sources){
       TRACE("Density sources");
       TE_Ne_sources=NeSource;
@@ -1642,19 +1643,23 @@ int Hermes::rhs(BoutReal t) {
   
   if (evolve_vort){
 
+    
     if(Vort_mag){
       TRACE("Vort_mag");
       TE_Vort_mag = fci_curvature(add_all(Pi , Pe),use_bracket);
       ddt(Vort) += TE_Vort_mag;
     } //End Vort_mag
 
+    
     if(Vort_parcurrent){
       TRACE("Vort_parcurrent");
       TE_Vort_parcurrent = Div_par(Jpar);
       ddt(Vort) += TE_Vort_parcurrent
     } //End Vort_parcurrent
 
+    
     if (Vort_polarcurrent){
+
       TRACE("Vort_polarcurrent");
 
       if(boussinesq){
@@ -1666,10 +1671,12 @@ int Hermes::rhs(BoutReal t) {
 	}else if (j_pol_simplified) {
 	  // use simplified polarization term from i.e. GBS                                                                                             
 	  if (use_Div_n_bxGrad_f_B_XPPM){
+
 	    TE_Vort_polarcurrent = -Div_n_bxGrad_f_B_XPPM(Vort, phi, vort_bndry_flux,
 					     poloidal_flows, false , bracket_factor) * scale_ExB;
 	    
 	  } else {
+
 	    TE_Vort_polarcurrent = -bracket(phi,Vort, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
 	    
 	  }
@@ -1679,14 +1686,19 @@ int Hermes::rhs(BoutReal t) {
 	} //End j_pol_pi
 
       } else {
+
 	throw BoutException("Non-boussinesq not implemented");
+
       }  //End boussinesq
+
     } //End Vort_polarcurrent
+
     
     if (Vort_anomalous){
       TE_Vort_anomalous = FCIDiv_a_Grad_perp(a_nu3d, Vort);
       ddt(Vort) += TE_Vort_anomalous;
     } // End Vort_anomalous
+
     
   }  //End evolve_vort
 
@@ -1735,11 +1747,13 @@ int Hermes::rhs(BoutReal t) {
       ddt(VePsi) += TE_VePsi_ExB;
     } // End VePsi_ExB
 
+    
     if (VePsi_parflow){
       TE_VePsi_parflow = -Vi * Grad_par(sub_all(Ve,Vi));
       ddt(VePsi) += TE_VePsi_parflow;
     } // End VePsi_parflow
 
+    
     /*
     if(Ve_supsonic_dissipation){
       Field3D tmp = floor((abs(Ve) - sqrt(mi_me)*sound_speed),0.0);
@@ -1780,6 +1794,7 @@ int Hermes::rhs(BoutReal t) {
     if (NVi_parflow){
       auto nvivi = mul_all(NVi,Vi);
       TE_NVi_parflow = -Div_par(nvivi);
+      ddt(NVi) += TE_NVi_parfolw;
     } // End NVi_parflow
 
     
@@ -1802,12 +1817,12 @@ int Hermes::rhs(BoutReal t) {
     }
 
     
-
     if (NVi_anomalous){
       TE_NVi_anomalous = FCIDiv_a_Grad_perp(mul_all(Vi, a_d3d), Ne);
       TE_NVi_anomalous += FCIDiv_a_Grad_perp(mul_all(Ne, a_nu3d), Vi);
       ddt(NVi) += TE_NVi_anomalous;
     }
+
     
   } // End evolve_nvi
 
