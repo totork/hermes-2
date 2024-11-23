@@ -1331,7 +1331,7 @@ int Hermes::rhs(BoutReal t) {
   mesh->communicate(nu);
   nu.applyParallelBoundary(parbc);
 
-  
+  Wi = (3. / mi_me) * Ne * (Te - Ti) / tau_e;
 
   
   //////////////////////////////////////////////////////////////
@@ -1829,106 +1829,97 @@ int Hermes::rhs(BoutReal t) {
 
   
   ///////////////////////////////////////////////////////////
-  // Pressure equation
-  TRACE("Electron pressure");
+  // Electron pressure equation
 
-  if (evolve_te) {
+  ddt(Pe) = 0.0;
+  if (evolve_te){
+    TRACE("Electron pressure");
 
-    if (currents) {
-      if(fci_transform){
-         
-	    if (use_Div_n_bxGrad_f_B_XPPM){
-	      TE_Pe_ExB = -Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux, poloidal_flows, true , bracket_factor) * scale_ExB;
-	      ddt(Pe) = TE_Pe_ExB;
-	    } else {
-	      TE_Pe_ExB = -bracket(phi,Pe, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
-	      ddt(Pe) = TE_Pe_ExB;
-	    }
-
-
-	    
-      }else{
-	if (use_Div_n_bxGrad_f_B_XPPM){
-	  ddt(Pe) = -Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux, poloidal_flows, true , bracket_factor);
-	} else {
-	  ddt(Pe) = -bracket(phi,Pe, BRACKET_ARAKAWA) * bracket_factor;
-	}
-	
-
-	    
-      }
-    } else {
-      ddt(Pe) = 0.0;
-    }
-
-    if (parallel_flow_p_term) {
-      // Parallel flow
-      if (fci_transform){
-        //check_all(Pe);
-        //check_all(Ve);
-        Field3D peve = mul_all(Pe,Ve);
-        TE_Pe_parflow = -Div_parP(peve);
-        ddt(Pe) += TE_Pe_parflow;
+    
+    if (Pe_ExB){
+      TRACE("Pe_ExB");
+      if (use_Div_n_bxGrad_f_B_XPPM){
+	TE_Pe_ExB = -Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux, poloidal_flows, true , bracket_factor) * scale_ExB;
       } else {
-        if (currents) {
-          ddt(Pe) -= FV::Div_par(Pe, Ve, sqrt(mi_me) * sound_speed);
-        } else {
-          ddt(Pe) -= FV::Div_par(Pe, Ve, sound_speed);
-        }
+	TE_Pe_ExB = -bracket(phi,Pe, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
       }
-    }
+      ddt(Pe) += TE_Pe_ExB;
+    } // End Pe_ExB
 
-    if (j_diamag) { // Diamagnetic flow
-      // Magnetic drift (curvature) divergence.
-      TE_Pe_dia = (5. / 3) * fci_curvature(mul_all(Pe , Te),use_bracket);
-      ddt(Pe) += TE_Pe_dia;
 
-      // This term energetically balances diamagnetic term
-      // in the vorticity equation
-      // ddt(Pe) -= (2. / 3) * Pe * (Curlb_B * Grad(phi));
-      TE_Pe_energ_balance = -(2. / 3) * Pe * fci_curvature(phi,use_bracket);
-      ddt(Pe) += TE_Pe_energ_balance;
-    }
+    if (Pe_mag){
+      TRACE("Pe_mag");
+      TE_Pe_mag = (5. / 3) * fci_curvature(mul_all(Pe , Te),use_bracket);
+      TE_Pe_mag += -(2. / 3) * Pe * fci_curvature(phi,use_bracket);
+      ddt(Pe) += TE_Pe_mag;
+    } // End Pe_mag
 
-    // Parallel heat conduction
-    if (thermal_conduction) {
-      if (fci_transform) {
-        //check_all(kappa_epar);
-        TE_Pe_cond = (2. / 3) * Div_par_K_Grad_par(kappa_epar, Te);
-        ddt(Pe) += TE_Pe_cond;
-      } else {
-        ddt(Pe) += (2. / 3) * FV::Div_par_K_Grad_par(kappa_epar, Te);
-      }
-    }
 
-    if (thermal_flux) {
-      // Parallel heat convection
-      if (fci_transform) {
-        Field3D tejpar = mul_all(Te,Jpar);
-	TE_Pe_thermal_flux = (2. / 3) * 0.71 * Div_parP(tejpar);
-        ddt(Pe) += TE_Pe_thermal_flux;
-      } else {
-        ddt(Pe) += (2. / 3) * 0.71 * Div_par(Te * Jpar);
-      }
-    }
+    if (Pe_parflow){
+      // Parallel flow plus compression
+      TRACE("Pe_parflow + compression");
+      Field3D peve = mul_all(Pe,Ve);
+      TE_Pe_parflow = -Div_parP(peve) - (2. / 3) * Pe * Div_parP(Ve);;
+      ddt(Pe) += TE_Pe_parflow;
+    } // End Pe_parflow
 
-    if (currents && resistivity) {
-      // Ohmic heating
+
+    if (Pe_conduction){
+      TRACE("Pe_conduction");
+      TE_Pe_conduction = (2. / 3) * Div_par_K_Grad_par(kappa_epar, Te);
+      ddt(Pe) += TE_Pe_conduction;
+    } // End Pe_conduction
+
+
+    if (Pe_ohmic){
+      TRACE("Pe_ohmic");
       TE_Pe_ohmic = nu * Jpar * (Jpar - Jpar0) / Ne;
       ddt(Pe) += TE_Pe_ohmic;
-    }
+    } // End Pe_ohmic
 
-    if (bool_pe_hyper) {
-      auto tmp = ( (SQ(SQ(coord->dz)))  * D4DZ4(Pe) + SQ(SQ(coord->dx))*D4DX4(Pe)  );
-      TE_Pe_hyper = -pe_hyper * tmp;
-      ddt(Pe) += TE_Pe_hyper;
-    }
 
-    ///////////////////////////////////
-    // Heat transmission through sheath
+    if (Pe_thermalforce){
+      TE_Pe_thermalforce = -(2. / 3) * 0.71 * Jpar * Grad_parP(Te);
+      ddt(Pe) += TE_Pe_thermalforce;
+    } // End Pe_thermalforce
 
-    wall_power = 0.0; // Diagnostic output
+
+    if (Pe_thermalcurrent){
+      Field3D tejpar = mul_all(Te,Jpar);
+      TE_Pe_thermalcurrent = (2. / 3) * 0.71 * Div_parP(tejpar);
+      ddt(Pe) += TE_Pe_thermalcurrent;
+    } //End Pe_thermalcurrent
+
+
+    if (Pe_collision){
+      throw BoutException("Pe_collision not implemented!");
+    } //End Pe_collision
+
+
+    if (Pe_anomalous){
+      TRACE("Pe anomalous transport");
+      TE_Pe_anomomalous = FCIDiv_a_Grad_perp(mul_all(a_d3d, Te), Ne) + (2. / 3) * FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Te);
+      ddt(Pe) += TE_Pe_anomomalous;
+    } // End Pe_anomalous
+
+
+    if (Pe_energyexchange){
+      TRACE("Pe energy exchange");
+      TE_Pe_energyexchange = -(2. / 3) * Wi;
+      ddt(Pe) += TE_Pe_energyexchange;
+    } // End Pe_energyexchange
+
+
+    if (Pe_sources){
+      TRACE("Pe sources");
+      TE_Pe_sources = PeSource;
+      ddt(Pe) += TE_Pe_sources;
+    } //End Pe_sources
+
+
     if (parallel_sheaths){
+      TRACE("Parallel sheaths in electron pressure");
+      wall_power = 0.0; // Diagnostic output
       sheath_dpe = 0.;
 
       for (const auto &bndry_par :
@@ -1973,138 +1964,14 @@ int Hermes::rhs(BoutReal t) {
       }
       sheath_dpe.name = "sheath physics";
       ddt(Pe) += sheath_dpe;
-    }
+    } //End parallel_sheaths
+
+    
+  } // End evolve_te
 
 
-    // Transfer and source terms
-    if (thermal_force) {
-      TE_Pe_thermal_force = -(2. / 3) * 0.71 * Jpar * Grad_parP(Te);
-      
-      ddt(Pe) += TE_Pe_thermal_force;
-    }
 
-    if (pe_par_p_term) {
-      // This term balances energetically the pressure term
-      // in Ohm's law
-      TE_Pe_par_p_term = -(2. / 3) * Pe * Div_parP(Ve);
-      ddt(Pe) += TE_Pe_par_p_term;
-    }
-
-    //////////////////////
-    // Classical diffusion
-    /*
-    if (classical_diffusion) {
-
-      // Combined resistive drift and cross-field heat diffusion
-      // nu_rho2 = nu_ei * rho_e^2 in normalised units
-      Field3D nu_rho2 = div_all(Te, mul_all(mul_all(tau_e, mi_me), B42));
-      Field3D PePi = add_all(Pe, Pi);
-      Field3D nu_rho2Ne = mul_all(nu_rho2, Ne);
-      ddt(Pe) += (2. / 3) * (FCIDiv_a_Grad_perp(nu_rho2, PePi) +
-                             (11. / 12) * FCIDiv_a_Grad_perp(nu_rho2Ne, Te));
-    }
-    */
-
-    //////////////////////
-    // Anomalous diffusion
-    TE_Pe_anom = 0.0;
-    if ((anomalous_D > 0.0) && anomalous_D_pepi) {
-      TE_Pe_anom += FCIDiv_a_Grad_perp(mul_all(a_d3d, Te), Ne);
-    }
-    if (anomalous_chi > 0.0) {
-      TE_Pe_anom += (2. / 3) * FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Te);
-    }
-    ddt(Pe) += TE_Pe_anom;
-
-    // hyper diffusion
-    if (bool_numdiff) {
-      BOUT_FOR(i, Pe.getRegion("RGN_NOBNDRY")) {
-	TE_Pe_numdiff[i] = numdiff[i]*(Pe.ydown()[i.ym()] - 2.*Pe[i] + Pe.yup()[i.yp()]);
-      }
-      ddt(Pe) += TE_Pe_numdiff;
-    }
-    if (verbose){
-      for (const auto& ind : Pe.getRegion("RGN_NOBNDRY")) {
-	Pe_yup[ind] = Pe.yup()[ind.yp()];
-	Pe_ydown[ind] = Pe.ydown()[ind.ym()];
-	kappa_epar_yup[ind] = kappa_epar.yup()[ind.yp()];
-        kappa_epar_ydown[ind] = kappa_epar.ydown()[ind.ym()];
-      }
-
-    }
-    //////////////////////
-    // Sources
-
-    if (adapt_source) {
-      // Add source. Ensure that sink will go to zero as Pe -> 0
-      Field3D PeErr = averageY(DC(Pe) - PeTarget);
-
-      if (core_sources) {
-        // Sources only in core
-
-        ddt(Spe) = 0.0;
-        for (int x = mesh->xstart; x <= mesh->xend; x++) {
-          if (!mesh->periodicY(x))
-            continue; // Not periodic, so skip
-
-          for (int y = mesh->ystart; y <= mesh->yend; y++) {
-                for (int z = 0; z <= mesh->LocalNz; z++) {
-                  Spe(x, y, z) -= source_p * PeErr(x, y, z);
-                  ddt(Spe)(x, y, z) = -source_i * PeErr(x, y, z);
-
-                  if (Spe(x, y, z) < 0.0) {
-                    Spe(x, y, z) = 0.0;
-                    if (ddt(Spe)(x, y, z) < 0.0)
-                      ddt(Spe)(x, y, z) = 0.0;
-                  }
-            }
-          }
-        }
-
-        if (energy_source) {
-          // Add the same amount of energy to each particle
-          PeSource = Spe * Ne / DC(Ne);
-        } else {
-          PeSource = Spe;
-        }
-      } else {
-
-        Spe -= source_p * PeErr / PeTarget;
-        ddt(Spe) = -source_i * PeErr;
-
-        if (energy_source) {
-          // Add the same amount of energy to each particle
-          PeSource = Spe * Ne / DC(Ne);
-        } else {
-          PeSource = Spe * where(Spe, PeTarget, Pe);
-        }
-      }
-
-      if (source_vary_g11) {
-        PeSource *= g11norm;
-      }
-
-    } else {
-      // Not adapting sources
-
-      if (energy_source) {
-        // Add the same amount of energy to each particle
-        PeSource = Spe * Ne / DC(Ne);
-
-        if (source_vary_g11) {
-          PeSource *= g11norm;
-        }
-      } else {
-        // Add the same amount of energy per volume
-        // If no particle source added, then this can lead to
-        // a small number of particles with a lot of energy!
-      }
-    }
-
-    ddt(Pe) += PeSource;
-  } else {
-    ddt(Pe) = 0.0;
-  }
+  
 
   ///////////////////////////////////////////////////////////
   // Ion pressure equation
