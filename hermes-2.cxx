@@ -346,15 +346,18 @@ int Hermes::init(bool restarting) {
   // Check which variables should be evolved
 
   // Electron density
-  SOLVE_FOR(Ne);
-  EvolvingVars.add(Ne);
-  if (output_ddt) {
-    SAVE_REPEAT(ddt(Ne));
+  evolve_ne = optsc["evolve_ne"].doc("Evolve density?").withDefault<bool>(false);
+  if (evolve_ne){
+    SOLVE_FOR(Ne);
+    EvolvingVars.add(Ne);
+    if (output_ddt) {
+      SAVE_REPEAT(ddt(Ne));
+    }
   }
 
   // Ion momentum
   evolve_nvi = optsc["evolve_nvi"].doc("Evolve ion momentum?").withDefault<bool>(false);
-  if (ion_velocity) {
+  if (evolve_nvi) {
     solver->add(NVi, "NVi");
     EvolvingVars.add(NVi);
     if (output_ddt) {
@@ -425,7 +428,10 @@ int Hermes::init(bool restarting) {
   Ne_collision = optne["Ne_collision"].doc("Use collisional transport in density").withDefault<bool>(false);
   Ne_anomalous = optne["Ne_anomalous"].doc("Use anomalous cross field transport in density").withDefault<bool>(false);
   Ne_sources = optne["Ne_sources"].doc("Use sources in density").withDefault<bool>(false);
+  Ne_hyper = optne["Ne_hyper"].doc("Use hyperdiffusion in density").withDefault<bool>(false);
+  Ne_numdiff = optne["Ne_numdiff"].doc("Use parallel numerical diffusion in density").withDefault<bool>(false);
 
+  
   // bool NVi_ExB, NVi_mag, NVi_parflow, NVi_parpressure, NVi_parviscos, NVi_collision, NVi_anomalous;
 
   NVi_ExB = optnvi["NVi_ExB"].doc("Use ExB advection in ion momentum").withDefault<bool>(false);
@@ -435,7 +441,10 @@ int Hermes::init(bool restarting) {
   NVi_parviscos = optnvi["NVi_parviscos"].doc("Use parallel viscosity in ion momentum").withDefault<bool>(false);
   NVi_collision = optnvi["NVi_collision"].doc("Use collisional effects in ion momentum").withDefault<bool>(false);
   NVi_anomalous = optnvi["NVi_anomalous"].doc("Use anomalous transport in ion momentum").withDefault<bool>(false);
+  NVi_hyper = optnvi["NVi_hyper"].doc("Use hyperdiffusion in ion momentum").withDefault<bool>(false);
+  NVi_numdiff = optnvi["NVi_numdiff"].doc("Use parallel numerical diffusion in ion momentum").withDefault<bool>(false);
 
+  
   // bool Pe_ExB, Pe_mag, Pe_parflow, Pe_conduction, Pe_ohmic, Pe_thermalforce, Pe_thermalcurrent; 
   // bool Pe_collision, Pe_anomalous, Pe_sources, Pe_energyexchange;
 
@@ -450,6 +459,8 @@ int Hermes::init(bool restarting) {
   Pe_anomalous = optpe["Pe_anomalous"].doc("Include anomalous effects in electron energy").withDefault<bool>(false);
   Pe_sources = optpe["Pe_sources"].doc("Include source terms in electron energy").withDefault<bool>(false);
   Pe_energyexchange = optpe["Pe_energyexchange"].doc("Include energy exchange terms in electron energy").withDefault<bool>(false);
+  Pe_hyper = optpe["Pe_hyper"].doc("Use hyperdiffusion in electron pressure").withDefault<bool>(false);
+  Pe_numdiff = optpe["Pe_numdiff"].doc("Use parallel numerical diffusion in electron pressure").withDefault<bool>(false);
 
   // bool Pi_ExB, Pi_mag, Pi_parflow, Pi_conduction, Pi_diamagenergyexchange, Pi_parviscousheat;
   // bool Pi_resistivedrift, Pi_perpviscous, Pi_sources;
@@ -463,7 +474,10 @@ int Hermes::init(bool restarting) {
   Pi_resistivedrift = optpi["Pi_resistivedrift"].doc("Include resistive drift effects in ion energy").withDefault<bool>(false);
   Pi_perpviscous = optpi["Pi_perpviscous"].doc("Include perpendicular viscous effects in ion energy").withDefault<bool>(false);
   Pi_sources = optpi["Pi_sources"].doc("Include source terms in ion energy").withDefault<bool>(false);
+  Pi_hyper = optpi["Pi_hyper"].doc("Use hyperdiffusion in ion pressure").withDefault<bool>(false);
+  Pi_numdiff = optpi["Pi_numdiff"].doc("Use parallel numerical diffusion in ion pressure").withDefault<bool>(false);
 
+  
   // bool Vort_mag, Vort_parcurrent, Vort_polarcurrent, Vort_collision, Vort_parviscous;
   // bool Vort_anomalous;
 
@@ -473,7 +487,10 @@ int Hermes::init(bool restarting) {
   Vort_collision = optvort["Vort_collision"].doc("Include collisional effects in vorticity").withDefault<bool>(false);
   Vort_parviscous = optvort["Vort_parviscous"].doc("Include parallel viscous effects in vorticity").withDefault<bool>(false);
   Vort_anomalous = optvort["Vort_anomalous"].doc("Include anomalous effects in vorticity").withDefault<bool>(false);
+  Vort_hyper = optvort["Vort_hyper"].doc("Use hyperdiffusion in vorticity").withDefault<bool>(false);
+  Vort_numdiff = optvort["Vort_numdiff"].doc("Use parallel numerical diffusion in vorticity").withDefault<bool>(false);
 
+  
   // bool VePsi_parefield, VePsi_parpressure, VePsi_partemp, VePsi_parcurrent, VePsi_ExB, VePsi_parflow;
 
   VePsi_parefield = optvepsi["VePsi_parefield"].doc("Use parallel electric field in electron velocity").withDefault<bool>(false);
@@ -482,6 +499,8 @@ int Hermes::init(bool restarting) {
   VePsi_parcurrent = optvepsi["VePsi_parcurrent"].doc("Use parallel current in electron velocity").withDefault<bool>(false);
   VePsi_ExB = optvepsi["VePsi_ExB"].doc("Use ExB drift in electron velocity").withDefault<bool>(false);
   VePsi_parflow = optvepsi["VePsi_parflow"].doc("Use parallel flow effects in electron velocity").withDefault<bool>(false);
+  VePsi_hyper = optvepsi["VePsi_hyper"].doc("Use hyperdiffusion in electron velocity").withDefault<bool>(false);
+  VePsi_numdiff = optvepsi["VePsi_numdiff"].doc("Use parallel numerical diffusion in electron velocity").withDefault<bool>(false);
 
   // Initialize the corresponding fields
 
@@ -499,9 +518,12 @@ int Hermes::init(bool restarting) {
   TE_Ne_collision = 0.0;
   TE_Ne_anomalous = 0.0;
   TE_Ne_sources = 0.0;
-  if(TE_Ne){
-    SAVE_REPEAT(TE_Ne_ExB, TE_Ne_mag, TE_Ne_parflow, TE_Ne_collision, TE_Ne_anomalous, TE_Ne_sources);
+  TE_Ne_hyper = 0.0;
+  TE_Ne_numdiff = 0.0;
+  if (TE_Ne) {
+    SAVE_REPEAT(TE_Ne_ExB, TE_Ne_mag, TE_Ne_parflow, TE_Ne_collision, TE_Ne_anomalous, TE_Ne_sources, TE_Ne_hyper, TE_Ne_numdiff);
   }
+
 
   // Ion momentum
   TE_NVi_ExB = 0.0;
@@ -511,10 +533,14 @@ int Hermes::init(bool restarting) {
   TE_NVi_parviscos = 0.0;
   TE_NVi_collision = 0.0;
   TE_NVi_anomalous = 0.0;
+  TE_NVi_hyper = 0.0;
+  TE_NVi_numdiff = 0.0;
   if (TE_NVi) {
     SAVE_REPEAT(TE_NVi_ExB, TE_NVi_mag, TE_NVi_parflow, TE_NVi_parpressure, TE_NVi_parviscos, TE_NVi_collision, TE_NVi_anomalous);
+    SAVE_REPEAT(TE_NVi_hyper, TE_NVi_numdiff);
   }
 
+  
   // Electron pressure
   TE_Pe_ExB = 0.0;
   TE_Pe_mag = 0.0;
@@ -527,10 +553,13 @@ int Hermes::init(bool restarting) {
   TE_Pe_anomalous = 0.0;
   TE_Pe_sources = 0.0;
   TE_Pe_energyexchange = 0.0;
+  TE_Pe_hyper = 0.0;
+  TE_Pe_numdiff = 0.0;
   if (TE_Pe) {
-  SAVE_REPEAT(TE_Pe_ExB, TE_Pe_mag, TE_Pe_parflow, TE_Pe_conduction, TE_Pe_ohmic, TE_Pe_thermalforce, TE_Pe_thermalcurrent, 
-	      TE_Pe_collision, TE_Pe_anomalous, TE_Pe_sources, TE_Pe_energyexchange);
- }
+    SAVE_REPEAT(TE_Pe_ExB, TE_Pe_mag, TE_Pe_parflow, TE_Pe_conduction, TE_Pe_ohmic, TE_Pe_thermalforce, TE_Pe_thermalcurrent);
+    SAVE_REPEAT(TE_Pe_collision, TE_Pe_anomalous, TE_Pe_sources, TE_Pe_energyexchange, TE_Pe_hyper, TE_Pe_numdiff);
+  }
+  
 
   // Ion pressure
   TE_Pi_ExB = 0.0;
@@ -542,10 +571,13 @@ int Hermes::init(bool restarting) {
   TE_Pi_resistivedrift = 0.0;
   TE_Pi_perpviscous = 0.0;
   TE_Pi_sources = 0.0;
+  TE_Pi_hyper = 0.0;
+  TE_Pi_numdiff = 0.0;
   if (TE_Pi) {
-    SAVE_REPEAT(TE_Pi_ExB, TE_Pi_mag, TE_Pi_parflow, TE_Pi_conduction, TE_Pi_diamagenergyexchange, TE_Pi_parviscousheat, 
-                TE_Pi_resistivedrift, TE_Pi_perpviscous, TE_Pi_sources);
+    SAVE_REPEAT(TE_Pi_ExB, TE_Pi_mag, TE_Pi_parflow, TE_Pi_conduction, TE_Pi_diamagenergyexchange, TE_Pi_parviscousheat);
+    SAVE_REPEAT(TE_Pi_resistivedrift, TE_Pi_perpviscous, TE_Pi_sources, TE_Pi_hyper, TE_Pi_numdiff);
   }
+
 
   // Vorticity
   TE_Vort_mag = 0.0;
@@ -554,9 +586,13 @@ int Hermes::init(bool restarting) {
   TE_Vort_collision = 0.0;
   TE_Vort_parviscous = 0.0;
   TE_Vort_anomalous = 0.0;
+  TE_Vort_hyper = 0.0;
+  TE_Vort_numdiff = 0.0;
   if (TE_Vort) {
     SAVE_REPEAT(TE_Vort_mag, TE_Vort_parcurrent, TE_Vort_polarcurrent, TE_Vort_collision, TE_Vort_parviscous, TE_Vort_anomalous);
+    SAVE_REPEAT(TE_Vort_hyper, TE_Vort_numdiff);
   }
+
 
   // Electron velocity
   TE_VePsi_parefield = 0.0;
@@ -565,9 +601,13 @@ int Hermes::init(bool restarting) {
   TE_VePsi_parcurrent = 0.0;
   TE_VePsi_ExB = 0.0;
   TE_VePsi_parflow = 0.0;
+  TE_VePsi_hyper = 0.0;
+  TE_VePsi_numdiff = 0.0;
   if (TE_VePsi) {
     SAVE_REPEAT(TE_VePsi_parefield, TE_VePsi_parpressure, TE_VePsi_partemp, TE_VePsi_parcurrent, TE_VePsi_ExB, TE_VePsi_parflow);
+    SAVE_REPEAT(TE_VePsi_hyper, TE_VePsi_numdiff);
   }
+
 
   
   /////////////////////////////////////////////////////////////////////////
@@ -576,7 +616,6 @@ int Hermes::init(bool restarting) {
 
   OPTION(optnumerics, use_Div_n_bxGrad_f_B_XPPM, true);
   OPTION(optnumerics, use_bracket, true);
-  OPTION(optnumerics, use_Div_parP_n, true);
   OPTION(optnumerics, ne_bndry_flux, false);
   OPTION(optnumerics, pe_bndry_flux, false);
   OPTION(optnumerics, vort_bndry_flux, false);
@@ -628,7 +667,7 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, output_ddt, false); // Save time derivatives
 
   // Normalisation
-  OPTION(optsc, Tnorm, 100);  // Reference temperature [eV]
+  OPTION(optsc, Tnorm, 20);  // Reference temperature [eV]
   OPTION(optsc, Nnorm, 1e19); // Reference density [m^-3]
   OPTION(optsc, Bnorm, 1.0);  // Reference magnetic field [T]
   OPTION(optsc, AA, 2.0); // Ion mass (2 = Deuterium)
@@ -690,72 +729,6 @@ int Hermes::init(bool restarting) {
   }
 
   
-  OPTION(opttransport, bool_Ne_hyper, false);
-  Ne_hyper = opttransport["Ne_hyper"].doc("Hyperdiffusion of density").withDefault(Field3D{0.0});
-  if(bool_Ne_hyper){
-    //ne_hyper /= rho_s0*rho_s0*Omega_ci;
-    Ne_hyper.applyBoundary("neumann_o2");
-    mesh->communicate(Ne_hyper);
-    Ne_hyper.applyParallelBoundary(parbc);
-  }
-  SAVE_ONCE(Ne_hyper);
-  
-  OPTION(opttransport, bool_Pe_hyper, false);
-  Pe_hyper = opttransport["Pe_hyper"].doc("Hyperdiffusion of electron pressure").withDefault(Field3D{0.0});
-  if(bool_Pe_hyper){
-    //pe_hyper /=	rho_s0*rho_s0*Omega_ci;
-    Pe_hyper.applyBoundary("neumann_o2");
-    mesh->communicate(Pe_hyper);
-    Pe_hyper.applyParallelBoundary(parbc);
-  }
-  SAVE_ONCE(Pe_hyper);
-
-  OPTION(opttransport, bool_Pi_hyper, false);
-  Pi_hyper = opttransport["Pi_hyper"].doc("Hyperdiffusion of ion pressure").withDefault(Field3D{0.0});
-  if(bool_Pi_hyper ){
-    //pi_hyper /=	rho_s0*rho_s0*Omega_ci;
-    Pi_hyper.applyBoundary("neumann_o2");
-    mesh->communicate(Pi_hyper);
-    Pi_hyper.applyParallelBoundary(parbc);
-  }
-  SAVE_ONCE(Pi_hyper);
-  
-  OPTION(opttransport, bool_VePsi_hyper, false);
-  VePsi_hyper = opttransport["VePsi_hyper"].doc("Hyperdiffusion of VePsi").withDefault(Field3D{0.0});
-  if(bool_VePsi_hyper ){
-    //pi_hyper /=       rho_s0*rho_s0*Omega_ci;                                                                                                                                                            
-    VePsi_hyper.applyBoundary("neumann_o2");
-    mesh->communicate(VePsi_hyper);
-    VePsi_hyper.applyParallelBoundary(parbc);
-  }
-  SAVE_ONCE(VePsi_hyper);
-
-  OPTION(opttransport, bool_NVi_hyper, false);
-  NVi_hyper = opttransport["NVi_hyper"].doc("Hyperdiffusion of ion momentum").withDefault(Field3D{0.0});
-  if(bool_NVi_hyper ){
-    NVi_hyper.applyBoundary("neumann_o2");
-    mesh->communicate(NVi_hyper);
-    NVi_hyper.applyParallelBoundary(parbc);
-  }
-  SAVE_ONCE(NVi_hyper);
-
-  OPTION(opttransport, bool_Vort_hyper, false);
-  Vort_hyper = opttransport["Vort_hyper"].doc("Hyperdiffusion of vorticity").withDefault(Field3D{0.0});
-  if(bool_Vort_hyper ){
-    Vort_hyper.applyBoundary("neumann_o2");
-    mesh->communicate(Vort_hyper);
-    Vort_hyper.applyParallelBoundary(parbc);
-  }
-  SAVE_ONCE(Vort_hyper);
-
-  OPTION(opttransport, bool_numdiff, false);
-  numdiff = opttransport["numdiff"].doc("Parallel numerical diffusion").withDefault(Field3D{0.0});
-  if(bool_numdiff ){
-    numdiff.applyBoundary("neumann_o2");
-    mesh->communicate(numdiff);
-    numdiff.applyParallelBoundary(parbc);
-  }
-  SAVE_ONCE(numdiff);
 
   
   FieldFactory fact(mesh);
@@ -783,10 +756,7 @@ int Hermes::init(bool restarting) {
   // Load metric tensor from the mesh, passing length and B
   // field normalisations
   Coordinates *coord = mesh->getCoordinates();
-  // To use non-orthogonal metric
-  // Normalise
   coord->Bxy /= Bnorm;
-  // Metric is in grid file - just need to normalise
   //CONTRAVARIANT
 
   mul_all_inp(coord->g11, rho_s0 * rho_s0);
@@ -814,10 +784,6 @@ int Hermes::init(bool restarting) {
   div_all_inp(coord->g_13, rho_s0 * rho_s0);
   div_all_inp(coord->g_23, rho_s0 * rho_s0);
 
-  
-
-
-  
   coord->geometry(); // Calculate other metrics
 
   _FCIDiv_a_Grad_perp = std::make_unique<FCI::dagp_fv>(*mesh);
@@ -831,7 +797,6 @@ int Hermes::init(bool restarting) {
   ASSERT0(fci_transform);
 
   if(fci_transform){
-    poloidal_flows = false;
     mesh->get(Bxyz, "B",1.0);
     mesh->get(coord->Bxy, "Bxy", 1.0);
     Bxyz /= Bnorm;
@@ -852,8 +817,6 @@ int Hermes::init(bool restarting) {
     Bxyz = exp_all(logBxyz);
     SAVE_ONCE(Bxyz);
     ASSERT1(min(Bxyz) > 0.0);
-    SAVE_ONCE( J_down , J_up , g_11_up , g_11_down , g_22_down , g_22_up , g_33_down , g_33_up);
-    SAVE_ONCE(g_13_down , g_13_up , g_12_down , g_12_up , g_23_down , g_23_up);
     fwd_bndry_mask = BoutMask(mesh, false);
     bwd_bndry_mask = BoutMask(mesh, false);
     for (const auto &bndry_par : mesh->getBoundariesPar(BoundaryParType::fwd)) {
@@ -1612,57 +1575,62 @@ int Hermes::rhs(BoutReal t) {
   // This is the electron density equation
   TRACE("density");
 
-  if (currents) {
-    // ExB drift, only if electric field is evolved
-    // ddt(Ne) = bracket(Ne, phi, BRACKET_ARAKAWA) * bracket_factor;
-    if (use_Div_n_bxGrad_f_B_XPPM){
-      auto tmp = -Div_n_bxGrad_f_B_XPPM(Ne, phi, ne_bndry_flux, poloidal_flows,true,bracket_factor) * scale_ExB;
-      if(TE_Ne){
-	TE_Ne_ExB = tmp;
+  ddt(Ne) = 0.0;
+
+  // FLAGS:bool Ne_ExB, Ne_mag, Ne_parflow, Ne_collision, Ne_anomalous, Ne_sources;
+
+  if (evolve_Ne){
+
+    if (Ne_ExB){
+      TRACE("Density ExB");
+      
+      if (use_Div_n_bxGrad_f_B_XPPM){
+	TE_Ne_ExB = -Div_n_bxGrad_f_B_XPPM(Ne, phi, ne_bndry_flux, poloidal_flows,true,bracket_factor) * scale_ExB;
+	ddt(Ne) += TE_Ne_ExB;
+      } else {
+	TE_Ne_ExB = -bracket(phi,Ne, BRACKET_ARAKAWA) * bracket_factor*scale_ExB;
+	ddt(Ne) += TE_Ne_ExB;
       }
-      ddt(Ne) = tmp;
-    } else {
-      auto tmp = -bracket(phi,Ne, BRACKET_ARAKAWA) * bracket_factor*scale_ExB;
-      if(TE_Ne){
-	TE_Ne_ExB = tmp;
-      }
-      ddt(Ne) = tmp;
-    }
+    }  // End Ne_ExB
+
+
     
-  } else {
-    ddt(Ne) = 0.0;
-  }
+    if (Ne_mag){
+      TRACE("Density mag");
+      TE_Ne_mag = -fci_curvature(Pe , use_bracket);
+      ddt(Ne) += TE_Ne_mag;
+    }  // End Ne_mag
 
-  
-  
-  // Parallel flow
-  if (parallel_flow) {
- 
-    //check_all(Ne);
-    Field3D neve = mul_all(Ne,Ve);
-    TE_Ne_parflow = -Div_par(neve);
-    ddt(Ne) += TE_Ne_parflow;
+
+    
+    if (Ne_parflow){
+      TRACE("Density parflow");
+      Field3D neve = mul_all(Ne,Ve);
+      TE_Ne_parflow = -Div_par(neve);
+      ddt(Ne) += TE_Ne_parflow;
+    }  // End Ne_parflow
+
+    if (Ne_collision){
+      TRACE("Density collisions");
+      throw BoutException("Density collisions not implemented");
+    }  // End Ne_collision
+
+    if (Ne_anomalous){
+      TRACE("Density anomalous");
+      TE_Ne_anomalous = FCIDiv_a_Grad_perp(a_d3d, Ne);
+      ddt(Ne) += TE_Ne_anomalous;
+    }  // End Ne_anomalous
+
+    if (Ne_sources){
+      TRACE("Density sources");
+      TE_Ne_sources=NeSource;
+      ddt(Ne) += TE_Ne_sources;
+    }  // End Ne_sources
+
     
   }
-
-  if (j_diamag) {
-    // Diamagnetic drift, formulated as a magnetic drift
-    // i.e Grad-B + curvature drift
-    ddt(Ne) -= fci_curvature(Pe , use_bracket);
-   
-  }
-
   
-  if (anomalous_D > 0.0) {
-    auto tmp = FCIDiv_a_Grad_perp(a_d3d, Ne);
-    if (TE_Ne){
-      TE_Ne_anom = tmp;
-    }
-    ddt(Ne) += tmp;
-  }
-
   
-  ddt(Ne) += NeSource;
 
   if (bool_ne_hyper) {
     auto tmp = -ne_hyper * ( (SQ(SQ(coord->dz)))  * D4DZ4(Ne) + SQ(SQ(coord->dx))*D4DX4(Ne)  );

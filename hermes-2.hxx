@@ -114,6 +114,7 @@ private:
   bool evolve_ni;       // Evolve ion density instead?
   bool evolve_nvi;
   bool evolve_vepsi;
+  bool evolve_ne;
   bool electromagnetic; // Include magnetic potential psi
   bool FiniteElMass;    // Finite Electron Mass
 
@@ -121,47 +122,53 @@ private:
   // Switches for all the terms in the equations
 
   // Density equation
-  bool Ne_ExB, Ne_mag, Ne_parflow, Ne_collision, Ne_anomalous, Ne_sources;
+  bool Ne_ExB, Ne_mag, Ne_parflow, Ne_collision, Ne_anomalous, Ne_sources,Ne_hyper, Ne_numdiff;
 
   // Ion momentum
-  bool NVi_ExB, NVi_mag, NVi_parflow, NVi_parpressure, NVi_parviscos, NVi_collision, NVi_anomalous; 
+  bool NVi_ExB, NVi_mag, NVi_parflow, NVi_parpressure, NVi_parviscos, NVi_collision, NVi_anomalous,NVi_hyper,NVi_numdiff; 
 
   // Electron pressure
   bool Pe_ExB, Pe_mag, Pe_parflow, Pe_conduction, Pe_ohmic, Pe_thermalforce, Pe_thermalcurrent;
-  bool Pe_collision, Pe_anomalous, Pe_sources, Pe_energyexchange;
+  bool Pe_collision, Pe_anomalous, Pe_sources, Pe_energyexchange,Pe_hyper,Pe_numdiff;
 
   // Ion Pressure
   bool Pi_ExB, Pi_mag, Pi_parflow, Pi_conduction, Pi_diamagenergyexchange, Pi_parviscousheat;
-  bool Pi_resistivedrift, Pi_perpviscous, Pi_sources;
+  bool Pi_resistivedrift, Pi_perpviscous, Pi_sources,Pi_hyper,Pi_numdiff;
 
   // Vorticity
   bool Vort_mag, Vort_parcurrent, Vort_polarcurrent, Vort_collision, Vort_parviscous;
-  bool Vort_anomalous;
+  bool Vort_anomalous,Vort_hyper,Vort_numdiff;
 
   // Electron velocity
-  bool VePsi_parefield, VePsi_parpressure, VePsi_partemp, VePsi_parcurrent, VePsi_ExB, VePsi_parflow;
+  bool VePsi_parefield, VePsi_parpressure, VePsi_partemp, VePsi_parcurrent, VePsi_ExB, VePsi_parflow,VePsi_hyper,VePsi_numdiff;
+
+
+
   
   // Field for the terms
   bool TE_Ne,TE_NVi,TE_Pe,TE_Pi,TE_Vort,TE_VePsi;
-  Field3D TE_Ne_ExB, TE_Ne_mag, TE_Ne_parflow, TE_Ne_collision, TE_Ne_anomalous, TE_Ne_sources;
 
+  Field3D TE_Ne_ExB, TE_Ne_mag, TE_Ne_parflow, TE_Ne_collision, TE_Ne_anomalous, TE_Ne_sources, TE_Ne_hyper, TE_Ne_numdiff;
+  
   // Fields for ion momentum terms
-  Field3D TE_NVi_ExB, TE_NVi_mag, TE_NVi_parflow, TE_NVi_parpressure, TE_NVi_parviscos, TE_NVi_collision, TE_NVi_anomalous;
+  Field3D TE_NVi_ExB, TE_NVi_mag, TE_NVi_parflow, TE_NVi_parpressure, TE_NVi_parviscos, TE_NVi_collision, TE_NVi_anomalous, 
+    TE_NVi_hyper, TE_NVi_numdiff;
 
   // Fields for electron pressure terms
   Field3D TE_Pe_ExB, TE_Pe_mag, TE_Pe_parflow, TE_Pe_conduction, TE_Pe_ohmic, TE_Pe_thermalforce, TE_Pe_thermalcurrent;
-  Field3D TE_Pe_collision, TE_Pe_anomalous, TE_Pe_sources, TE_Pe_energyexchange;
+  Field3D TE_Pe_collision, TE_Pe_anomalous, TE_Pe_sources, TE_Pe_energyexchange, TE_Pe_hyper, TE_Pe_numdiff;
 
   // Fields for ion pressure terms
   Field3D TE_Pi_ExB, TE_Pi_mag, TE_Pi_parflow, TE_Pi_conduction, TE_Pi_diamagenergyexchange, TE_Pi_parviscousheat;
-  Field3D TE_Pi_resistivedrift, TE_Pi_perpviscous, TE_Pi_sources;
+  Field3D TE_Pi_resistivedrift, TE_Pi_perpviscous, TE_Pi_sources, TE_Pi_hyper, TE_Pi_numdiff;
 
   // Fields for vorticity terms
   Field3D TE_Vort_mag, TE_Vort_parcurrent, TE_Vort_polarcurrent, TE_Vort_collision, TE_Vort_parviscous;
-  Field3D TE_Vort_anomalous;
-
+  Field3D TE_Vort_anomalous, TE_Vort_hyper, TE_Vort_numdiff;
+  
   // Fields for electron velocity terms
   Field3D TE_VePsi_parefield, TE_VePsi_parpressure, TE_VePsi_partemp, TE_VePsi_parcurrent, TE_VePsi_ExB, TE_VePsi_parflow;
+  Field3D TE_VePsi_hyper, TE_VePsi_numdiff;
 
   
   //////////////////////////////////////////////////////
@@ -220,17 +227,6 @@ private:
 
 
   
-  bool bool_Ne_hyper, bool_Pe_hyper, bool_Pi_hyper;
-  Field3D Ne_hyper, Pe_hyper,Pi_hyper; // Hyper-diffusion
-
-  bool bool_VePsi_hyper,bool_NVi_hyper;
-  Field3D VePsi_hyper, NVi_hyper;
-
-  bool bool_Vort_hyper;
-  Field3D Vort_hyper;
-
-  bool bool_numdiff;
-  Field3D numdiff;
   
 
   bool NVi_supsonic_dissipation;
