@@ -166,81 +166,29 @@ private:
   
   //////////////////////////////////////////////////////
   
-  bool j_diamag;    // Diamagnetic current: Vort <-> Pe
-  bool j_par;       // Parallel current:    Vort <-> Psi
   bool j_pol_pi;       // Polarisation current with explicit Pi dependence
   bool j_pol_simplified;       // Polarisation current with explicit Pi dependence
-  bool VorticitySource;
-  bool phi_bndry_after_solve;
-  bool parallel_flow;
-  bool parallel_vort_flow;
-  bool parallel_flow_p_term; // Vi advection terms in Pe, Pi
-  bool pe_par;      // Parallel pressure gradient: Pe <-> Psi
-  bool pe_par_p_term; // Includes terms in Pe,Pi equations
   bool resistivity; // Resistivity: Psi -> Pe
-  bool thermal_force; // Force due to temperature gradients
-  bool electron_viscosity; // Electron parallel viscosity
-  bool ion_viscosity;   // Ion viscosity
-  bool ion_viscosity_par; // Parallel part of ion viscosity
-  bool electron_neutral;   // Include electron-neutral collisions in resistivity
-  bool ion_neutral;        // Include ion-neutral collisions in ion collision time
-  bool poloidal_flows;  // Include y derivatives in diamagnetic and ExB drifts
-  bool thermal_flux;    // Include parallel and perpendicular energy flux from Te gradients
-  bool thermal_conduction; // Braginskii electron heat conduction
-  bool electron_ion_transfer; // Electron-ion heat transfer
-  bool classical_diffusion; // Collisional diffusion, including viscosity
   bool use_Div_n_bxGrad_f_B_XPPM; //Use stencil operator for ExB
   bool use_bracket;                 //Use the bracket for the curvature drifts
   bool norm_dxdydz;
   bool use_Div_parP_n;
-  bool conduction_kappagrad;
-  bool Ohmslaw_use_ve;
-  Field3D NVi_Div_parP_n;
-
-  bool TE_VePsi,TE_Ne,TE_Pe,TE_NVi;
   
-  BoutReal MMS_Ne_ParDiff;
   // Anomalous perpendicular diffusion coefficients
   BoutReal anomalous_D;    // Density diffusion
   BoutReal anomalous_chi;  // Electron thermal diffusion
   BoutReal anomalous_nu;   // Momentum diffusion (kinematic viscosity)
   Field3D a_d3d, a_chi3d, a_nu3d; // 3D coef
-  Field3D a_MMS3d;
   bool anomalous_D_nvi; // Include terms in momentum equation
   bool anomalous_D_pepi; // Include terms in Pe, Pi equations
   
-  bool ion_velocity;  // Include Vi terms
 
   bool phi3d;         // Use a 3D solver for phi
   
-  bool staggered;     // Use staggered differencing along B
 
   bool boussinesq;     // Use a fixed density (Nnorm) in the vorticity equation
 
-  bool sinks; // Sink terms for running 2D drift-plane simulations
-  bool sheath_closure; // Sheath closure sink on vorticity (if sinks = true)
-  bool drift_wave;     // Drift-wave closure (if sinks=true)
-
-  bool radial_buffers; // Radial buffer regions
-  int radial_inner_width; // Number of points in the inner radial buffer
-  int radial_outer_width; // Number of points in the outer radial buffer
-  BoutReal radial_buffer_D; // Diffusion in buffer region
-  bool radial_inner_averagey; // Average Ne, Pe, Pi fields in Y in inner radial buffer
-  bool radial_inner_averagey_vort; // Average vorticity in Y in inner buffer
-  bool radial_inner_averagey_nvi; // Average NVi in Y in inner buffer
-  bool radial_inner_zero_nvi; // Damp NVi towards zero in inner buffer
-
   bool Div_parP_n_sheath_extra{true}; // Use special handling for the sheath
-  bool VePsi_perp;
-  bool phi_smoothing;
-  BoutReal phi_sf;
-  
-  BoutReal resistivity_boundary; // Value of nu in boundary layer
-  int resistivity_boundary_width; // Width of radial boundary
-  
-  Field3D sink_invlpar; // Parallel inverse connection length (1/L_{||}) for
-                        // sink terms
-  Field2D alpha_dw;
 
   // Sheath heat transmission factor
   int sheath_model;     // Sets boundary condition model
@@ -270,13 +218,7 @@ private:
   
   // Numerical dissipation
 
-  BoutReal hyper, hyperpar; ///< Numerical dissipation
-  int low_pass_z; // Fourier filter in Z 
-  BoutReal z_hyper_viscos, x_hyper_viscos, y_hyper_viscos; // 4th-order derivatives
-  bool low_n_diffuse; // Diffusion in parallel direction at low density
-  bool low_n_diffuse_perp; // Diffusion in perpendicular direction at low density
 
-  bool bool_NVi_upwind;
   
   bool bool_Ne_hyper, bool_Pe_hyper, bool_Pi_hyper;
   Field3D Ne_hyper, Pe_hyper,Pi_hyper; // Hyper-diffusion
@@ -290,11 +232,6 @@ private:
   bool bool_numdiff;
   Field3D numdiff;
   
-  BoutReal scale_num_cs; // Scale numerical sound speed
-  BoutReal floor_num_cs; // Apply a floor to the numerical sound speed
-  bool vepsi_dissipation; // Dissipation term in VePsi equation
-  bool vort_dissipation; // Dissipation term in Vorticity equation
-  bool phi_dissipation; // Dissipation term in Vorticity equation
 
   bool NVi_supsonic_dissipation;
   BoutReal NVi_supsonic_factor;
@@ -304,13 +241,6 @@ private:
   BoutReal Ve_supsonic_factor;
   Field3D Ve_dampening;
   
-  BoutReal VePsi_hyperXZ;
-  
-  BoutReal ne_num_diff;
-  BoutReal ne_num_hyper;
-  BoutReal vi_num_diff; // Numerical perpendicular diffusion
-  BoutReal ve_num_diff; // Numerical perpendicular diffusion
-  BoutReal ve_num_hyper; // Numerical hyper-diffusion
   
   // Sources and profiles
   
