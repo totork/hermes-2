@@ -1754,99 +1754,65 @@ int Hermes::rhs(BoutReal t) {
   
   ///////////////////////////////////////////////////////////
   // Ion velocity
-  if (ion_velocity) {
-    TRACE("Ion velocity");
 
-    if (currents) {
-      // ddt(NVi) = bracket(NVi, phi, BRACKET_ARAKAWA) * bracket_factor;
-      // ExB drift, only if electric field calculated
-      if (use_Div_n_bxGrad_f_B_XPPM){
-	TE_NVi_ExB = -Div_n_bxGrad_f_B_XPPM(NVi, phi, ne_bndry_flux , poloidal_flows , false , bracket_factor) * scale_ExB;
-      } else {
-	TE_NVi_ExB = -bracket(phi,NVi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
-      }
-      ddt(NVi) = TE_NVi_ExB;
-
-      
-    } else {
-      ddt(NVi) = 0.0;
-    }
-
-    if (MMS_Ne_ParDiff> 0.0){
-      auto tmp = Div_par_K_Grad_par(a_MMS3d,NVi);
-      ddt(NVi) += tmp;
-    }
+  // bool NVi_ExB, NVi_mag, NVi_parflow, NVi_parpressure, NVi_parviscos, NVi_collision, NVi_anomalous,NVi_hyper,NVi_numdiff;
+  ddt(NVi) = 0.0;
+  TRACE("Ion momentum");
+  if (evolve_nvi){
 
     
-    if (j_diamag) {
-      // Magnetic drift
-      TE_NVi_dia = -fci_curvature(mul_all(NVi , Ti),use_bracket);
-      ddt(NVi) += TE_NVi_dia;
-    }
-
-    // FV with added dissipation
-    if (MMS_Ne_ParDiff <= 0.0){
-      if (use_Div_parP_n){
-	TE_NVi_parflow = -Div_parP_n(Ne, Vi, sound_speed, fwd_bndry_mask, bwd_bndry_mask);
+    if (NVi_ExB){
+      f (use_Div_n_bxGrad_f_B_XPPM){
+        TE_NVi_ExB = -Div_n_bxGrad_f_B_XPPM(NVi, phi, ne_bndry_flux , poloidal_flows , false , bracket_factor) * scale_ExB;
       } else {
-	
-	auto nvivi = mul_all(NVi,Vi);
-	TE_NVi_parflow = -Div_par(nvivi);
+        TE_NVi_ExB = -bracket(phi,NVi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
       }
-      ddt(NVi) += TE_NVi_parflow;
+      ddt(NVi) += TE_NVi_ExB;
+    } // End NVi_ExB
 
-    }
 
-    // Ignoring polarisation drift for now
-    if (pe_par) {
+    if (NVi_mag){
+      TE_NVi_mag = -fci_curvature(mul_all(NVi , Ti),use_bracket);
+      ddt(NVi) += TE_NVi_mag;
+    } // End NVi_mag
+
+
+    if (NVi_parflow){
+      auto nvivi = mul_all(NVi,Vi);
+      TE_NVi_parflow = -Div_par(nvivi);
+    } // End NVi_parflow
+
+    
+    if (NVi_parpressure){
       Field3D peppi = add_all(Pe, Pi);
-      TE_NVi_pe_par = -Grad_parP(peppi);
-      ddt(NVi) += TE_NVi_pe_par;
-    }
+      TE_NVi_parpressure = -Grad_parP(peppi);
+      ddt(NVi) += TE_NVi_parpressure;
+    } // End NVi_parpressure
 
-    if(ion_viscosity_par){
+
+    if (NVi_parviscos){
       auto tmp = Div_par_K_Grad_par(div_all(mul_all(Pi,tau_i),coord->Bxy),mul_all(B12,Vi));
-      TE_NVi_viscos = 1.28*B12*tmp;
-      ddt(NVi) += TE_NVi_viscos;
+      TE_NVi_parsicos = 1.28*B12*tmp;
+      ddt(NVi) += TE_NVi_parviscos;
+    } // End NVi_parviscos
+
+
+    if (NVi_collision){
+      throw BoutException("NVi collisions not implemented!");
     }
 
-    // Parallel numerical diffusion
     
-    if (bool_numdiff) {
-      for(auto &i : NVi.getRegion("RGN_NOBNDRY")) {
-        TE_NVi_numdiff[i] = numdiff[i]*(NVi.ydown()[i.ym()] - 2.*NVi[i] + NVi.yup()[i.yp()]);
-      }
-      ddt(NVi) += TE_NVi_numdiff;
+
+    if (NVi_anomalous){
+      TE_NVi_anomalous = FCIDiv_a_Grad_perp(mul_all(Vi, a_d3d), Ne);
+      TE_NVi_anomalous += FCIDiv_a_Grad_perp(mul_all(Ne, a_nu3d), Vi);
+      ddt(NVi) += TE_NVi_anomalous;
     }
     
-    
-    TE_NVi_anom = 0.0;
-    if ((anomalous_D > 0.0) && anomalous_D_nvi) {
-      TE_NVi_anom += FCIDiv_a_Grad_perp(mul_all(Vi, a_d3d), Ne);
-    }
-
-    if (anomalous_nu > 0.0) {
-      TE_NVi_anom += FCIDiv_a_Grad_perp(mul_all(Ne, a_nu3d), Vi); 
-    }
-
-    if((anomalous_nu > 0.0) || ((anomalous_D > 0.0) && anomalous_D_nvi)){
-      ddt(NVi) += TE_NVi_anom;
-    }
-
-    if (bool_NVi_hyper){
-      TE_NVi_hyper = -NVi_hyper*((SQ(SQ(coord->dx)))*D4DX4(NVi) + (SQ(SQ(coord->dz)))*D4DZ4(NVi));
-      ddt(NVi) += TE_NVi_hyper;
-    }
-
-    if(NVi_supsonic_dissipation){
-      Field3D tmp = floor((abs(Vi) - sound_speed),0.0);
-      NVi_dampening = -(Vi/abs(Vi))*NVi_supsonic_factor * (exp(tmp)-1.0);
-      ddt(NVi) += NVi_dampening;
-    }
+  } // End evolve_nvi
 
 
-  }
-
+  
   ///////////////////////////////////////////////////////////
   // Pressure equation
   TRACE("Electron pressure");
