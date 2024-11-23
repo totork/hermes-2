@@ -1004,11 +1004,13 @@ int Hermes::init(bool restarting) {
     phiSolver->setCoefC(1./ SQ(coord->Bxy));
   }
   phi = 0.0;
+  Ve = 0.0;
+  Jpar = 0.0;
+
+
+  
   phi.setBoundary("phi"); // For y boundaries                                                                                                     
 
-      // Add phi to restart files so that the value in the boundaries                                                                                 
-      // is restored on restart. This is done even when phi is not evolving,                                                                          
-      // so that phi can be saved and re-loaded                                                                                                       
   restart.addOnce(phi, "phi");
   aparSolver = Laplacian::create(&opt["aparSolver"]);
   Ve.setBoundary("Ve");
@@ -1309,8 +1311,9 @@ int Hermes::rhs(BoutReal t) {
     debug_phibndry3d = phi_boundary3d;
     mesh->communicate(phi);
     phi.applyParallelBoundary(parbc);
+
     phi = sub_all(phi, Pi);
-	
+    
   } else {
     ////////////////////////////////////////////
     // Non-Boussinesq
