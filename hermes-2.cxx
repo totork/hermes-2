@@ -1698,117 +1698,60 @@ int Hermes::rhs(BoutReal t) {
 
   ddt(VePsi) = 0.0;
 
+  // VePsi_parefield, VePsi_parpressure, VePsi_partemp, VePsi_parcurrent, VePsi_ExB, VePsi_parflow,VePsi_hyper,VePsi_numdiff;
   if (evolve_vepsi){
 
+    
+    if (VePsi_parefield){
+      TE_VePsi_parefield = mi_me * Grad_Par(phi);
+      ddt(VePsi) += TE_VePsi_parefield;
+    } //End VePsi_parefield
 
     
-  } //End evolve_vepsi
+    if (VePsi_parpressure){
+      TE_VePsi_papressure = -mi_me * Grad_parP(Pe) / Ne;
+      ddt(VePsi) += TE_VePsi_papressure;
+    } //End VePsi_parpressure
 
-  
-  if ( electromagnetic || FiniteElMass) {
-    // Evolve VePsi except for electrostatic and zero electron mass case
-    if (pe_par){
-      auto tmp = -mi_me * Grad_parP(Pe) / Ne;
-      if(TE_VePsi){
-	TE_VePsi_pe_par = tmp;
-      }
-      ddt(VePsi) += tmp;
-    }
 
-    if ( resistivity){
-      auto tmp = -mi_me * nu * (Ve - Vi);
-      if(TE_VePsi){
-	TE_VePsi_resistivity = tmp;
-      }
-      ddt(VePsi) += tmp;
-    }
-
-    if (anomalous_nu>0.0){
-      auto tmp = FCIDiv_a_Grad_perp( a_nu3d, VePsi);
-      if(TE_VePsi){
-	TE_VePsi_anom = tmp;
-      }
-      ddt(VePsi) += tmp;
-    }
-
+    if (VePsi_partemp){
+      TE_VePsi_partemp = -mi_me * 0.71 * Grad_parP(Te);
+      ddt(VePsi) += TE_VePsi_partemp;
+    } //End VePsi_partemp
 
     
-    // Parallel electric field
-    if (j_par) {
-      auto tmp = mi_me * Grad_parP(phi);
-      if(TE_VePsi){
-	TE_VePsi_j_par = tmp;
-      }
-      ddt(VePsi) += tmp;
-    }
+    if (VePsi_parcurrent){
+      TE_VePsi_parcurrent = mi_me * nu * (Vi - Ve);
+      ddt(VePsi) += TE_VePsi_parcurrent;
+    } //End VePsi_parcurrent
 
 
-    if (thermal_force) {
-      auto tmp = -mi_me * 0.71 * Grad_parP(Te);
-      if (TE_VePsi){
-	TE_VePsi_thermal_force = tmp;
-      }
-      ddt(VePsi) += tmp;
-    }
-
-    
-    if (FiniteElMass) {
-      // Finite Electron Mass. Small correction needed to conserve energy
-      Field3D vdiff = sub_all(Vi,Ve);
-      Field3D tmp = 0.0;
-      if (Ohmslaw_use_ve){
-	tmp = Ve * Grad_par(vdiff);
+    if (VePsi_ExB){
+      if(use_Div_n_bxGrad_f_B_XPPM){
+	TE_VePsi_ExB = -Div_n_bxGrad_f_B_XPPM(Ve-Vi, phi, false,poloidal_flows , false, bracket_factor) * scale_ExB;
       } else {
-	tmp = Vi * Grad_par(vdiff);
+	TE_VePsi_ExB = -bracket(phi , Ve-Vi , BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
       }
+      ddt(VePsi) += TE_VePsi_ExB;
+    } // End VePsi_ExB
 
-      if (TE_VePsi){
-	TE_VePsi_par_adv = tmp;
-      }
-      ddt(VePsi) += tmp; // Parallel advection
-      //ddt(VePsi) -= bracket(phi, vdiff, BRACKET_ARAKAWA)*bracket_factor;  // ExB advection
+    if (VePsi_parflow){
+      TE_VePsi_parflow = -Vi * Grad_par(sub_all(Ve,Vi));
+      ddt(VePsi) += TE_VePsi_parflow;
+    } // End VePsi_parflow
 
-      if (VePsi_perp){
-	// The signs are swapped because vdiff is Vi-Ve and not Ve-Vi 
-	if(use_Div_n_bxGrad_f_B_XPPM){
-	  TE_VePsi_perp = Div_n_bxGrad_f_B_XPPM(vdiff, phi, false,poloidal_flows , false, bracket_factor) * scale_ExB;
-	} else {
-	  TE_VePsi_perp = bracket(phi,vdiff,BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
-	}
-	ddt(VePsi) += TE_VePsi_perp;
-      }
-
-      // Should also have ion polarisation advection here
-    }
-
-    if (bool_numdiff) {
-      for(auto &i : VePsi.getRegion("RGN_NOBNDRY")) {
-	auto tmp = numdiff[i]*(VePsi.ydown()[i.ym()] - 2.*VePsi[i] + VePsi.yup()[i.yp()]);
-	if(TE_VePsi){
-	  TE_VePsi_numdiff[i] = tmp;
-	}
-        ddt(VePsi)[i] += tmp;
-      }
-    }
-
-    if (bool_VePsi_hyper){
-      auto tmp = -VePsi_hyper*((SQ(SQ(coord->dx)))*D4DX4(VePsi) + (SQ(SQ(coord->dz)))*D4DZ4(VePsi));
-      if(TE_VePsi){
-	TE_VePsi_hyper = tmp;
-      }
-      ddt(VePsi) += tmp;
-    }
-
+    /*
     if(Ve_supsonic_dissipation){
       Field3D tmp = floor((abs(Ve) - sqrt(mi_me)*sound_speed),0.0);
       Ve_dampening = -(Ve/abs(Ve))*Ve_supsonic_factor * (exp(tmp)-1.0);
       ddt(VePsi) += Ve_dampening;
     }
+    */
 
     
+  } //End evolve_vepsi
 
-  }
-
+  
   ///////////////////////////////////////////////////////////
   // Ion velocity
   if (ion_velocity) {
@@ -1875,15 +1818,6 @@ int Hermes::rhs(BoutReal t) {
       }
       ddt(NVi) += TE_NVi_numdiff;
     }
-    /*
-    if (classical_diffusion) {
-      // Using same cross-field drift as in density equation
-      Field3D ViDn = mul_all(Vi,Dn);
-      ddt(NVi) += FCIDiv_a_Grad_perp(ViDn, Ne);
-      Field3D NVi_tauB2 = div_all(NVi, tauemimeSQB);
-      ddt(NVi) += FCIDiv_a_Grad_perp(NVi_tauB2, TiTediff);
-    }
-    */
     
     
     TE_NVi_anom = 0.0;
