@@ -127,6 +127,7 @@ electromagnetic = false
 j_pol_pi = false
 j_pol_simplified = true
 boussinesq = true
+FiniteElMass = true
 
 evolve_ne = true
 evolve_nvi = true

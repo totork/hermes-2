@@ -340,6 +340,9 @@ int Hermes::init(bool restarting) {
               .doc("Polarisation current without explicit Pi dependence")
               .withDefault<bool>(false);
 
+  FiniteElMass = optsc["FiniteElMass"]
+                        .doc("Use finite electron mass?")
+                        .withDefault<bool>(true);
 
   //////////////////////////////////////////////////////////////////////////
 
@@ -988,6 +991,7 @@ int Hermes::init(bool restarting) {
   //////////////////////////////////////////////////////////////
   // Electromagnetic fields
 
+  SAVE_REPEAT(phi,psi);
   opt["phiSolver"].setConditionallyUsed();
   optsc["newXZsolver"].setConditionallyUsed();
 
@@ -1007,7 +1011,7 @@ int Hermes::init(bool restarting) {
   Ve = 0.0;
   Jpar = 0.0;
 
-
+  
   
   phi.setBoundary("phi"); // For y boundaries                                                                                                     
 
