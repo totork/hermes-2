@@ -476,7 +476,7 @@ int Hermes::init(bool restarting) {
   Pi_sources = optpi["Pi_sources"].doc("Include source terms in ion energy").withDefault<bool>(false);
   Pi_hyper = optpi["Pi_hyper"].doc("Use hyperdiffusion in ion pressure").withDefault<bool>(false);
   Pi_numdiff = optpi["Pi_numdiff"].doc("Use parallel numerical diffusion in ion pressure").withDefault<bool>(false);
-
+  Pi_anomalous = optpi["Pi_anomalous"].doc("Include anomalous effects in ion energy").withDefault<bool>(false);
   
   // bool Vort_mag, Vort_parcurrent, Vort_polarcurrent, Vort_collision, Vort_parviscous;
   // bool Vort_anomalous;
@@ -573,9 +573,10 @@ int Hermes::init(bool restarting) {
   TE_Pi_sources = 0.0;
   TE_Pi_hyper = 0.0;
   TE_Pi_numdiff = 0.0;
+  TE_Pi_anomalous = 0.0;
   if (TE_Pi) {
     SAVE_REPEAT(TE_Pi_ExB, TE_Pi_mag, TE_Pi_parflow, TE_Pi_conduction, TE_Pi_diamagenergyexchange, TE_Pi_parviscousheat);
-    SAVE_REPEAT(TE_Pi_resistivedrift, TE_Pi_perpviscous, TE_Pi_sources, TE_Pi_hyper, TE_Pi_numdiff);
+    SAVE_REPEAT(TE_Pi_resistivedrift, TE_Pi_perpviscous, TE_Pi_sources, TE_Pi_hyper, TE_Pi_numdiff,TE_Pi_anomalous);
   }
 
 
@@ -654,8 +655,7 @@ int Hermes::init(bool restarting) {
   OPTION(optsheath, test_boundaries, false); // Test boundary conditions
   OPTION(optsheath, parallel_sheaths, false); // Apply parallel sheath conditions?
   OPTION(optsheath, par_sheath_model, 0);
-  OPTION(optsheath, par_sheath_ve, true)
-  OPTION(optsheath, Div_parP_n_sheath_extra, Div_parP_n_sheath_extra);
+  OPTION(optsheath, par_sheath_ve, true);
   sheath_allow_supersonic = optsheath["sheath_allow_supersonic"]
           .doc("If plasma is faster than sound speed, go to plasma velocity")
           .withDefault<bool>(true);
@@ -693,9 +693,9 @@ int Hermes::init(bool restarting) {
 
 
   // Get the transport parameters
-  anomalous_D = opttransport["anomalous_D"].doc("Anomalous diffusion").withDefault(Field3D{0.0});
-  anomalous_nu = opttransport["anomalous_nu"].doc("Anomalous viscosity").withDefault(Field3D{0.0});
-  anomalous_chi = opttransport["anomalous_chi"].doc("Anomalous condoctivity").withDefault(Field3D{0.0});
+  anomalous_D = opttransport["anomalous_D"].doc("Anomalous diffusion").withDefault(0.0);
+  anomalous_nu = opttransport["anomalous_nu"].doc("Anomalous viscosity").withDefault(0.0);
+  anomalous_chi = opttransport["anomalous_chi"].doc("Anomalous condoctivity").withDefault(0.0);
 
   if (anomalous_D > 0.0) {
     // Normalise
@@ -715,8 +715,8 @@ int Hermes::init(bool restarting) {
     output.write("\tnormalised anomalous chi_perp = {:e}\n", anomalous_chi);
     a_chi3d = anomalous_chi;
     mesh->communicate(a_chi3d);
-    a_chi3d.yup() = anomalous_D;
-    a_chi3d.ydown() = anomalous_D;
+    a_chi3d.yup() = anomalous_chi;
+    a_chi3d.ydown() = anomalous_chi;
   }
   if (anomalous_nu > 0.0) {
     // Normalise
@@ -724,8 +724,8 @@ int Hermes::init(bool restarting) {
     output.write("\tnormalised anomalous nu_perp = {:e}\n", anomalous_nu);
     a_nu3d = anomalous_nu;
     mesh->communicate(a_nu3d);
-    a_nu3d.yup() = anomalous_D;
-    a_nu3d.ydown() = anomalous_D;
+    a_nu3d.yup() = anomalous_nu;
+    a_nu3d.ydown() = anomalous_nu;
   }
 
   
@@ -736,16 +736,16 @@ int Hermes::init(bool restarting) {
   
   // Get switches from each variable section
 
-  NeSource = optne["source"].doc("Source term in ddt(Ne)").withDefault(Field3D{0.0});
+  NeSource = optne["NeSource"].doc("Source term in ddt(Ne)").withDefault(Field3D{0.0});
   NeSource /= Omega_ci;
   Sn = NeSource;
 
   
-  PeSource = optpe["source"].withDefault(Field3D{0.0});
+  PeSource = optpe["PeSource"].withDefault(Field3D{0.0});
   PeSource /= Omega_ci;
   Spe = PeSource;
 
-  PiSource = optpi["source"].withDefault(Field3D{0.0});
+  PiSource = optpi["PiSource"].withDefault(Field3D{0.0});
   PiSource /= Omega_ci;
   Spi = PiSource;
 
@@ -1011,10 +1011,9 @@ int Hermes::init(bool restarting) {
   Ve.setBoundary("Ve");
   nu.setBoundary("nu");
   Jpar.setBoundary("Jpar");
-  psi = 0.0;
-  
 
   
+  psi = 0.0;
   nu = 0.0;
   kappa_epar = 0.0;
   kappa_ipar = 0.0;
@@ -1628,96 +1627,69 @@ int Hermes::rhs(BoutReal t) {
     }  // End Ne_sources
 
     
-  }
+  } //End evolve_ne
   
   
-
-  if (bool_ne_hyper) {
-    auto tmp = -ne_hyper * ( (SQ(SQ(coord->dz)))  * D4DZ4(Ne) + SQ(SQ(coord->dx))*D4DX4(Ne)  );
-    if (TE_Ne){
-      TE_Ne_hyper = tmp;
-    }
-    ddt(Ne) += tmp;
-  }
-  
-
-  if (bool_numdiff) {
-    BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")) {
-      TE_Ne_numdiff[i] = numdiff[i]*(Ne.ydown()[i.ym()] - 2.*Ne[i] + Ne.yup()[i.yp()]);
-    }
-    ddt(Ne) += TE_Ne_numdiff;
-  }
-
   ///////////////////////////////////////////////////////////
   // Vorticity
   // This is the current continuity equation
 
   TRACE("vorticity");
-
   ddt(Vort) = 0.0;
 
-  if (currents && evolve_vort) {
-
-    if (j_par) {
-      TRACE("Vort:j_par");
-      vort_jpar = Div_parP(Jpar);
-      ddt(Vort) += vort_jpar;
-    }
-
-    if (j_diamag) {
-      vort_dia = fci_curvature(add_all(Pi , Pe),use_bracket);
-      ddt(Vort) += vort_dia;
-    }
-
-    // Advection of vorticity by ExB
-    if (boussinesq) {
-      TRACE("Vort:boussinesq");
-      // Using the Boussinesq approximation
-      
-      if (j_pol_pi){
- 
-	throw BoutException("j_pol_pi not implemented!");
-	
-      }else if (j_pol_simplified) {
-	// use simplified polarization term from i.e. GBS
-	if (use_Div_n_bxGrad_f_B_XPPM){
-	  vort_ExB = Div_n_bxGrad_f_B_XPPM(Vort, phi, vort_bndry_flux,
-					   poloidal_flows, false , bracket_factor) * scale_ExB;    
-	  ddt(Vort) -= vort_ExB;
-	} else {
-	  vort_ExB = bracket(phi,Vort, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
-	  ddt(Vort) -= vort_ExB;
-	}
-	  
-      }
-    } else {
-      // When the Boussinesq approximation is not made,
-      // then the changing ion density introduces a number
-      // of other terms.
-
-      throw BoutException("Hot ion non-Boussinesq not implemented yet\n");
-    }
+  // bool Vort_mag, Vort_parcurrent, Vort_polarcurrent, Vort_collision, Vort_parviscous;
+  // bool Vort_anomalous,Vort_hyper,Vort_numdiff;
   
-    if (anomalous_nu > 0.0) {
-      TRACE("Vort:anomalous_nu");
-      // Perpendicular anomalous momentum diffusion
-      vort_anom = FCIDiv_a_Grad_perp(a_nu3d, Vort);
-      ddt(Vort) += vort_anom;
-    }
+  if (evolve_vort){
 
-   
-    if(bool_Vort_hyper){
-      vort_hyper = -Vort_hyper * (SQ(SQ(coord->dz)) * D4DZ4(Vort) + SQ(SQ(coord->dx)) * D4DX4(Vort));
-      ddt(Vort) += vort_hyper;
-    }
+    if(Vort_mag){
+      TRACE("Vort_mag");
+      TE_Vort_mag = fci_curvature(add_all(Pi , Pe),use_bracket);
+      ddt(Vort) += TE_Vort_mag;
+    } //End Vort_mag
+
+    if(Vort_parcurrent){
+      TRACE("Vort_parcurrent");
+      TE_Vort_parcurrent = Div_par(Jpar);
+      ddt(Vort) += TE_Vort_parcurrent
+    } //End Vort_parcurrent
+
+    if (Vort_polarcurrent){
+      TRACE("Vort_polarcurrent");
+
+      if(boussinesq){
+
+	if (j_pol_pi){
+
+	  throw BoutException("j_pol_pi not implemented!");
+
+	}else if (j_pol_simplified) {
+	  // use simplified polarization term from i.e. GBS                                                                                             
+	  if (use_Div_n_bxGrad_f_B_XPPM){
+	    TE_Vort_polarcurrent = -Div_n_bxGrad_f_B_XPPM(Vort, phi, vort_bndry_flux,
+					     poloidal_flows, false , bracket_factor) * scale_ExB;
+	    
+	  } else {
+	    TE_Vort_polarcurrent = -bracket(phi,Vort, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
+	    
+	  }
+
+	  ddt(Vort) += TE_Vort_polarcurrent;
+
+	} //End j_pol_pi
+
+      } else {
+	throw BoutException("Non-boussinesq not implemented");
+      }  //End boussinesq
+    } //End Vort_polarcurrent
     
-    if (bool_numdiff) {
-      for(auto &i : NVi.getRegion("RGN_NOBNDRY")) {
-        vort_numdiff[i] = numdiff[i]*(Vort.ydown()[i.ym()] - 2.*Vort[i] + Vort.yup()[i.yp()]);
-      }
-      ddt(Vort) += vort_numdiff;
-    }
-  }
+    if (Vort_anomalous){
+      TE_Vort_anomalous = FCIDiv_a_Grad_perp(a_nu3d, Vort);
+      ddt(Vort) += TE_Vort_anomalous;
+    } // End Vort_anomalous
+    
+  }  //End evolve_vort
+
 
   ///////////////////////////////////////////////////////////
   // Ohm's law
@@ -1725,6 +1697,13 @@ int Hermes::rhs(BoutReal t) {
   TRACE("Ohm's law");
 
   ddt(VePsi) = 0.0;
+
+  if (evolve_vepsi){
+
+
+    
+  } //End evolve_vepsi
+
   
   if ( electromagnetic || FiniteElMass) {
     // Evolve VePsi except for electrostatic and zero electron mass case
