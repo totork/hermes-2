@@ -1503,91 +1503,71 @@ int Hermes::rhs(BoutReal t) {
   // Calculate electrostatic potential phi
  
   TRACE("Electrostatic potential");
-  if (!currents && !relaxation) {
-    // Disabling electric fields
-    // phi = 0.0; // Already set in initialisation
-  } else {
-    // Solve phi from Vorticity
+  Field3D phi_boundary3d;
+  phi_boundary3d = 3.0 * Te;
+  
 
-    // Set the boundary of phi. Both 2D and 3D fields are kept, though the 3D field
-    // is constant in Z. This is for efficiency, to reduce the number of conversions.
-    // Note: For now the boundary values are all at the midpoint,
-    //       and only phi is considered, not phi + Pi which is handled in Boussinesq solves
-    Field2D phi_boundary2d;
-    Field3D phi_boundary3d;
-    phi_boundary2d = DC((log(0.5 * sqrt(mi_me / PI)) + log(sqrt(Te / (Te + Ti)))) * Te);
-
-      
-    phi_boundary3d = 3.0 * Te;
     
-
-    if (phi3d) {
-      throw BoutException("phi3d is not implemented!");
-    } else {
-
-      if (boussinesq) {
-	
-	
-        if (mesh->firstX()) {
-          for (int j = mesh->ystart; j <= mesh->yend; j++) {
-            for (int k = 0; k < mesh->LocalNz; k++) {
-              // Average phi + Pi at the boundary, and set the boundary cell
-              // to this value. The phi solver will then put the value back
-              // onto the cell mid-point
-              phi_boundary3d(mesh->xstart - 1, j, k) =
-                  0.5
-                  * (phi_boundary3d(mesh->xstart - 1, j, k) +
-                     phi_boundary3d(mesh->xstart, j, k) +
-                     Pi(mesh->xstart - 1, j, k) +
-                     Pi(mesh->xstart, j, k));
-            }
-          }
-        }
-
-        if (mesh->lastX()) {
-          for (int j = mesh->ystart; j <= mesh->yend; j++) {
-            for (int k = 0; k < mesh->LocalNz; k++) {
-              phi_boundary3d(mesh->xend + 1, j, k) =
-                  0.5
-                  * (phi_boundary3d(mesh->xend + 1, j, k) +
-                     phi_boundary3d(mesh->xend, j, k) +
-                     Pi(mesh->xend + 1, j, k) +
-                     Pi(mesh->xend, j, k));
-            }
-          }
-        }
-        
-        ////////////////////////////////////////////
-        // Boussinesq, non-split
-        // Solve all components using X-Z solver
-
-	if (newXZsolver) {
-	  // Use the new LaplaceXZ solver
-	  // newSolver->setCoefs(1./SQ(coord->Bxy), 0.0); // Set when initialised
-	  phi = newSolver->solve(Vort, phi + Pi);
-	} else {
-	  // Use older Laplacian solver
-	  // phiSolver->setCoefC(1./SQ(coord->Bxy)); // Set when initialised
-	  mesh->communicate(phi_boundary3d);
-	  phi = phiSolver->solve(mul_all(Vort , mul_all(coord->Bxy, coord->Bxy)), phi_boundary3d);//_boundary3d);
-	  //phi = phiSolver->solve(Vort, phi);
+  if (boussinesq) {
+		
+    if (mesh->firstX()) {
+      for (int j = mesh->ystart; j <= mesh->yend; j++) {
+	for (int k = 0; k < mesh->LocalNz; k++) {
+	  // Average phi + Pi at the boundary, and set the boundary cell
+	  // to this value. The phi solver will then put the value back
+	  // onto the cell mid-point
+	  phi_boundary3d(mesh->xstart - 1, j, k) =
+	    0.5
+	    * (phi_boundary3d(mesh->xstart - 1, j, k) +
+	       phi_boundary3d(mesh->xstart, j, k) +
+	       Pi(mesh->xstart - 1, j, k) +
+	       Pi(mesh->xstart, j, k));
 	}
-        
-        // Hot ion term in vorticity
-	debug_phibndry3d = phi_boundary3d;
-        mesh->communicate(phi);
-        phi.applyParallelBoundary(parbc);
-        phi = sub_all(phi, Pi);
-
-      } else {
-        ////////////////////////////////////////////
-        // Non-Boussinesq
-        //
-        throw BoutException("Non-Boussinesq not implemented yet");
       }
     }
-  }
 
+    if (mesh->lastX()) {
+      for (int j = mesh->ystart; j <= mesh->yend; j++) {
+	for (int k = 0; k < mesh->LocalNz; k++) {
+	  phi_boundary3d(mesh->xend + 1, j, k) =
+	    0.5
+	    * (phi_boundary3d(mesh->xend + 1, j, k) +
+	       phi_boundary3d(mesh->xend, j, k) +
+	       Pi(mesh->xend + 1, j, k) +
+	       Pi(mesh->xend, j, k));
+	}
+      }
+    }
+        
+    ////////////////////////////////////////////
+    // Boussinesq, non-split
+    // Solve all components using X-Z solver
+    
+    if (newXZsolver) {
+      // Use the new LaplaceXZ solver
+      // newSolver->setCoefs(1./SQ(coord->Bxy), 0.0); // Set when initialised
+      phi = newSolver->solve(Vort, phi + Pi);
+    } else {
+      // Use older Laplacian solver
+      // phiSolver->setCoefC(1./SQ(coord->Bxy)); // Set when initialised
+      mesh->communicate(phi_boundary3d);
+      phi = phiSolver->solve(mul_all(Vort , mul_all(coord->Bxy, coord->Bxy)), phi_boundary3d);//_boundary3d);
+      //phi = phiSolver->solve(Vort, phi);
+    }
+        
+    // Hot ion term in vorticity
+    debug_phibndry3d = phi_boundary3d;
+    mesh->communicate(phi);
+    phi.applyParallelBoundary(parbc);
+    phi = sub_all(phi, Pi);
+	
+  } else {
+    ////////////////////////////////////////////
+    // Non-Boussinesq
+    //
+    throw BoutException("Non-Boussinesq not implemented yet");
+  }
+  
 
 
   
