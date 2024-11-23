@@ -574,7 +574,7 @@ int Hermes::init(bool restarting) {
   TE_Pi_hyper = 0.0;
   TE_Pi_numdiff = 0.0;
   TE_Pi_anomalous = 0.0;
-  TE_Pi_energyexchange = 0.0
+  TE_Pi_energyexchange = 0.0;
   if (TE_Pi) {
     SAVE_REPEAT(TE_Pi_ExB, TE_Pi_mag, TE_Pi_parflow, TE_Pi_conduction, TE_Pi_diamagenergyexchange, TE_Pi_parviscousheat);
     SAVE_REPEAT(TE_Pi_resistivedrift, TE_Pi_perpviscous, TE_Pi_sources, TE_Pi_hyper, TE_Pi_numdiff,TE_Pi_anomalous,TE_Pi_energyexchange);
@@ -643,7 +643,7 @@ int Hermes::init(bool restarting) {
   
   OPTION(optnumerics, resistivity_multiply, 1.0);
   OPTION(optnumerics, electron_weight, 1.0);
-  
+  OPTION(optnumerics, poloidal_flows, false);
   // Sheath switches
   
   OPTION(optsheath, sheath_model, 0);
@@ -1057,7 +1057,6 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(kappa_ipar); // Parallel ion heat conductivity
     SAVE_REPEAT(nu);
     SAVE_REPEAT(debug_visheath,debug_vesheath,debug_sheathexp);
-    SAVE_REPEAT(NVi_Div_parP_n);
     SAVE_REPEAT(debug_phisheath);
     SAVE_REPEAT(debug_VePsisheath);
 
@@ -1066,8 +1065,7 @@ int Hermes::init(bool restarting) {
   zero_all(phi);
   zero_all(psi);
 
-  // Preconditioner
-  setPrecon((preconfunc)&Hermes::precon);
+
 
   
   if (evolve_te && parallel_sheaths){
@@ -1137,7 +1135,7 @@ int Hermes::rhs(BoutReal t) {
   }
   NVi.applyParallelBoundary();
   
-  if (evolve_VePsi){
+  if (evolve_vepsi){
     VePsi.applyParallelBoundary();
   }
 
@@ -1178,7 +1176,7 @@ int Hermes::rhs(BoutReal t) {
     div_all(Te, Pe, Ne, i);
     // ASSERT0(Te[i] > 1e-10);
 
-    sound_speed[i] = scale_num_cs * sqrt(Te[i] + Ti[i] * (5. / 3));
+    sound_speed[i] =  sqrt(Te[i] + Ti[i] * (5. / 3));
   }
 
   sound_speed.applyBoundary("neumann");
@@ -1578,7 +1576,7 @@ int Hermes::rhs(BoutReal t) {
 
 
   ddt(Ne) = 0.0;
-  if (evolve_Ne){
+  if (evolve_ne){
     TRACE("Density");
     
     if (Ne_ExB){
@@ -1654,7 +1652,7 @@ int Hermes::rhs(BoutReal t) {
     if(Vort_parcurrent){
       TRACE("Vort_parcurrent");
       TE_Vort_parcurrent = Div_par(Jpar);
-      ddt(Vort) += TE_Vort_parcurrent
+      ddt(Vort) += TE_Vort_parcurrent;
     } //End Vort_parcurrent
 
     
@@ -1717,14 +1715,14 @@ int Hermes::rhs(BoutReal t) {
     TRACE("Ohm's law");
     
     if (VePsi_parefield){
-      TE_VePsi_parefield = mi_me * Grad_Par(phi);
+      TE_VePsi_parefield = mi_me * Grad_par(phi);
       ddt(VePsi) += TE_VePsi_parefield;
     } //End VePsi_parefield
 
     
     if (VePsi_parpressure){
-      TE_VePsi_papressure = -mi_me * Grad_parP(Pe) / Ne;
-      ddt(VePsi) += TE_VePsi_papressure;
+      TE_VePsi_parpressure = -mi_me * Grad_parP(Pe) / Ne;
+      ddt(VePsi) += TE_VePsi_parpressure;
     } //End VePsi_parpressure
 
 
@@ -1783,7 +1781,7 @@ int Hermes::rhs(BoutReal t) {
 
     
     if (NVi_ExB){
-      f (use_Div_n_bxGrad_f_B_XPPM){
+      if (use_Div_n_bxGrad_f_B_XPPM){
         TE_NVi_ExB = -Div_n_bxGrad_f_B_XPPM(NVi, phi, ne_bndry_flux , poloidal_flows , false , bracket_factor) * scale_ExB;
       } else {
         TE_NVi_ExB = -bracket(phi,NVi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
@@ -1801,7 +1799,7 @@ int Hermes::rhs(BoutReal t) {
     if (NVi_parflow){
       auto nvivi = mul_all(NVi,Vi);
       TE_NVi_parflow = -Div_par(nvivi);
-      ddt(NVi) += TE_NVi_parfolw;
+      ddt(NVi) += TE_NVi_parflow;
     } // End NVi_parflow
 
     
@@ -1814,7 +1812,7 @@ int Hermes::rhs(BoutReal t) {
 
     if (NVi_parviscos){
       auto tmp = Div_par_K_Grad_par(div_all(mul_all(Pi,tau_i),coord->Bxy),mul_all(B12,Vi));
-      TE_NVi_parsicos = 1.28*B12*tmp;
+      TE_NVi_parviscos = 1.28*B12*tmp;
       ddt(NVi) += TE_NVi_parviscos;
     } // End NVi_parviscos
 
@@ -1910,8 +1908,8 @@ int Hermes::rhs(BoutReal t) {
 
     if (Pe_anomalous){
       TRACE("Pe anomalous transport");
-      TE_Pe_anomomalous = FCIDiv_a_Grad_perp(mul_all(a_d3d, Te), Ne) + (2. / 3) * FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Te);
-      ddt(Pe) += TE_Pe_anomomalous;
+      TE_Pe_anomalous = FCIDiv_a_Grad_perp(mul_all(a_d3d, Te), Ne) + (2. / 3) * FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Te);
+      ddt(Pe) += TE_Pe_anomalous;
     } // End Pe_anomalous
 
 
@@ -2130,27 +2128,7 @@ int Hermes::rhs(BoutReal t) {
  * to timestep
  * @param[in] delta   Not used here
  */
-int Hermes::precon(BoutReal t, BoutReal gamma, BoutReal delta) {
-  static std::unique_ptr<InvertPar> inv{nullptr};
-  if (!inv) {
-    // Initialise parallel inversion class
-    auto inv = InvertPar::create();
-    inv->setCoefA(1.0);
-  }
-  if (thermal_conduction) {
-    // Set the coefficient in front of Grad2_par2
-    inv->setCoefB(-(2. / 3) * gamma * kappa_epar);
-    Field3D dT = ddt(Pe);
-    dT.applyBoundary("neumann");
-    ddt(Pe) = inv->solve(dT);
-  }
 
-  // Neutral gas preconditioning
-  if (neutrals)
-    neutrals->precon(t, gamma, delta);
-
-  return 0;
-}
 
 Field3D Hermes::fci_curvature(const Field3D &f, const bool &bool_bracket) {
   // Field3D result = mul_all(bracket(logB, f, BRACKET_ARAKAWA), bracket_factor);
