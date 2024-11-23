@@ -131,7 +131,8 @@ private:
   bool evolve_ti;       // Evolve ion temperature?
   bool evolve_vort;     // Evolve vorticity?
   bool evolve_ni;       // Evolve ion density instead?
-  
+  bool evolve_nvi;
+  bool evolve_vepsi;
   bool electromagnetic; // Include magnetic potential psi
   bool FiniteElMass;    // Finite Electron Mass
   

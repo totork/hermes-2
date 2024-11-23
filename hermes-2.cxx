@@ -312,7 +312,16 @@ int Hermes::init(bool restarting) {
 
   // Switches in model section
   auto& optsc = opt["Hermes"];
+  auto& optne = opt["Ne"];
+  auto& optnvi = opt["NVi"];
+  auto& optpe = opt["Pe"];
+  auto& optpi = opt["Pi"];
+  auto& optvort = opt["Vort"];
+  auto& optvepsi = opt["VePsi"];
 
+  
+
+  
   OPTION(optsc, evolve_plasma, true);
   OPTION(optsc, show_timesteps, false);
   if (BoutComm::rank() != 0) {
@@ -347,8 +356,85 @@ int Hermes::init(bool restarting) {
               .doc("Relaxation method for potential solvers")
               .withDefault<bool>(false);
 
-  OPTION(optsc, lambda_0, 1e3);
-  OPTION(optsc, lambda_2, 1e5);
+  //////////////////////////////////////////////////////////////////////////
+
+  // Check which variables should be evolved
+
+  // Electron density
+  SOLVE_FOR(Ne);
+  EvolvingVars.add(Ne);
+  if (output_ddt) {
+    SAVE_REPEAT(ddt(Ne));
+  }
+
+  // Ion momentum
+  evolve_nvi = optsc["evolve_nvi"].doc("Evolve ion momentum?").withDefault<bool>(true);
+  if (ion_velocity) {
+    solver->add(NVi, "NVi");
+    EvolvingVars.add(NVi);
+    if (output_ddt) {
+      SAVE_REPEAT(ddt(NVi));
+    }
+  } else {
+    zero_all(NVi);
+  }
+  
+  // Electron temperature
+  evolve_te = optsc["evolve_te"].doc("Evolve electron temperature?").withDefault<bool>(true);
+  if (evolve_te) {
+    SOLVE_FOR(Pe);
+    EvolvingVars.add(Pe);
+    if (output_ddt) {
+      SAVE_REPEAT(ddt(Pe));
+    }
+  } else {
+    Pe = Ne;
+  }
+
+  // Ion temperature
+  evolve_ti = optsc["evolve_ti"].doc("Evolve ion temperature?").withDefault<bool>(true);
+  if (evolve_ti) {
+    SOLVE_FOR(Pi);
+    EvolvingVars.add(Pi);
+    if (output_ddt) {
+      SAVE_REPEAT(ddt(Pi));
+    }
+  } else {
+    Pi = Ne;
+  }
+
+  // Electron velocity + mag. potential
+
+  evolve_vepsi = optsc["evolve_vepsi"].doc("Evolve electron velocity?").withDefault<bool>(true);
+  if (evolve_vepsi) {
+    SOLVE_FOR(VePsi);
+    EvolvingVars.add(VePsi);
+    if (output_ddt) {
+      SAVE_REPEAT(ddt(VePsi));
+    }
+  } else {
+    zero_all(VePsi);
+  }
+  
+  // Vorticity
+  evolve_vort = optsc["evolve_vort"].doc("Evolve Vorticity?").withDefault<bool>(true);
+  if (evolve_vort) {
+    SOLVE_FOR(Vort);
+    EvolvingVars.add(Vort);
+    if (output_ddt) {
+      SAVE_REPEAT(ddt(Vort));
+    }
+  } else {
+    zero_all(Vort);
+  }
+  
+  //////////////////////////////////////////////////////////////////////////
+  
+
+
+  
+  /////////////////////////////////////////////////////////////////////////
+  
   OPTION(optsc, parallel_flow, true);
   OPTION(optsc, parallel_vort_flow,false);
   OPTION(optsc, parallel_flow_p_term, parallel_flow);
@@ -488,9 +574,7 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, Tnorm, 100);  // Reference temperature [eV]
   OPTION(optsc, Nnorm, 1e19); // Reference density [m^-3]
   OPTION(optsc, Bnorm, 1.0);  // Reference magnetic field [T]
-
   OPTION(optsc, AA, 2.0); // Ion mass (2 = Deuterium)
-
   output.write("Normalisation Te={:e}, Ne={:e}, B={:e}\n", Tnorm, Nnorm, Bnorm);
   SAVE_ONCE(Tnorm, Nnorm, Bnorm, AA); // Save
 
@@ -628,92 +712,34 @@ int Hermes::init(bool restarting) {
 
   
   // Get switches from each variable section
-  auto& optne = opt["Ne"];
+
   NeSource = optne["source"].doc("Source term in ddt(Ne)").withDefault(Field3D{0.0});
   NeSource /= Omega_ci;
   Sn = NeSource;
 
-  auto& optvort = opt["Vort"];
-  VortSource = optvort["source"].doc("Additional vorticity source").withDefault(Field3D{0.0});
   
   // Inflowing density carries momentum
   OPTION(optne, density_inflow, false);
 
-  auto& optpe = opt["Pe"];
   PeSource = optpe["source"].withDefault(Field3D{0.0});
   PeSource /= Omega_ci;
   Spe = PeSource;
 
-  auto& optpi = opt["Pi"];
   PiSource = optpi["source"].withDefault(Field3D{0.0});
   PiSource /= Omega_ci;
   Spi = PiSource;
 
-  OPTION(optsc, core_sources, false);
   
-  // Mid-plane power flux q_||
-  // Midplane power specified in Watts per m^2
-  Field2D qfact;
-  GRID_LOAD(qfact); // Factor to multiply to get volume source
-  Field2D qmid = optpe["midplane_power"].withDefault(Field2D{0.0}) * qfact;
-  // Normalise from W/m^3
-  qmid /= qe * Tnorm * Nnorm * Omega_ci;
-  Spe += (2. / 3) * qmid;
+
+
+  
 
   // Add variables to solver
-  SOLVE_FOR(Ne);
-  EvolvingVars.add(Ne);
-
-  if (output_ddt) {
-    SAVE_REPEAT(ddt(Ne));
-  }
-
-  // Evolving n_i instead of n_e
-  evolve_ni = optsc["evolve_ni"].doc("Evolve ion density instead?")
-    .withDefault<bool>(true);
-
-  // Temperature evolution can be turned off
-  // so that Pe = Ne and/or Pi = Ne
-  evolve_te = optsc["evolve_te"].doc("Evolve electron temperature?")
-    .withDefault<bool>(true);
-  if (evolve_te) {
-    SOLVE_FOR(Pe);
-    EvolvingVars.add(Pe);
-    if (output_ddt) {
-      SAVE_REPEAT(ddt(Pe));
-    }
-  } else {
-    Pe = Ne;
-  }
-  evolve_ti = optsc["evolve_ti"].doc("Evolve ion temperature?")
-    .withDefault<bool>(true);
-  if (evolve_ti) {
-    SOLVE_FOR(Pi);
-    EvolvingVars.add(Pi);
-    if (output_ddt) {
-      SAVE_REPEAT(ddt(Pi));
-    }
-  } else {
-    Pi = Ne;
-  }
+  
 
 
   
-  evolve_vort = optsc["evolve_vort"].doc("Evolve Vorticity?")
-    .withDefault<bool>(true);
-
   
-
-  if ((j_par || j_diamag || relaxation) && evolve_vort) {
-    // Have a source of vorticity
-    solver->add(Vort, "Vort");
-    EvolvingVars.add(Vort);
-    if (output_ddt) {
-      SAVE_REPEAT(ddt(Vort));
-    }
-  } else {
-    zero_all(Vort);
-  }
 
   if (electromagnetic || FiniteElMass) {
     solver->add(VePsi, "VePsi");
@@ -728,15 +754,6 @@ int Hermes::init(bool restarting) {
     zero_all(VePsi);
   }
 
-  if (ion_velocity) {
-    solver->add(NVi, "NVi");
-    EvolvingVars.add(NVi);
-    if (output_ddt) {
-      SAVE_REPEAT(ddt(NVi));
-    }
-  } else {
-    zero_all(NVi);
-  }
 
   if (verbose) {
     SAVE_REPEAT(Ti);
