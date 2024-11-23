@@ -83,14 +83,9 @@ private:
   Field3D d;
   Field3D debug_visheath,debug_VePsisheath,debug_vesheath,debug_sheathexp;
   Field3D debug_phisheath;
-  Field3D TE_VePsi_pe_par,TE_VePsi_resistivity,TE_VePsi_anom,TE_VePsi_j_par,TE_VePsi_thermal_force,TE_VePsi_par_adv,TE_VePsi_hyper,TE_VePsi_perp,TE_VePsi_numdiff;
-  Field3D TE_Ne_ExB, TE_Ne_parflow, TE_Ne_anom, TE_Ne_dia, TE_Ne_hyper,TE_Ne_numdiff;
-  Field3D TE_Pe_ExB, TE_Pe_parflow, TE_Pe_anom, TE_Pe_dia, TE_Pe_hyper, TE_Pe_energ_balance, TE_Pe_cond, TE_Pe_thermal_flux, TE_Pe_ohmic, TE_Pe_thermal_force, TE_Pe_par_p_term, TE_Pe_numdiff;
-  Field3D TE_NVi_ExB, TE_NVi_dia, TE_NVi_parflow,TE_NVi_pe_par,TE_NVi_viscos,TE_NVi_numdiff,TE_NVi_classical,TE_NVi_hyper,TE_NVi_anom;
   Field3D debug_denom,debug_soundspeed;
   Field3D debug_phibndry3d;
-  Field3D J_up,J_down,g_11_up,g_11_down,g_22_up,g_22_down,g_33_up,g_33_down,g_13_up,g_13_down,g_12_down,g_12_up,g_23_down,g_23_up;
-  Field3D vort_dia,vort_ExB,vort_jpar,vort_parflow,vort_anom,vort_hyper,vort_classical,vort_numdiff;
+  
   bool J_equalize;
   bool set_inner_neumann;
   // Limited variables
@@ -109,20 +104,6 @@ private:
   BoutReal eta_limit_alpha;   // Momentum flux limiter from SOLPS
   BoutReal scale_ExB;
   BoutReal floor_kappa_epar,floor_kappa_ipar;
-  // Neutral gas model
-  NeutralModel *neutrals; // Handles evolution of neutral gas
-  bool neutral_friction;
-  BoutReal frecycle;  // Recycling fraction
-  BoutReal ion_neutral_rate; // Fixed ion-neutral collision rate
-  
-  // Impurity radiation
-  BoutReal fimp;             // Impurity fraction (of Ne)
-  bool impurity_adas;        // True if using ImpuritySpecies, false if using
-  ImpuritySpecies *impurity; // Atomicpp impurity
-  
-  BoutReal carbon_fraction;
-  Field3D Rzrad;             // Radiated power
-  RadiatedPower *carbon_rad; // Carbon cooling curve
   
   // Switches for evolving variables
   bool evolve_plasma;   // Should plasma be evolved?
@@ -160,6 +141,28 @@ private:
   // Electron velocity
   bool VePsi_parefield, VePsi_parpressure, VePsi_partemp, VePsi_parcurrent, VePsi_ExB, VePsi_parflow;
   
+  // Field for the terms
+  bool TE_Ne,TE_NVi,TE_Pe,TE_Pi,TE_Vort,TE_VePsi;
+  Field3D TE_Ne_ExB, TE_Ne_mag, TE_Ne_parflow, TE_Ne_collision, TE_Ne_anomalous, TE_Ne_sources;
+
+  // Fields for ion momentum terms
+  Field3D TE_NVi_ExB, TE_NVi_mag, TE_NVi_parflow, TE_NVi_parpressure, TE_NVi_parviscos, TE_NVi_collision, TE_NVi_anomalous;
+
+  // Fields for electron pressure terms
+  Field3D TE_Pe_ExB, TE_Pe_mag, TE_Pe_parflow, TE_Pe_conduction, TE_Pe_ohmic, TE_Pe_thermalforce, TE_Pe_thermalcurrent;
+  Field3D TE_Pe_collision, TE_Pe_anomalous, TE_Pe_sources, TE_Pe_energyexchange;
+
+  // Fields for ion pressure terms
+  Field3D TE_Pi_ExB, TE_Pi_mag, TE_Pi_parflow, TE_Pi_conduction, TE_Pi_diamagenergyexchange, TE_Pi_parviscousheat;
+  Field3D TE_Pi_resistivedrift, TE_Pi_perpviscous, TE_Pi_sources;
+
+  // Fields for vorticity terms
+  Field3D TE_Vort_mag, TE_Vort_parcurrent, TE_Vort_polarcurrent, TE_Vort_collision, TE_Vort_parviscous;
+  Field3D TE_Vort_anomalous;
+
+  // Fields for electron velocity terms
+  Field3D TE_VePsi_parefield, TE_VePsi_parpressure, TE_VePsi_partemp, TE_VePsi_parcurrent, TE_VePsi_ExB, TE_VePsi_parflow;
+
   
   //////////////////////////////////////////////////////
   

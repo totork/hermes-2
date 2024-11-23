@@ -318,8 +318,8 @@ int Hermes::init(bool restarting) {
   auto& optpi = opt["Pi"];
   auto& optvort = opt["Vort"];
   auto& optvepsi = opt["VePsi"];
-
-  
+  auto& opttransport = opt["Transportcoefficients"];
+  auto& optnumerics = opt["Numerics"];
 
   
   OPTION(optsc, evolve_plasma, true);
@@ -332,18 +332,6 @@ int Hermes::init(bool restarting) {
                         .doc("Include vector potential psi in Ohm's law?")
                         .withDefault<bool>(true);
 
-  FiniteElMass = optsc["FiniteElMass"]
-                     .doc("Include electron inertia in Ohm's law?")
-                     .withDefault<bool>(true);
-
-  j_diamag = optsc["j_diamag"]
-                 .doc("Diamagnetic current: Vort <-> Pe")
-                 .withDefault<bool>(true);
-
-  j_par = optsc["j_par"]
-              .doc("Parallel current:    Vort <-> Psi")
-              .withDefault<bool>(true);
-
   j_pol_pi = optsc["j_pol_pi"]
               .doc("Polarisation current with explicit Pi dependence")
               .withDefault<bool>(true);
@@ -352,9 +340,6 @@ int Hermes::init(bool restarting) {
               .doc("Polarisation current without explicit Pi dependence")
               .withDefault<bool>(false);
 
-  relaxation  = optsc["relaxation"]
-              .doc("Relaxation method for potential solvers")
-              .withDefault<bool>(false);
 
   //////////////////////////////////////////////////////////////////////////
 
@@ -498,118 +483,128 @@ int Hermes::init(bool restarting) {
   VePsi_ExB = optvepsi["VePsi_ExB"].doc("Use ExB drift in electron velocity").withDefault<bool>(false);
   VePsi_parflow = optvepsi["VePsi_parflow"].doc("Use parallel flow effects in electron velocity").withDefault<bool>(false);
 
+  // Initialize the corresponding fields
+
+  TE_Ne = optsc["TE_Ne"].doc("Save all terms in time evolution of density").withDefault<bool>(false);
+  TE_NVi = optsc["TE_NVi"].doc("Save all terms in time evolution of ion momentum").withDefault<bool>(false);
+  TE_Pe = optsc["TE_Pe"].doc("Save all terms in time evolution of electron pressure").withDefault<bool>(false);
+  TE_Pi = optsc["TE_Pi"].doc("Save all terms in time evolution of ion pressure").withDefault<bool>(false);
+  TE_Vort = optsc["TE_Vort"].doc("Save all terms in time evolution of vorticity").withDefault<bool>(false);
+  TE_VePsi = optsc["TE_VePsi"].doc("Save all terms in time evolution of electron velocity").withDefault<bool>(false);
+  
+  // Density
+  TE_Ne_ExB = 0.0;
+  TE_Ne_mag = 0.0;
+  TE_Ne_parflow = 0.0;
+  TE_Ne_collision = 0.0;
+  TE_Ne_anomalous = 0.0;
+  TE_Ne_sources = 0.0;
+  if(TE_Ne){
+    SAVE_REPEAT(TE_Ne_ExB, TE_Ne_mag, TE_Ne_parflow, TE_Ne_collision, TE_Ne_anomalous, TE_Ne_sources);
+  }
+
+  // Ion momentum
+  TE_NVi_ExB = 0.0;
+  TE_NVi_mag = 0.0;
+  TE_NVi_parflow = 0.0;
+  TE_NVi_parpressure = 0.0;
+  TE_NVi_parviscos = 0.0;
+  TE_NVi_collision = 0.0;
+  TE_NVi_anomalous = 0.0;
+  if (TE_NVi) {
+    SAVE_REPEAT(TE_NVi_ExB, TE_NVi_mag, TE_NVi_parflow, TE_NVi_parpressure, TE_NVi_parviscos, TE_NVi_collision, TE_NVi_anomalous);
+  }
+
+  // Electron pressure
+  TE_Pe_ExB = 0.0;
+  TE_Pe_mag = 0.0;
+  TE_Pe_parflow = 0.0;
+  TE_Pe_conduction = 0.0;
+  TE_Pe_ohmic = 0.0;
+  TE_Pe_thermalforce = 0.0;
+  TE_Pe_thermalcurrent = 0.0;
+  TE_Pe_collision = 0.0;
+  TE_Pe_anomalous = 0.0;
+  TE_Pe_sources = 0.0;
+  TE_Pe_energyexchange = 0.0;
+  if (TE_Pe) {
+  SAVE_REPEAT(TE_Pe_ExB, TE_Pe_mag, TE_Pe_parflow, TE_Pe_conduction, TE_Pe_ohmic, TE_Pe_thermalforce, TE_Pe_thermalcurrent, 
+	      TE_Pe_collision, TE_Pe_anomalous, TE_Pe_sources, TE_Pe_energyexchange);
+ }
+
+  // Ion pressure
+  TE_Pi_ExB = 0.0;
+  TE_Pi_mag = 0.0;
+  TE_Pi_parflow = 0.0;
+  TE_Pi_conduction = 0.0;
+  TE_Pi_diamagenergyexchange = 0.0;
+  TE_Pi_parviscousheat = 0.0;
+  TE_Pi_resistivedrift = 0.0;
+  TE_Pi_perpviscous = 0.0;
+  TE_Pi_sources = 0.0;
+  if (TE_Pi) {
+    SAVE_REPEAT(TE_Pi_ExB, TE_Pi_mag, TE_Pi_parflow, TE_Pi_conduction, TE_Pi_diamagenergyexchange, TE_Pi_parviscousheat, 
+                TE_Pi_resistivedrift, TE_Pi_perpviscous, TE_Pi_sources);
+  }
+
+  // Vorticity
+  TE_Vort_mag = 0.0;
+  TE_Vort_parcurrent = 0.0;
+  TE_Vort_polarcurrent = 0.0;
+  TE_Vort_collision = 0.0;
+  TE_Vort_parviscous = 0.0;
+  TE_Vort_anomalous = 0.0;
+  if (TE_Vort) {
+    SAVE_REPEAT(TE_Vort_mag, TE_Vort_parcurrent, TE_Vort_polarcurrent, TE_Vort_collision, TE_Vort_parviscous, TE_Vort_anomalous);
+  }
+
+  // Electron velocity
+  TE_VePsi_parefield = 0.0;
+  TE_VePsi_parpressure = 0.0;
+  TE_VePsi_partemp = 0.0;
+  TE_VePsi_parcurrent = 0.0;
+  TE_VePsi_ExB = 0.0;
+  TE_VePsi_parflow = 0.0;
+  if (TE_VePsi) {
+    SAVE_REPEAT(TE_VePsi_parefield, TE_VePsi_parpressure, TE_VePsi_partemp, TE_VePsi_parcurrent, TE_VePsi_ExB, TE_VePsi_parflow);
+  }
+
   
   /////////////////////////////////////////////////////////////////////////
-  
-  OPTION(optsc, parallel_flow, true);
-  OPTION(optsc, parallel_vort_flow,false);
-  OPTION(optsc, parallel_flow_p_term, parallel_flow);
-  OPTION(optsc, pe_par, true);
-  OPTION(optsc, pe_par_p_term, pe_par);
-  OPTION(optsc, resistivity, true);
-  OPTION(optsc, thermal_flux, true);
+
+  // Switches to change between different calculation methods
+
   OPTION(optsc, use_Div_n_bxGrad_f_B_XPPM, true);
   OPTION(optsc, use_bracket, true);
   OPTION(optsc, use_Div_parP_n, true);
-  OPTION(optsc, Ohmslaw_use_ve, false);
-  OPTION(optsc, VePsi_perp, true);
-  OPTION(optsc, scale_ExB, 1.0);
-  OPTION(optsc, set_inner_neumann, false);
-  OPTION(optsc, J_equalize, false);
-  OPTION(optsc, VorticitySource, false);
-  OPTION(optsc, floor_kappa_ipar, -1.0);
-  OPTION(optsc, floor_kappa_epar,-1.0);
-  OPTION(optsc, NVi_supsonic_dissipation, false);
-  OPTION(optsc, NVi_supsonic_factor, 1.0);
-  OPTION(optsc, bool_NVi_upwind, false);
-  OPTION(optsc, Ve_supsonic_dissipation, false);
-  OPTION(optsc, Ve_supsonic_factor, 1.0);
-  thermal_force = optsc["thermal_force"]
-                    .doc("Force on electrons due to temperature gradients")
-                    .withDefault<bool>(true);
-
-  OPTION(optsc, electron_viscosity, true);
-  ion_viscosity = optsc["ion_viscosity"].doc("Include ion viscosity?").withDefault<bool>(true);
-  ion_viscosity_par = optsc["ion_viscosity_par"].doc("Include parallel diffusion of ion momentum?").withDefault<bool>(ion_viscosity);
-
-  electron_neutral = optsc["electron_neutral"]
-                       .doc("Include electron-neutral collisions in resistivity?")
-                       .withDefault<bool>(true);
-
-  ion_neutral = optsc["ion_neutral"]
-                  .doc("Include ion-neutral collisions in tau_i?")
-                  .withDefault<bool>(false);
-
-  poloidal_flows = optsc["poloidal_flows"]
-                       .doc("Include ExB flows in X-Y plane")
-                       .withDefault(false);
-
-  OPTION(optsc, ion_velocity, true);
-
-  OPTION(optsc, thermal_conduction, true);
-  OPTION(optsc, electron_ion_transfer, true);
-
-  OPTION(optsc, neutral_friction, false);
-  OPTION(optsc, frecycle, 0.9);
-  OPTION(optsc, VePsi_hyperXZ, -1.0);
-  OPTION(optsc, phi3d, false);
-  OPTION(optsc,phi_bndry_after_solve,false);
   OPTION(optsc, ne_bndry_flux, false);
   OPTION(optsc, pe_bndry_flux, false);
   OPTION(optsc, vort_bndry_flux, false);
 
-  OPTION(optsc, ramp_mesh, false);
-  OPTION(optsc, ramp_timescale, 1e4);
-
-  OPTION(optsc, energy_source, false);
-
-  ion_neutral_rate = optsc["ion_neutral_rate"]
-                     .doc("A fixed ion-neutral collision rate, normalised to ion cyclotron frequency.")
-                     .withDefault(0.0);
-
-  OPTION(optsc, staggered, false);
-
   OPTION(optsc, boussinesq, false);
+  
+  // Switches for different methods to support numerical stability
+  
+  OPTION(optsc, floor_kappa_ipar, -1.0);
+  OPTION(optsc, floor_kappa_epar,-1.0);
+  OPTION(optsc, NVi_supsonic_dissipation, false);
+  OPTION(optsc, NVi_supsonic_factor, 1.0);
+  OPTION(optsc, Ve_supsonic_dissipation, false);
+  OPTION(optsc, Ve_supsonic_factor, 1.0);
 
-  OPTION(optsc, sinks, false);
-  OPTION(optsc, sheath_closure, false);
-  OPTION(optsc, drift_wave, false);
-  OPTION(optsc, norm_dxdydz, false);
-  OPTION(optsc, TE_VePsi, false);
-  OPTION(optsc, TE_Ne, false);
-  OPTION(optsc, TE_Pe, false);
-  OPTION(optsc, TE_NVi,false);
-  // Cross-field transport
-  classical_diffusion = optsc["classical_diffusion"]
-                          .doc("Collisional cross-field diffusion, including viscosity")
-                          .withDefault<bool>(false);
-  OPTION(optsc, anomalous_D, -1);
-  OPTION(optsc, anomalous_chi, -1);
-  OPTION(optsc, anomalous_nu, -1);
-  OPTION(optsc, anomalous_D_nvi, true);
-  OPTION(optsc, anomalous_D_pepi, true);
-  OPTION(optsc, MMS_Ne_ParDiff, -1.0);
-  // Flux limiters
+  OPTION(optsc, ne_bndry_flux, false);
+  OPTION(optsc, pe_bndry_flux, false);
+  OPTION(optsc, vort_bndry_flux, false);
+
   OPTION(optsc, flux_limit_alpha, -1);
   OPTION(optsc, kappa_limit_alpha, -1);
   OPTION(optsc, eta_limit_alpha, -1);
-
-  // Numerical dissipation terms
-  OPTION(optsc, numdiff, -1.0);
-  OPTION(optsc, hyper, -1);
-  OPTION(optsc, hyperpar, -1);
-  OPTION(optsc, low_pass_z, -1);
-  OPTION(optsc, x_hyper_viscos, -1.0);
-  OPTION(optsc, y_hyper_viscos, -1.0);
-  OPTION(optsc, z_hyper_viscos, -1.0);
-  OPTION(optsc, scale_num_cs, 1.0);
-  OPTION(optsc, floor_num_cs, -1.0);
-  OPTION(optsc, vepsi_dissipation, false);
-  OPTION(optsc, vort_dissipation, false);
-
-
+  
   OPTION(optsc, resistivity_multiply, 1.0);
-
+  OPTION(optsc, electron_weight, 1.0);
+  
+  // Sheath switches
+  
   OPTION(optsc, sheath_model, 0);
   OPTION(optsc, sheath_gamma_e, 5.5);
   OPTION(optsc, sheath_gamma_i, 1.0);
@@ -620,11 +615,8 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, test_boundaries, false); // Test boundary conditions
   OPTION(optsc, parallel_sheaths, false); // Apply parallel sheath conditions?
   OPTION(optsc, par_sheath_model, 0);
-  OPTION(optsc, par_sheath_ve, true);
-  OPTION(optsc, electron_weight, 1.0);
-
+  OPTION(optsc, par_sheath_ve, true)
   OPTION(optsc, Div_parP_n_sheath_extra, Div_parP_n_sheath_extra);
-
   sheath_allow_supersonic =
       optsc["sheath_allow_supersonic"]
           .doc("If plasma is faster than sound speed, go to plasma velocity")
@@ -668,13 +660,6 @@ int Hermes::init(bool restarting) {
 
   output.write("\ttau_e0={:e}, tau_i0={:e}\n", tau_e0, tau_i0);
 
-  if (MMS_Ne_ParDiff > 0.0){
-    MMS_Ne_ParDiff /= rho_s0 * rho_s0 * Omega_ci;
-    a_MMS3d = MMS_Ne_ParDiff;
-    mesh->communicate(a_MMS3d);
-    a_MMS3d.yup() = MMS_Ne_ParDiff;
-    a_MMS3d.ydown() = MMS_Ne_ParDiff;
-  }
   
   if (anomalous_D > 0.0) {
     // Normalise
@@ -1087,93 +1072,40 @@ int Hermes::init(bool restarting) {
   }
 
 
-  if (Options::root()["mesh:paralleltransform"]["type"].as<std::string>() == "shifted") {
-    Field2D I;
-    mesh->get(I, "sinty");
-    Curlb_B.z += I * Curlb_B.x;
-  }
-
-  Curlb_B.x /= Bnorm;
-  Curlb_B.y *= rho_s0 * rho_s0;
-  Curlb_B.z *= rho_s0 * rho_s0;
-
-  Curlb_B *= 2. / coord->Bxy;
 
   //////////////////////////////////////////////////////////////
   // Electromagnetic fields
 
   opt["phiSolver"].setConditionallyUsed();
-
   optsc["newXZsolver"].setConditionallyUsed();
-  optsc["split_n0"].setConditionallyUsed();
-  optsc["split_n0_psi"].setConditionallyUsed();
 
-  if(FiniteElMass){
-    SAVE_REPEAT(Ve);
+  OPTION(optsc, newXZsolver, false);
+  if (newXZsolver) {
+    // Test new LaplaceXZ solver                                                                                                                  
+    newSolver = LaplaceXZ::create(bout::globals::mesh);
+    // Set coefficients for Boussinesq solve                                                                                                      
+    newSolver->setCoefs(1. / SQ(coord->Bxy), Field3D(0.0));
+  } else {
+    // Use older Laplacian solver                                                                                                                 
+    phiSolver = Laplacian::create(&opt["phiSolver"]);
+    // Set coefficients for Boussinesq solve                                                                                                      
+    phiSolver->setCoefC(1./ SQ(coord->Bxy));
   }
+  phi = 0.0;
+  phi.setBoundary("phi"); // For y boundaries                                                                                                     
+
+      // Add phi to restart files so that the value in the boundaries                                                                                 
+      // is restored on restart. This is done even when phi is not evolving,                                                                          
+      // so that phi can be saved and re-loaded                                                                                                       
+  restart.addOnce(phi, "phi");
+  aparSolver = Laplacian::create(&opt["aparSolver"]);
+  Ve.setBoundary("Ve");
+  nu.setBoundary("nu");
+  Jpar.setBoundary("Jpar");
+  psi = 0.0;
   
+
   
-  if (j_par | j_diamag | relaxation) {
-    // Only needed if there are any currents
-    SAVE_REPEAT(phi);
-    if (relaxation){
-      SAVE_REPEAT(phi_1);
-    }
-
-    if (j_par) {
-      
-
-      if (electromagnetic)
-        SAVE_REPEAT(psi);
-    }
-
-    OPTION(optsc, split_n0, false); // Split into n=0 and n~=0
-    OPTION(optsc, split_n0_psi, split_n0);
-    // Phi solver
-    if (phi3d) {
-#ifdef PHISOLVER
-      phiSolver3D = Laplace3D::create();
-#endif
-    } else {
-
-	// Create an XZ solver
-      OPTION(optsc, newXZsolver, false);
-      if (newXZsolver) {
-	// Test new LaplaceXZ solver
-	newSolver = LaplaceXZ::create(bout::globals::mesh);
-	// Set coefficients for Boussinesq solve
-	newSolver->setCoefs(1. / SQ(coord->Bxy), Field3D(0.0));
-      } else {
-	// Use older Laplacian solver
-	phiSolver = Laplacian::create(&opt["phiSolver"]);
-	// Set coefficients for Boussinesq solve
-	phiSolver->setCoefC(1./ SQ(coord->Bxy));
-      }
-      
-
-      phi = 0.0;
-      phi.setBoundary("phi"); // For y boundaries
-
-      phi_boundary_relax = optsc["phi_boundary_relax"]
-        .doc("Relax x boundaries of phi towards Neumann?")
-        .withDefault<bool>(false);
-
-      // Add phi to restart files so that the value in the boundaries
-      // is restored on restart. This is done even when phi is not evolving,
-      // so that phi can be saved and re-loaded
-      restart.addOnce(phi, "phi");
-
-
-      // Apar (Psi) solver
-      aparSolver = Laplacian::create(&opt["aparSolver"]);
-
-      Ve.setBoundary("Ve");
-      nu.setBoundary("nu");
-      Jpar.setBoundary("Jpar");
-
-      psi = 0.0;
-    }
-  }
   nu = 0.0;
   kappa_epar = 0.0;
   kappa_ipar = 0.0;
