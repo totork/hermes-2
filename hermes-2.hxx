@@ -297,7 +297,7 @@ private:
   
   bool source_vary_g11; // Multiply source by g11
   Coordinates::FieldMetric g11norm;
-  
+
   // Boundary fluxes
 
   bool pe_bndry_flux;   // Allow flux of pe through radial boundaries
