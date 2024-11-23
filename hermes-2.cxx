@@ -1173,7 +1173,7 @@ int Hermes::rhs(BoutReal t) {
   }
   NVi.applyParallelBoundary();
   
-  if (FiniteElMass){
+  if (evolve_VePsi){
     VePsi.applyParallelBoundary();
   }
 
@@ -1363,10 +1363,7 @@ int Hermes::rhs(BoutReal t) {
   
   //////////////////////////////////////////////////////////////
   TRACE("Calculating resistivity");
-
-
   tau_e = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_e0) , Te32) , Ne);
-
   nu = resistivity_multiply / (1.96 * tau_e * mi_me);
   nu.applyBoundary("neumann");
   mesh->communicate(nu);
@@ -1380,93 +1377,35 @@ int Hermes::rhs(BoutReal t) {
   TRACE("Calculating psi");
 
   
-  if (!currents) {
-    // No magnetic fields or currents
-    zero_all(psi);
-    zero_all(Jpar);
-    // Ve will be set after the sheath boundaries below
-  } else {
-    // Calculate electomagnetic potential psi from VePsi
-    // VePsi = Ve - Vi + 0.5 * mi_me * beta_e * psi
-    // where the first term comes from finite electron mass, and the second
-    // from the parallel component of the electric field
-    // Note that psi is -A_|| so Jpar = Delp2(psi)
-    if (electromagnetic) {
-      if (FiniteElMass) {
-        // Solve Helmholtz equation for psi
-
-        aparSolver->setCoefA(-Ne*0.5*mi_me*beta_e);
-        aparSolver->setCoefC(Field3D(1.0));
-
-        psi = aparSolver->solve(Field3D(-Ne * VePsi), Field3D(psi));
-        mesh->communicate(psi);
-        psi.applyParallelBoundary(parbc);
-
-        Ve = VePsi - 0.5 * beta_e * mi_me * psi + Vi;
-
-        Ve.applyBoundary(t);
-        mesh->communicate(Ve, psi);
-        Ve.applyParallelBoundary(parbc);
-
-        Jpar = mul_all(Ne, sub_all(Vi, Ve));
-        mesh->communicate(Jpar);
-        Jpar.applyParallelBoundary(parbc);
-
-      } else {
-      	throw BoutException("Running without finite electron mass is not possible anymore!");
-      }
-    } else {
-      // Electrostatic
-      zero_all(psi);
-      if (FiniteElMass) {
-        // No psi contribution to VePsi
-        Ve = add_all(VePsi , Vi);
-      } else {
-
-	throw BoutException("Running without finite electron mass is not possible anymore!");
-	
-        // Zero electron mass and electrostatic.
-        // Special case where Ohm's law has no time-derivatives
-        // mesh->communicate(phi,Pe);
-
-        // tau_e = (Cs0 / rho_s0) * tau_e0 * pow(Te, 1.5) / Ne;
-        Field3D Te32= pow(Te,1.5);
-	Te32.applyBoundary("neumann");
-        mesh->communicate(Te32, Ne, phi, Pe, Vi);
-	tau_e = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_e0) , Te32) , Ne);
-	
-	nu = resistivity_multiply / (1.96 * tau_e * mi_me);
-
-	mesh->communicate(nu);
-
-        Field3D gparpe = Grad_parP(Pe);
-        Field3D gparphi = Grad_parP(phi);
-        gparpe.applyBoundary("neumann");
-        gparphi.applyBoundary("neumann");
-        mesh->communicate(gparphi, gparpe);
-	
-	Field3D gparpe_n = div_all(gparpe, Ne);
-	
-        Field3D gparphi_gparpe_nu = div_all(sub_all(gparphi, gparpe_n), nu);
-	
-        Ve = add_all(Vi, gparphi_gparpe_nu);
-
-	if (thermal_force) {
-          Ve -= 0.71 * Grad_parP(Te) / nu;
-        }
-      }  //End electrostatic no el mass
-
-      Ve.applyBoundary(t);
-      // Communicate auxilliary variables
-      mesh->communicate(Ve);
-
-      Field3D neve = mul_all(Ne,Ve);
+  if (electromagnetic) {
+    if (FiniteElMass) {
+      // Solve Helmholtz equation for psi
       
-      mesh->communicate(NVi,neve);
+      aparSolver->setCoefA(-Ne*0.5*mi_me*beta_e);
+      aparSolver->setCoefC(Field3D(1.0));
+      
+      psi = aparSolver->solve(Field3D(-Ne * VePsi), Field3D(psi));
+      mesh->communicate(psi);
+      psi.applyParallelBoundary(parbc);
+      
+      Ve = VePsi - 0.5 * beta_e * mi_me * psi + Vi;
+	
+      Ve.applyBoundary(t);
+      mesh->communicate(Ve, psi);
+      Ve.applyParallelBoundary(parbc);
+      
+      Jpar = mul_all(Ne, sub_all(Vi, Ve));
+      mesh->communicate(Jpar);
+      Jpar.applyParallelBoundary(parbc);
 
-      Jpar = sub_all(NVi, neve);
+    } else {
+      throw BoutException("Running without finite electron mass is not possible anymore!");
     }
-    // Ve -= Jpar0 / Ne; // Equilibrium current density
+  } else {
+    // Electrostatic
+    zero_all(psi);
+    // No psi contribution to VePsi
+    Ve = add_all(VePsi , Vi);
   }
 
   //////////////////////////////////////////////////////////////
@@ -1590,14 +1529,8 @@ int Hermes::rhs(BoutReal t) {
 
   TRACE("Collisions");
 
-  //const BoutReal tau_e1 = (Cs0 / rho_s0) * tau_e0;
-  // const BoutReal tau_i1 = (Cs0 / rho_s0) * tau_i0;
-
   const BoutReal tau_e1 = (Cs0 / rho_s0 ) * tau_e0;
   const BoutReal tau_i1 = (Cs0 / rho_s0 ) * tau_i0;
-
-  Field3D neutral_rate;
-
   
   alloc_all(tau_e);
   alloc_all(tau_i);
@@ -1615,53 +1548,50 @@ int Hermes::rhs(BoutReal t) {
 
   TRACE("Parallel heat conduction");
   
-  if (thermal_conduction || sinks) {
-    // Braginskii expression for electron parallel conduction
-    // kappa ~ n * v_th^2 * tau
-    kappa_epar = mul_all(mul_all(mul_all(mul_all(3.16, mi_me), Te), Ne), tau_e);
+  kappa_epar = mul_all(mul_all(mul_all(mul_all(3.16, mi_me), Te), Ne), tau_e);
 
-    if (kappa_limit_alpha > 0.0) {
-      TRACE("electron heat flux limiter");
-      /*
-       * Flux limiter, as used in SOLPS.
-       *
-       * Calculate the heat flux from Spitzer-Harm and flux limit
-       *
-       * Typical value of alpha ~ 0.2 for electrons
-       *
-       * R.Schneider et al. Contrib. Plasma Phys. 46, No. 1-2, 3 – 191 (2006)
-       * DOI 10.1002/ctpp.200610001
-       */
-      kappa_epar.applyBoundary("neumann");
-      mesh->communicate(kappa_epar);
-      kappa_epar.applyParallelBoundary(parbc);
+  if (kappa_limit_alpha > 0.0) {
+    TRACE("electron heat flux limiter");
+    /*
+     * Flux limiter, as used in SOLPS.
+     *
+     * Calculate the heat flux from Spitzer-Harm and flux limit
+     *
+     * Typical value of alpha ~ 0.2 for electrons
+     *
+     * R.Schneider et al. Contrib. Plasma Phys. 46, No. 1-2, 3 – 191 (2006)
+     * DOI 10.1002/ctpp.200610001
+     */
+    kappa_epar.applyBoundary("neumann");
+    mesh->communicate(kappa_epar);
+    kappa_epar.applyParallelBoundary(parbc);
       
-      Field3D gradTe = Grad_parP(Te);
-      gradTe.applyBoundary("neumann");
-      mesh->communicate(gradTe);
-      gradTe.applyParallelBoundary(parbc);
+    Field3D gradTe = Grad_parP(Te);
+    gradTe.applyBoundary("neumann");
+    mesh->communicate(gradTe);
+    gradTe.applyParallelBoundary(parbc);
   
-      Field3D q_SH = mul_all(kappa_epar,gradTe);      
-      Field3D q_fl = mul_all(kappa_limit_alpha,mul_all(sqrt(mi_me),mul_all(Ne,Te32)));
-      Field3D one;
-      set_all(one, 1.0);
+    Field3D q_SH = mul_all(kappa_epar,gradTe);      
+    Field3D q_fl = mul_all(kappa_limit_alpha,mul_all(sqrt(mi_me),mul_all(Ne,Te32)));
+    Field3D one;
+    set_all(one, 1.0);
 
-      Field3D denom = one + abs(div_all(q_SH,q_fl));
-      denom.applyBoundary("neumann");
-      mesh->communicate(denom);
-      denom.applyParallelBoundary(parbc);
-      
-      if (verbose){
-	debug_denom = denom;
-      }
-      
-      kappa_epar = div_all(kappa_epar,denom);
+    Field3D denom = one + abs(div_all(q_SH,q_fl));
+    denom.applyBoundary("neumann");
+    mesh->communicate(denom);
+    denom.applyParallelBoundary(parbc);
+    
+    if (verbose){
+      debug_denom = denom;
     }
-
-    // Ion parallel heat conduction
-    kappa_ipar = mul_all(mul_all(mul_all(3.9, Ti), Ne), tau_i);
-
+      
+    kappa_epar = div_all(kappa_epar,denom);
   }
+
+  // Ion parallel heat conduction
+  kappa_ipar = mul_all(mul_all(mul_all(3.9, Ti), Ne), tau_i);
+
+  
   
   if(floor_kappa_epar>0.0){
     BOUT_FOR(i, Te.getRegion("RGN_ALL")){
@@ -1674,6 +1604,8 @@ int Hermes::rhs(BoutReal t) {
       floor_all(kappa_ipar,floor_kappa_ipar,i);
     }
   }
+
+
   
   ///////////////////////////////////////////////////////////
   // Density
