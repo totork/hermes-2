@@ -368,7 +368,7 @@ int Hermes::init(bool restarting) {
   }
 
   // Ion momentum
-  evolve_nvi = optsc["evolve_nvi"].doc("Evolve ion momentum?").withDefault<bool>(true);
+  evolve_nvi = optsc["evolve_nvi"].doc("Evolve ion momentum?").withDefault<bool>(false);
   if (ion_velocity) {
     solver->add(NVi, "NVi");
     EvolvingVars.add(NVi);
@@ -380,7 +380,7 @@ int Hermes::init(bool restarting) {
   }
   
   // Electron temperature
-  evolve_te = optsc["evolve_te"].doc("Evolve electron temperature?").withDefault<bool>(true);
+  evolve_te = optsc["evolve_te"].doc("Evolve electron temperature?").withDefault<bool>(false);
   if (evolve_te) {
     SOLVE_FOR(Pe);
     EvolvingVars.add(Pe);
@@ -392,7 +392,7 @@ int Hermes::init(bool restarting) {
   }
 
   // Ion temperature
-  evolve_ti = optsc["evolve_ti"].doc("Evolve ion temperature?").withDefault<bool>(true);
+  evolve_ti = optsc["evolve_ti"].doc("Evolve ion temperature?").withDefault<bool>(false);
   if (evolve_ti) {
     SOLVE_FOR(Pi);
     EvolvingVars.add(Pi);
@@ -405,7 +405,7 @@ int Hermes::init(bool restarting) {
 
   // Electron velocity + mag. potential
 
-  evolve_vepsi = optsc["evolve_vepsi"].doc("Evolve electron velocity?").withDefault<bool>(true);
+  evolve_vepsi = optsc["evolve_vepsi"].doc("Evolve electron velocity?").withDefault<bool>(false);
   if (evolve_vepsi) {
     SOLVE_FOR(VePsi);
     EvolvingVars.add(VePsi);
@@ -417,7 +417,7 @@ int Hermes::init(bool restarting) {
   }
   
   // Vorticity
-  evolve_vort = optsc["evolve_vort"].doc("Evolve Vorticity?").withDefault<bool>(true);
+  evolve_vort = optsc["evolve_vort"].doc("Evolve Vorticity?").withDefault<bool>(false);
   if (evolve_vort) {
     SOLVE_FOR(Vort);
     EvolvingVars.add(Vort);
@@ -430,7 +430,73 @@ int Hermes::init(bool restarting) {
   
   //////////////////////////////////////////////////////////////////////////
   
+  // Get the switches for all the terms
 
+  
+  //bool Ne_ExB, Ne_mag, Ne_parflow, Ne_collision, Ne_anomalous, Ne_sources;
+  Ne_ExB = optne["Ne_ExB"].doc("Use ExB advection in density").withDefault<bool>(false);
+  Ne_mag = optne["Ne_mag"].doc("Use magnetic drift in density").withDefault<bool>(false);
+  Ne_parflow = optne["Ne_parflow"].doc("Use parallel flow in density").withDefault<bool>(false);
+  Ne_collision = optne["Ne_collision"].doc("Use collisional transport in density").withDefault<bool>(false);
+  Ne_anomalous = optne["Ne_anomalous"].doc("Use anomalous cross field transport in density").withDefault<bool>(false);
+  Ne_sources = optne["Ne_sources"].doc("Use sources in density").withDefault<bool>(false);
+
+  // bool NVi_ExB, NVi_mag, NVi_parflow, NVi_parpressure, NVi_parviscos, NVi_collision, NVi_anomalous;
+
+  NVi_ExB = optnvi["NVi_ExB"].doc("Use ExB advection in ion momentum").withDefault<bool>(false);
+  NVi_mag = optnvi["NVi_mag"].doc("Use magnetic effects in ion momentum").withDefault<bool>(false);
+  NVi_parflow = optnvi["NVi_parflow"].doc("Use parallel flow effects in ion momentum").withDefault<bool>(false);
+  NVi_parpressure = optnvi["NVi_parpressure"].doc("Use parallel pressure gradient in ion momentum").withDefault<bool>(false);
+  NVi_parviscos = optnvi["NVi_parviscos"].doc("Use parallel viscosity in ion momentum").withDefault<bool>(false);
+  NVi_collision = optnvi["NVi_collision"].doc("Use collisional effects in ion momentum").withDefault<bool>(false);
+  NVi_anomalous = optnvi["NVi_anomalous"].doc("Use anomalous transport in ion momentum").withDefault<bool>(false);
+
+  // bool Pe_ExB, Pe_mag, Pe_parflow, Pe_conduction, Pe_ohmic, Pe_thermalforce, Pe_thermalcurrent; 
+  // bool Pe_collision, Pe_anomalous, Pe_sources, Pe_energyexchange;
+
+  Pe_ExB = optpe["Pe_ExB"].doc("Use ExB advection in electron energy").withDefault<bool>(false);
+  Pe_mag = optpe["Pe_mag"].doc("Use magnetic effects in electron energy").withDefault<bool>(false);
+  Pe_parflow = optpe["Pe_parflow"].doc("Use parallel flow effects in electron energy").withDefault<bool>(false);
+  Pe_conduction = optpe["Pe_conduction"].doc("Use thermal conduction in electron energy").withDefault<bool>(false);
+  Pe_ohmic = optpe["Pe_ohmic"].doc("Include Ohmic heating in electron energy").withDefault<bool>(false);
+  Pe_thermalforce = optpe["Pe_thermalforce"].doc("Include thermal force effects in electron energy").withDefault<bool>(false);
+  Pe_thermalcurrent = optpe["Pe_thermalcurrent"].doc("Include thermal current effects in electron energy").withDefault<bool>(false);
+  Pe_collision = optpe["Pe_collision"].doc("Include collisional effects in electron energy").withDefault<bool>(false);
+  Pe_anomalous = optpe["Pe_anomalous"].doc("Include anomalous effects in electron energy").withDefault<bool>(false);
+  Pe_sources = optpe["Pe_sources"].doc("Include source terms in electron energy").withDefault<bool>(false);
+  Pe_energyexchange = optpe["Pe_energyexchange"].doc("Include energy exchange terms in electron energy").withDefault<bool>(false);
+
+  // bool Pi_ExB, Pi_mag, Pi_parflow, Pi_conduction, Pi_diamagenergyexchange, Pi_parviscousheat;
+  // bool Pi_resistivedrift, Pi_perpviscous, Pi_sources;
+
+  Pi_ExB = optpi["Pi_ExB"].doc("Use ExB advection in ion energy").withDefault<bool>(false);
+  Pi_mag = optpi["Pi_mag"].doc("Use magnetic effects in ion energy").withDefault<bool>(false);
+  Pi_parflow = optpi["Pi_parflow"].doc("Use parallel flow effects in ion energy").withDefault<bool>(false);
+  Pi_conduction = optpi["Pi_conduction"].doc("Use thermal conduction in ion energy").withDefault<bool>(false);
+  Pi_diamagenergyexchange = optpi["Pi_diamagenergyexchange"].doc("Include diamagnetic energy exchange in ion energy").withDefault<bool>(false);
+  Pi_parviscousheat = optpi["Pi_parviscousheat"].doc("Include parallel viscous heating in ion energy").withDefault<bool>(false);
+  Pi_resistivedrift = optpi["Pi_resistivedrift"].doc("Include resistive drift effects in ion energy").withDefault<bool>(false);
+  Pi_perpviscous = optpi["Pi_perpviscous"].doc("Include perpendicular viscous effects in ion energy").withDefault<bool>(false);
+  Pi_sources = optpi["Pi_sources"].doc("Include source terms in ion energy").withDefault<bool>(false);
+
+  // bool Vort_mag, Vort_parcurrent, Vort_polarcurrent, Vort_collision, Vort_parviscous;
+  // bool Vort_anomalous;
+
+  Vort_mag = optvort["Vort_mag"].doc("Use magnetic effects in vorticity").withDefault<bool>(false);
+  Vort_parcurrent = optvort["Vort_parcurrent"].doc("Use parallel current effects in vorticity").withDefault<bool>(false);
+  Vort_polarcurrent = optvort["Vort_polarcurrent"].doc("Use polarization current in vorticity").withDefault<bool>(false);
+  Vort_collision = optvort["Vort_collision"].doc("Include collisional effects in vorticity").withDefault<bool>(false);
+  Vort_parviscous = optvort["Vort_parviscous"].doc("Include parallel viscous effects in vorticity").withDefault<bool>(false);
+  Vort_anomalous = optvort["Vort_anomalous"].doc("Include anomalous effects in vorticity").withDefault<bool>(false);
+
+  // bool VePsi_parefield, VePsi_parpressure, VePsi_partemp, VePsi_parcurrent, VePsi_ExB, VePsi_parflow;
+
+  VePsi_parefield = optvepsi["VePsi_parefield"].doc("Use parallel electric field in electron velocity").withDefault<bool>(false);
+  VePsi_parpressure = optvepsi["VePsi_parpressure"].doc("Use parallel pressure gradient in electron velocity").withDefault<bool>(false);
+  VePsi_partemp = optvepsi["VePsi_partemp"].doc("Use parallel temperature gradient in electron velocity").withDefault<bool>(false);
+  VePsi_parcurrent = optvepsi["VePsi_parcurrent"].doc("Use parallel current in electron velocity").withDefault<bool>(false);
+  VePsi_ExB = optvepsi["VePsi_ExB"].doc("Use ExB drift in electron velocity").withDefault<bool>(false);
+  VePsi_parflow = optvepsi["VePsi_parflow"].doc("Use parallel flow effects in electron velocity").withDefault<bool>(false);
 
   
   /////////////////////////////////////////////////////////////////////////

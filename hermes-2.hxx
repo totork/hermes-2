@@ -124,7 +124,7 @@ private:
   Field3D Rzrad;             // Radiated power
   RadiatedPower *carbon_rad; // Carbon cooling curve
   
-  // Switches
+  // Switches for evolving variables
   bool evolve_plasma;   // Should plasma be evolved?
   bool show_timesteps;  // Show intermediate timesteps?
   bool evolve_te;       // Evolve electron temperature?
@@ -135,6 +135,33 @@ private:
   bool evolve_vepsi;
   bool electromagnetic; // Include magnetic potential psi
   bool FiniteElMass;    // Finite Electron Mass
+
+  /////////////////////////////////////////////////////
+  // Switches for all the terms in the equations
+
+  // Density equation
+  bool Ne_ExB, Ne_mag, Ne_parflow, Ne_collision, Ne_anomalous, Ne_sources;
+
+  // Ion momentum
+  bool NVi_ExB, NVi_mag, NVi_parflow, NVi_parpressure, NVi_parviscos, NVi_collision, NVi_anomalous; 
+
+  // Electron pressure
+  bool Pe_ExB, Pe_mag, Pe_parflow, Pe_conduction, Pe_ohmic, Pe_thermalforce, Pe_thermalcurrent;
+  bool Pe_collision, Pe_anomalous, Pe_sources, Pe_energyexchange;
+
+  // Ion Pressure
+  bool Pi_ExB, Pi_mag, Pi_parflow, Pi_conduction, Pi_diamagenergyexchange, Pi_parviscousheat;
+  bool Pi_resistivedrift, Pi_perpviscous, Pi_sources;
+
+  // Vorticity
+  bool Vort_mag, Vort_parcurrent, Vort_polarcurrent, Vort_collision, Vort_parviscous;
+  bool Vort_anomalous;
+
+  // Electron velocity
+  bool VePsi_parefield, VePsi_parpressure, VePsi_partemp, VePsi_parcurrent, VePsi_ExB, VePsi_parflow;
+  
+  
+  //////////////////////////////////////////////////////
   
   bool j_diamag;    // Diamagnetic current: Vort <-> Pe
   bool j_par;       // Parallel current:    Vort <-> Psi
