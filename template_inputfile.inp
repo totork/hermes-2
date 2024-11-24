@@ -153,6 +153,13 @@ anomalous_D = 0.1
 anomalous_nu = 0.1
 anomalous_chi = 0.1
 
+hyper_D = 1e-3
+hyper_nu = 1e-3
+hyper_chi = 1e-3
+
+num_D = 1e-3
+num_nu = 1e-3
+num_chi = 1e-3
 
 [Numerics]
 
