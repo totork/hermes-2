@@ -701,6 +701,15 @@ int Hermes::init(bool restarting) {
   anomalous_nu = opttransport["anomalous_nu"].doc("Anomalous viscosity").withDefault(0.0);
   anomalous_chi = opttransport["anomalous_chi"].doc("Anomalous condoctivity").withDefault(0.0);
 
+  hyper_D = opttransport["hyper_D"].doc("hyperdiffusion").withDefault(0.0);
+  hyper_chi = opttransport["hyper_chi"].doc("hyperconductivity").withDefault(0.0);
+  hyper_nu = opttransport["hyper_nu"].doc("hyperviscosity").withDefault(0.0);
+
+  num_D = opttransport["num_D"].doc("numerical parallel diffusion").withDefault(0.0);
+  num_nu = opttransport["num_nu"].doc("numerical parallel viscosity").withDefault(0.0);
+
+  mesh->communicate( hyper_D , hyper_chi , hyper_nu , num_D , num_nu );
+  
   if (anomalous_D > 0.0) {
     // Normalise
     anomalous_D /= rho_s0 * rho_s0 * Omega_ci; // m^2/s
@@ -2162,6 +2171,10 @@ Field3D Hermes::fci_curvature(const Field3D &f, const bool &bool_bracket) {
 
 Field3D Hermes::hyperdissipation(const Field3D &a, const Field3D &b) {
   return a * (D4DX4(b) + D4DZ4(b));
+}
+
+Field3D Hermes::numericaldissipation(const Field3D &a, const Field3D &b) {
+  return a * Grad2_par2(b);
 }
 
 
