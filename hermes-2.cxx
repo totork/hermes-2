@@ -697,6 +697,8 @@ int Hermes::init(bool restarting) {
 
 
   // Get the transport parameters
+
+
   anomalous_D = opttransport["anomalous_D"].doc("Anomalous diffusion").withDefault(0.0);
   anomalous_nu = opttransport["anomalous_nu"].doc("Anomalous viscosity").withDefault(0.0);
   anomalous_chi = opttransport["anomalous_chi"].doc("Anomalous condoctivity").withDefault(0.0);
@@ -708,17 +710,35 @@ int Hermes::init(bool restarting) {
   num_D = opttransport["num_D"].doc("numerical parallel diffusion").withDefault(0.0);
   num_nu = opttransport["num_nu"].doc("numerical parallel viscosity").withDefault(0.0);
   num_chi = opttransport["num_chi"].doc("numerical parallel conductivity").withDefault(0.0);
+
+
+  hyper_D.applyBoundary("neumann");
+  hyper_chi.applyBoundary("neumann");
+  hyper_nu.applyBoundary("neumann");
+  num_D.applyBoundary("neumann");
+  num_chi.applyBoundary("neumann");
+  num_nu.applyBoundary("neumann");
+
+  mesh->communicate( hyper_D , hyper_chi , hyper_nu , num_D , num_nu ,num_chi);
   
-  mesh->communicate( hyper_D , hyper_chi , hyper_nu , num_D , num_nu );
+  hyper_D.applyParallelBoundary("parallel_neumann_o1");
+  hyper_nu.applyParallelBoundary("parallel_neumann_o1");
+  hyper_chi.applyParallelBoundary("parallel_neumann_o1");
+  num_D.applyParallelBoundary("parallel_neumann_o1");
+  num_nu.applyParallelBoundary("parallel_neumann_o1");
+  num_chi.applyParallelBoundary("parallel_neumann_o1");
+
+
+  
   
   if (anomalous_D > 0.0) {
     // Normalise
     anomalous_D /= rho_s0 * rho_s0 * Omega_ci; // m^2/s
     output.write("\tnormalised anomalous D_perp = {:e}\n", anomalous_D);
     a_d3d = anomalous_D;
+    a_d3d.applyBoundary("neumann");
     mesh->communicate(a_d3d);
-    a_d3d.yup() = anomalous_D;
-    a_d3d.ydown() = anomalous_D;
+    a_d3d.applyParallelBoundary("parallel_neumann_o1");
   }
 
   
@@ -728,18 +748,19 @@ int Hermes::init(bool restarting) {
     anomalous_chi /= rho_s0 * rho_s0 * Omega_ci; // m^2/s
     output.write("\tnormalised anomalous chi_perp = {:e}\n", anomalous_chi);
     a_chi3d = anomalous_chi;
+    a_chi3d.applyBoundary("neumann");
     mesh->communicate(a_chi3d);
-    a_chi3d.yup() = anomalous_chi;
-    a_chi3d.ydown() = anomalous_chi;
+    a_chi3d.applyParallelBoundary("parallel_neumann_o1");
+    
   }
   if (anomalous_nu > 0.0) {
     // Normalise
     anomalous_nu /= rho_s0 * rho_s0 * Omega_ci; // m^2/s
     output.write("\tnormalised anomalous nu_perp = {:e}\n", anomalous_nu);
     a_nu3d = anomalous_nu;
+    a_nu3d.applyBoundary("neumann");
     mesh->communicate(a_nu3d);
-    a_nu3d.yup() = anomalous_nu;
-    a_nu3d.ydown() = anomalous_nu;
+    a_nu3d.applyParallelBoundary("parallel_neumann_o1");
   }
 
   
