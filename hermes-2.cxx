@@ -1644,6 +1644,13 @@ int Hermes::rhs(BoutReal t) {
       ddt(Ne) += TE_Ne_sources;
     }  // End Ne_sources
 
+
+    if (Ne_hyper){
+      TRACE("Density hyperdiffusion");
+      TE_Ne_hyper = hyperdissipation(hyper_D,Ne);
+      ddt(Ne) += TE_Ne_hyper; 
+    } // End Ne_hyper
+
     
   } //End evolve_ne
   
@@ -1716,6 +1723,12 @@ int Hermes::rhs(BoutReal t) {
       ddt(Vort) += TE_Vort_anomalous;
     } // End Vort_anomalous
 
+
+    if (Vort_hyper){
+      TRACE("Vorticity hyperdiffusion");
+      TE_Vort_hyper = hyperdissipation(hyper_nu,Vort);
+      ddt(Vort) += TE_Vort_hyper;
+    } // End VePsi_hyper
     
   }  //End evolve_vort
 
@@ -1780,6 +1793,13 @@ int Hermes::rhs(BoutReal t) {
       ddt(VePsi) += Ve_dampening;
     }
     */
+
+
+    if (VePsi_hyper){
+      TRACE("VePsi hyperdiffusion");
+      TE_VePsi_hyper = hyperdissipation(hyper_nu,VePsi);
+      ddt(VePsi) += TE_VePsi_hyper;
+    } // End VePsi_hyper
 
     
   } //End evolve_vepsi
@@ -1846,6 +1866,13 @@ int Hermes::rhs(BoutReal t) {
       TE_NVi_anomalous += FCIDiv_a_Grad_perp(mul_all(Ne, a_nu3d), Vi);
       ddt(NVi) += TE_NVi_anomalous;
     }
+
+
+    if (NVi_hyper){
+      TRACE("Ion momentum hyperdiffusion");
+      TE_NVi_hyper = hyperdissipation(hyper_nu,NVi);
+      ddt(NVi) += TE_NVi_hyper;
+    } // End NVi_hyper
 
     
   } // End evolve_nvi
@@ -1995,6 +2022,13 @@ int Hermes::rhs(BoutReal t) {
       ddt(Pe) += sheath_dpe;
     } //End parallel_sheaths
 
+
+    if (Pe_hyper){
+      TRACE("Electron pressure hyperdiffusion");
+      TE_Pe_hyper = hyperdissipation(hyper_chi,Pe);
+      ddt(Pe) += TE_Pe_hyper;
+    } // End Pe_hyper
+
     
   } // End evolve_te
 
@@ -2132,6 +2166,13 @@ int Hermes::rhs(BoutReal t) {
       ddt(Pi) += sheath_dpi;
     } // End parallel_sheaths
 
+
+    if (Pi_hyper){
+      TRACE("Ion pressure hyperdiffusion");
+      TE_Pi_hyper = hyperdissipation(hyper_chi,Pi);
+      ddt(Pi) += TE_Pi_hyper;
+    } // End Pi_hyper
+
     
   } // End evolve_ti
 
@@ -2170,7 +2211,7 @@ Field3D Hermes::fci_curvature(const Field3D &f, const bool &bool_bracket) {
 
 
 Field3D Hermes::hyperdissipation(const Field3D &a, const Field3D &b) {
-  return a * (D4DX4(b) + D4DZ4(b));
+  return -a * (D4DX4(b) + D4DZ4(b));
 }
 
 Field3D Hermes::numericaldissipation(const Field3D &a, const Field3D &b) {
