@@ -1031,7 +1031,8 @@ int Hermes::init(bool restarting) {
   nu.setBoundary("nu");
   Jpar.setBoundary("Jpar");
 
-  
+
+  SAVE_REPEAT(Ve,Jpar);
   psi = 0.0;
   nu = 0.0;
   kappa_epar = 0.0;
@@ -1049,11 +1050,9 @@ int Hermes::init(bool restarting) {
   Ve_dampening = 0.0;
   
   
-  SAVE_REPEAT(a,b,d);
   SAVE_REPEAT(Te, Ti);
   if (verbose) {
     // Save additional fields
-    SAVE_REPEAT(Jpar); // Parallel current
     SAVE_REPEAT(debug_soundspeed,debug_phibndry3d);
     SAVE_REPEAT(tau_e, tau_i);
 
@@ -1337,18 +1336,6 @@ int Hermes::rhs(BoutReal t) {
   
 
 
-  
-  //////////////////////////////////////////////////////////////
-  TRACE("Calculating resistivity");
-  tau_e = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_e0) , Te32) , Ne);
-  nu = resistivity_multiply / (1.96 * tau_e * mi_me);
-  nu.applyBoundary("neumann");
-  mesh->communicate(nu);
-  nu.applyParallelBoundary(parbc);
-
-  Wi = (3. / mi_me) * Ne * (Te - Ti) / tau_e;
-
-  
   //////////////////////////////////////////////////////////////
   // Calculate perturbed magnetic field psi
   TRACE("Calculating psi");
@@ -1585,6 +1572,16 @@ int Hermes::rhs(BoutReal t) {
     }
   }
 
+
+  //////////////////////////////////////////////////////////////                                                                        
+  TRACE("Calculating resistivity");
+  tau_e = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_e0) , Te32) , Ne);
+  nu = resistivity_multiply / (1.96 * tau_e * mi_me);
+  nu.applyBoundary("neumann");
+  mesh->communicate(nu);
+  nu.applyParallelBoundary(parbc);
+
+  Wi = (3. / mi_me) * Ne * (Te - Ti) / tau_e;
 
   
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////                                                                                                                                                                
@@ -1960,7 +1957,7 @@ int Hermes::rhs(BoutReal t) {
 
     if (Pe_ohmic){
       TRACE("Pe_ohmic");
-      TE_Pe_ohmic = nu * Jpar * (Jpar - Jpar0) / Ne;
+      TE_Pe_ohmic = nu * Jpar * (Jpar) / Ne;
       ddt(Pe) += TE_Pe_ohmic;
     } // End Pe_ohmic
 
