@@ -1506,7 +1506,25 @@ int Hermes::rhs(BoutReal t) {
           NVi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = nesheath * visheath;//
             // 1. * nesheath * visheath;// - NVi(x, y, z);
         }
-      }
+      }// End sheath loop
+      // Set inner to neumann for all variables
+      for (const auto &bndry_par :
+           mesh->getBoundariesPar(BoundaryParType::xin)) {
+        for (const auto &pnt : *bndry_par)  {
+	  int x = pnt.ind().x();
+          int y = pnt.ind().y();
+          int z = pnt.ind().z();
+	  
+	  Ne.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Ne(x,y,z);
+	  NVi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = NVi(x,y,z);
+	  Pe.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Pe(x,y,z);
+	  Pi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Pi(x,y,z);
+	  Vort.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Vort(x,y,z);
+	  VePsi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = VePsi(x,y,z);
+	}
+      }// End set inner
+
+      
       break;
     }
     case 1: { // insulating boundary      break;
@@ -1800,13 +1818,13 @@ int Hermes::rhs(BoutReal t) {
 
     
     if (VePsi_parpressure){
-      TE_VePsi_parpressure = -mi_me * Grad_parP(Pe) / Ne;
+      TE_VePsi_parpressure = -mi_me * Grad_par(Pe) / Ne;
       ddt(VePsi) += TE_VePsi_parpressure;
     } //End VePsi_parpressure
 
 
     if (VePsi_partemp){
-      TE_VePsi_partemp = -mi_me * 0.71 * Grad_parP(Te);
+      TE_VePsi_partemp = -mi_me * 0.71 * Grad_par(Te);
       ddt(VePsi) += TE_VePsi_partemp;
     } //End VePsi_partemp
 
@@ -1828,7 +1846,7 @@ int Hermes::rhs(BoutReal t) {
 
     
     if (VePsi_parflow){
-      TE_VePsi_parflow = -Vi * Grad_par(sub_all(Ve,Vi));
+      TE_VePsi_parflow = -Vi * Div_par(sub_all(Ve,Vi));
       ddt(VePsi) += TE_VePsi_parflow;
     } // End VePsi_parflow
 
