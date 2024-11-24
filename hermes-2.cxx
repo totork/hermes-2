@@ -750,16 +750,16 @@ int Hermes::init(bool restarting) {
   
   // Get switches from each variable section
 
-  NeSource = optne["NeSource"].doc("Source term in ddt(Ne)").withDefault(Field3D{0.0});
+  NeSource = optne["source"].doc("Source term in ddt(Ne)").withDefault(Field3D{0.0});
   NeSource /= Omega_ci;
   Sn = NeSource;
 
   
-  PeSource = optpe["PeSource"].withDefault(Field3D{0.0});
+  PeSource = optpe["source"].withDefault(Field3D{0.0});
   PeSource /= Omega_ci;
   Spe = PeSource;
 
-  PiSource = optpi["PiSource"].withDefault(Field3D{0.0});
+  PiSource = optpi["source"].withDefault(Field3D{0.0});
   PiSource /= Omega_ci;
   Spi = PiSource;
 

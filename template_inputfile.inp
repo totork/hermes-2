@@ -208,7 +208,7 @@ bndry_par_all = parallel_neumann_o2
 [Ne] # Electron density
 scale = 1
 function = 2.0 - x
-NeSource = 3e2*gauss(x, 0.24)
+source = 3e2*gauss(x, 0.24)
 
 
 #Switches for terms
@@ -250,7 +250,7 @@ NVi_numdiff = false
 [Pe]  # Electron pressure
 scale = 1
 function = Ne:function + (2.0-x)*Ne:function
-PeSource = 5.0*Ne:source
+source = 5.0*Ne:source
 
 
 #Switches for terms
@@ -276,7 +276,7 @@ Pe_numdiff = false
 [Pi]
 scale = 1
 function = Pe:function
-PiSource = Pe:source
+source = Pe:source
 
 
 #Switches for terms
