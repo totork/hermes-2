@@ -1019,6 +1019,7 @@ int Hermes::init(bool restarting) {
   }
   phi = 0.0;
   Ve = 0.0;
+  Vi = 0.0;
   Jpar = 0.0;
 
   
@@ -1032,7 +1033,7 @@ int Hermes::init(bool restarting) {
   Jpar.setBoundary("Jpar");
 
 
-  SAVE_REPEAT(Ve,Jpar);
+  SAVE_REPEAT(Ve,Vi,Jpar);
   psi = 0.0;
   nu = 0.0;
   kappa_epar = 0.0;
@@ -1163,6 +1164,7 @@ int Hermes::rhs(BoutReal t) {
   alloc_all(Pi);
   alloc_all(Pe);
 
+  
   BOUT_FOR(i, Ne.getRegion("RGN_ALL")) {
     // Field3D Ne = floor_all(Ne, 1e-5);
     floor_all(Ne, 1e-2, i);
