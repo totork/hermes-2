@@ -707,7 +707,8 @@ int Hermes::init(bool restarting) {
 
   num_D = opttransport["num_D"].doc("numerical parallel diffusion").withDefault(0.0);
   num_nu = opttransport["num_nu"].doc("numerical parallel viscosity").withDefault(0.0);
-
+  num_chi = opttransport["num_chi"].doc("numerical parallel conductivity").withDefault(0.0);
+  
   mesh->communicate( hyper_D , hyper_chi , hyper_nu , num_D , num_nu );
   
   if (anomalous_D > 0.0) {
