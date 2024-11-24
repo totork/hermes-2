@@ -1597,6 +1597,7 @@ int Hermes::rhs(BoutReal t) {
   ddt(Ne) = 0.0;
   if (evolve_ne){
     TRACE("Density");
+
     
     if (Ne_ExB){
       TRACE("Density ExB");
@@ -1650,6 +1651,13 @@ int Hermes::rhs(BoutReal t) {
       TE_Ne_hyper = hyperdissipation(hyper_D,Ne);
       ddt(Ne) += TE_Ne_hyper; 
     } // End Ne_hyper
+
+
+    if (Ne_numdiff){
+      TRACE("Density numerical parallel diffusion");
+      TE_Ne_numdiff = numericaldissipation(num_D,Ne);
+      ddt(Ne) += TE_Ne_numdiff;
+    } // End Ne_numdiff
 
     
   } //End evolve_ne
@@ -1728,7 +1736,15 @@ int Hermes::rhs(BoutReal t) {
       TRACE("Vorticity hyperdiffusion");
       TE_Vort_hyper = hyperdissipation(hyper_nu,Vort);
       ddt(Vort) += TE_Vort_hyper;
-    } // End VePsi_hyper
+    } // End Vort_hyper
+
+
+    if (Vort_numdiff){
+      TRACE("Vorticity numerical parallel diffusion");
+      TE_Vort_numdiff = numericaldissipation(num_nu,Vort);
+      ddt(Vort) += TE_Vort_numdiff;
+    } // End Vort_numdiff
+
     
   }  //End evolve_vort
 
@@ -1800,6 +1816,13 @@ int Hermes::rhs(BoutReal t) {
       TE_VePsi_hyper = hyperdissipation(hyper_nu,VePsi);
       ddt(VePsi) += TE_VePsi_hyper;
     } // End VePsi_hyper
+
+
+    if (VePsi_numdiff){
+      TRACE("VePsi numerical parallel diffusion");
+      TE_VePsi_numdiff = numericaldissipation(num_nu,VePsi);
+      ddt(VePsi) += TE_VePsi_numdiff;
+    } // End VePsi_numdiff
 
     
   } //End evolve_vepsi
@@ -1873,6 +1896,13 @@ int Hermes::rhs(BoutReal t) {
       TE_NVi_hyper = hyperdissipation(hyper_nu,NVi);
       ddt(NVi) += TE_NVi_hyper;
     } // End NVi_hyper
+
+
+    if (NVi_numdiff){
+      TRACE("Ion momentum numerical parallel diffusion");
+      TE_NVi_numdiff = numericaldissipation(num_nu,NVi);
+      ddt(NVi) += TE_NVi_numdiff;
+    } // End NVi_numdiff
 
     
   } // End evolve_nvi
@@ -2029,6 +2059,13 @@ int Hermes::rhs(BoutReal t) {
       ddt(Pe) += TE_Pe_hyper;
     } // End Pe_hyper
 
+
+    if (Pe_numdiff){
+      TRACE("Electron pressure numerical parallel diffusion");
+      TE_Pe_numdiff = numericaldissipation(num_chi,Pe);
+      ddt(Pe) += TE_Pe_numdiff;
+    } // End Pe_numdiff
+    
     
   } // End evolve_te
 
@@ -2172,6 +2209,13 @@ int Hermes::rhs(BoutReal t) {
       TE_Pi_hyper = hyperdissipation(hyper_chi,Pi);
       ddt(Pi) += TE_Pi_hyper;
     } // End Pi_hyper
+
+
+    if (Pi_numdiff){
+      TRACE("Ion pressure numerical parallel diffusion");
+      TE_Pi_numdiff = numericaldissipation(num_chi,Pi);
+      ddt(Pi) += TE_Pi_numdiff;
+    } // End Pi_numdiff
 
     
   } // End evolve_ti
