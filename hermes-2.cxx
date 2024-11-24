@@ -2160,6 +2160,10 @@ Field3D Hermes::fci_curvature(const Field3D &f, const bool &bool_bracket) {
 }
 
 
+Field3D Hermes::hyperdissipation(const Field3D &a, const Field3D &b) {
+  return a * (D4DX4(b) + D4DZ4(b));
+}
+
 
 
 

@@ -185,6 +185,7 @@ private:
   BoutReal anomalous_D;    // Density diffusion
   BoutReal anomalous_chi;  // Electron thermal diffusion
   BoutReal anomalous_nu;   // Momentum diffusion (kinematic viscosity)
+  Field3D hyper_D, hyper_chi, hyper_nu;
   Field3D a_d3d, a_chi3d, a_nu3d; // 3D coef
   bool anomalous_D_nvi; // Include terms in momentum equation
   bool anomalous_D_pepi; // Include terms in Pe, Pi equations
@@ -279,6 +280,8 @@ private:
   Field3D Div_parP_n(const Field3D &f, const Field3D &v, Field3D &cs,
                      const BoutMask &fwd, const BoutMask &bwd);
 
+  Field3D hyperdissipation(const Field3D &a, const Field3D &b);
+  
   // Electromagnetic solver for finite electron mass case
   bool split_n0_psi;   // Split the n=0 component of Apar (psi)?
   //Laplacian *aparSolver;
