@@ -643,7 +643,8 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, flux_limit_alpha, -1);
   OPTION(optnumerics, kappa_limit_alpha, -1);
   OPTION(optnumerics, eta_limit_alpha, -1);
-  
+
+  OPTION(optnumerics, scale_ExB, 1.0);
   OPTION(optnumerics, resistivity_multiply, 1.0);
   OPTION(optnumerics, electron_weight, 1.0);
   OPTION(optnumerics, poloidal_flows, false);
@@ -711,7 +712,16 @@ int Hermes::init(bool restarting) {
   num_nu = opttransport["num_nu"].doc("numerical parallel viscosity").withDefault(0.0);
   num_chi = opttransport["num_chi"].doc("numerical parallel conductivity").withDefault(0.0);
 
+  
+  hyper_D /= (rho_s0 * rho_s0 * rho_s0 * rho_s0) * Omega_ci;
+  hyper_nu /= (rho_s0 * rho_s0 * rho_s0 * rho_s0) * Omega_ci;
+  hyper_chi /= (rho_s0 * rho_s0 * rho_s0 * rho_s0) * Omega_ci;
 
+  num_D /= rho_s0 * rho_s0 * Omega_ci;
+  num_nu /= rho_s0 * rho_s0 * Omega_ci;
+  num_chi /= rho_s0 * rho_s0 * Omega_ci;
+
+  
   hyper_D.applyBoundary("neumann");
   hyper_chi.applyBoundary("neumann");
   hyper_nu.applyBoundary("neumann");
