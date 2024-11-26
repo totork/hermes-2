@@ -6,9 +6,42 @@
 #include <bout/interpolation.hxx>
 #include <bout/invert_laplace.hxx>
 #include <bout/invert_parderiv.hxx>
+#include <field_factory.hxx>
+#include <bout/derivs.hxx>
+#include <bout/assert.hxx>
+#include <bout/fv_ops.hxx>
+#include <cmath>
 
 
 
+
+
+// Square function for vectors
+Field3D SQ(const Vector3D &v) { return v * v; }
+
+void setRegions(Field3D &f) {
+  f.yup().setRegion("RGN_YPAR_+1");
+  f.ydown().setRegion("RGN_YPAR_-1");
+}
+
+const Field3D &yup(const Field3D &f) { return f.yup(); }
+BoutReal yup(BoutReal f) { return f; };
+const Field3D &ydown(const Field3D &f) { return f.ydown(); }
+BoutReal ydown(BoutReal f) { return f; };
+const BoutReal yup(BoutReal f, Ind3D i) { return f; };
+const BoutReal ydown(BoutReal f, Ind3D i) { return f; };
+// const BoutReal& yup(const Field3D &f, Ind3D i) { return f.yup()[i.yp()]; }
+// const BoutReal& ydown(const Field3D &f, Ind3D i) { return f.ydown()[i.ym()];
+// } BoutReal& yup(Field3D &f, Ind3D i) { return f.yup()[i.yp()]; } BoutReal&
+// ydown(Field3D &f, Ind3D i) { return f.ydown()[i.ym()]; }
+const BoutReal &yup(const Field3D &f, Ind3D i) { return f.yup()[i]; }
+const BoutReal &ydown(const Field3D &f, Ind3D i) { return f.ydown()[i]; }
+BoutReal &yup(Field3D &f, Ind3D i) { return f.yup()[i]; }
+BoutReal &ydown(Field3D &f, Ind3D i) { return f.ydown()[i]; }
+const BoutReal &_get(const Field3D &f, Ind3D i) { return f[i]; }
+BoutReal &_get(Field3D &f, Ind3D i) { return f[i]; }
+BoutReal _get(BoutReal f, Ind3D i) { return f; };
+BoutReal copy(BoutReal f) { return f; };
 
 
 
@@ -189,7 +222,7 @@ class reduced_MHD : public PhysicsModel {
 private:
   Field3D U, Apar;
   Field3D Jpar,phi;
-
+  Field3D Bxy;
   bool evolve_U,evolve_Apar;
   BoutReal mu,beta_hat,eta;
   std::unique_ptr<Laplacian> phiSolver{nullptr};
@@ -198,23 +231,31 @@ private:
   
 protected:
   int init(bool UNUSED(restart)) override {
-    auto& opt = Options::root()["reduced_MHD"];
 
-    mesh->get(coord->Bxyz, "Bxyz");
-    mesh->communicate(Bxyz);
+    TRACE("LOAD DATA AND OPTIONS");
+    auto& opt = Options::root();
+    auto& optMHD = Options::root()["reduced_MHD"];
+    auto *coord = mesh->getCoordinates();
+    mesh->get(Bxy, "Bxy");
+    mesh->communicate(Bxy);
+
+    OPTION(optMHD , mu , 0.0);
+    OPTION(optMHD , eta , 0.0);
+    OPTION(optMHD,evolve_U,false);
+    OPTION(optMHD,evolve_Apar,false);
     
+    TRACE("SET VARIABLES");
+    U = 0.0;
+    Apar = 0.0;
     Jpar = 0.0;
     phi = 0.0;
-    
+    mesh->communicate(Apar,Jpar,phi,U);    
     SOLVE_FOR( U , Apar );
     SAVE_REPEAT( Jpar , phi );
 
-    OPTION(opt , mu , 0.0);
-    OPTION(opt , eta , 0.0);
 
-
-    
-    phiSolver = Laplacian::create();
+    TRACE("SET PHI SOLVER");
+    phiSolver = Laplacian::create(&opt["phiSolver"]);
     
     return 0;
   }
@@ -223,15 +264,18 @@ protected:
 
     mesh->communicate(U,Apar);
 
-    phi = phiSolver->solve(Bxyz,U);
+
+    TRACE("CALCULATE POTENTIAL");
+    phi = phiSolver->solve(Bxy*U,phi);
     
 
     
     ddt(U) = 0.0;
 
+    TRACE("U time evolution");
     if (evolve_U){
 
-      ddt(U) += SQ(Bxyz) * Grad_par(div_all(Jpar,Bxyz));
+      ddt(U) += SQ(Bxy) * Grad_par(div_all(Jpar,Bxy));
 
       ddt(U) -= bracket(phi,U,BRACKET_ARAKAWA);
 
@@ -242,6 +286,10 @@ protected:
       
     } // evolve_U
 
+
+    TRACE("Apar time evolution");
+    ddt(Apar) = 0.0;
+    
     if (evolve_Apar){
 
       ddt(Apar) -= Grad_par(phi)/beta_hat;
@@ -249,7 +297,9 @@ protected:
       if (eta>0.0){
 	ddt(Apar) -= eta * Jpar / beta_hat;
       }
-    }
+      
+    } // evolve_Apar
+    
     
     
     return 0;
@@ -257,11 +307,11 @@ protected:
 
   const Field3D new_Delp2(const Field3D& a){
     auto *coord = mesh->getCoordinates();
-    Field3D tmp = (DDX(coord->J * coord->g11)*DDX(Ne) + coord->J * coord->g11 * D2DX2(Ne))/coord->J;
-    tmp += (DDZ(coord->J * coord->g33)*DDZ(Ne) + coord->J * coord->g33 * D2DZ2(Ne))/coord->J;
+    Field3D tmp = (DDX(coord->J * coord->g11)*DDX(a) + coord->J * coord->g11 * D2DX2(a))/coord->J;
+    tmp += (DDZ(coord->J * coord->g33)*DDZ(a) + coord->J * coord->g33 * D2DZ2(a))/coord->J;
     return tmp;
   }
 
-
+};
   
 BOUTMAIN(reduced_MHD);
