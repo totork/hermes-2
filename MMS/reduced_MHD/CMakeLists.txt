@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.9...3.12)
+project(reduced_MHD LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 14)
+find_package(bout++ REQUIRED)
+add_executable(reduced_MHD reduced_MHD.cxx)
+target_link_libraries(reduced_MHD PRIVATE bout++::bout++)
