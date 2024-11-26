@@ -310,6 +310,8 @@ int Loki::init(bool restarting) {
   OPTION(optNe, Ne_diffusion_par, false);
   OPTION(optNe, Ne_sources, false);
   OPTION(optNe, Ne_gradpar, false);
+  OPTION(optNe, Ne_D2DX2, false);
+  OPTION(optNe, Ne_D2DZ2, false);
   
   if(evolve_Ne){
     SOLVE_FOR(Ne);
@@ -368,10 +370,17 @@ int Loki::rhs(BoutReal t) {
 
   
   // Calculate the density solution
+  Ne.applyBoundary(t);
+  auto *coord = mesh->getCoordinates();
+  Ne_solution = 2*cos(0.5 - yl)*sin(0. - 0.1*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl);
 
- 
+  
+  
   mesh->communicate(Ne);
 
+  BOUT_FOR(i, Ne.getMesh()->getRegion3D("RGN_GUARDS")) {
+    Ne[i] = Ne_solution[i];
+  }
   
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   //                                   Ne time evolution                                            //  
@@ -404,9 +413,23 @@ int Loki::rhs(BoutReal t) {
 	throw BoutException("FV for perp diffusion NI");
 	//ddt(Ne) += FCIDiv_a_Grad_perp(D_perp,Ne);
       } else{
-	ddt(Ne) += D_perp * (D2DX2(Ne) + D2DZ2(Ne));
+	//ddt(Ne) += Delp2(Ne,CELL_DEFAULT,false);
+
+
+	auto tmp = DDX(coord->J * coord->g11)*DDX(Ne) + coord->J * coord->g11 * D2DX2(Ne);
+	tmp += DDZ(coord->J * coord->g33)*DDZ(Ne) + coord->J * coord->g33 * D2DZ2(Ne);
+	ddt(Ne) += tmp/coord->J;
       }
-      
+    }
+
+    
+    if (Ne_D2DX2){
+      ddt(Ne) += D_perp * D2DX2(Ne)/coord->g_11;
+    }
+
+
+    if (Ne_D2DZ2){
+      ddt(Ne) += D2DZ2(Ne)/coord->g_33;
     }
     
     if (Ne_diffusion_par){

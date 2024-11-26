@@ -48,7 +48,7 @@ private:
 
   //Switches for all terms in the Ne equation                                                                                                                                                              
 
-  bool Ne_ExB, Ne_diamagnetic, Ne_vpar, Ne_gradpar ,Ne_collisional ,Ne_diffusion_perp, Ne_diffusion_par , Ne_sources;
+  bool Ne_ExB, Ne_diamagnetic, Ne_vpar, Ne_gradpar ,Ne_collisional ,Ne_diffusion_perp, Ne_diffusion_par , Ne_sources, Ne_D2DX2,Ne_D2DZ2;
 
   //Additional (important) variables                                                                                                                                                                       
 

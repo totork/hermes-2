@@ -25,11 +25,18 @@ and normalised radial coordinate rn
 *)
 absb[x_] = Sqrt[1 + x^2/q[x]^2];
 pgrad[f_, x_, z_, y_, t_] = (D[f[x,z,y,t],y] + 1/q[x]*D[f[x,z,y,t],z])/absb[x];
+ddx[f_, r_, p_, z_, t_] = D[f[r, p, z, t], r];
+ddy[f_, r_, p_, z_, t_] = D[f[r, p, z, t], r]*Sin[p] + D[f[r, p, z, t], p]*Cos[p]/r;
+d2dx2[f_, r_, p_, z_, t_] = D[ddx[f, r, p, z, t], r];
+d2dy2[f_, r_, p_, z_, t_] = D[ddy[f, r, p, z, t], r]*Sin[p] +  D[ddy[f, r, p, z, t], p]*Cos[p]/r;
 
-Laplace_perpe[f_, x_, z_, y_, t_] = D[f[x,z,y,t],{x,2}] + D[f[x,z,y,t],{z,2}]/(x*x) + D[f[x,z,y,t],x]/x;
 
-d2dpar2[f_, x_, z_, y_, t_] = (D[D[f[x, z, y, t], y], y] + 2/q[x]*D[D[f[x, z, y, t], y], z] + 
-     1/q[x]^2*D[D[f[x, z, y, t], z], z])/absb[x]^2;
+LaplacePerpMmsSol[f_,r_, p_, z_, t_] =  d2dx2[f, r, p, z, t] + d2dy2[f, r, p, z, t];
+
+LaplacePerp[f_,r_,p_,z_,t_] = D[f[r,p,z,t],{r,2}] + D[f[r,p,z,t],r]/r + 1.0/(r*r)*D[f[r,p,z,t],{p,2}];
+
+d2dpar2[f_, x_, z_, y_, t_] = Dpar * ((D[D[f[x, z, y, t], y], y] + 2/q[x]*D[D[f[x, z, y, t], y], z] + 
+     1/q[x]^2*D[D[f[x, z, y, t], z], z])/absb[x]^2);
   
 xn[x_] = (x-xmin)/(xmax-xmin);  
     (*
@@ -48,7 +55,8 @@ MmsUpar[x_, z_, y_, t_]=1;
 
 
 pflux[x_, z_, y_, t_]=MmsDens[x, z, y, t];
-Smms[x_, z_, y_, t_]=D[MmsDens[x,z,y,t],t]-d2dpar2[MmsDens,x,z,y,t];
+(*Smms[x_, z_, y_, t_]=D[MmsDens[x,z,y,t],t]-d2dpar2[MmsDens,x,z,y,t]-Laplaceperpe[MmsDens,x,z,y,t];*)
+Smms[x_, z_, y_, t_]=D[MmsDens[x,z,y,t],t]-LaplacePerp[MmsDens,x,z,y,t];
 
 
 Print["Finished MMS Terms"];
