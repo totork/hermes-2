@@ -56,7 +56,7 @@ MmsUpar[x_, z_, y_, t_]=1;
 
 pflux[x_, z_, y_, t_]=MmsDens[x, z, y, t];
 (*Smms[x_, z_, y_, t_]=D[MmsDens[x,z,y,t],t]-d2dpar2[MmsDens,x,z,y,t]-Laplaceperpe[MmsDens,x,z,y,t];*)
-Smms[x_, z_, y_, t_]=D[MmsDens[x,z,y,t],t]-LaplacePerp[MmsDens,x,z,y,t]-d2dpar2[MmsDens,x,z,y,t];
+Smms[x_, z_, y_, t_]=D[MmsDens[x,z,y,t],t]-Dperp * LaplacePerp[MmsDens,x,z,y,t]-d2dpar2[MmsDens,x,z,y,t];
 
 
 Print["Finished MMS Terms"];

@@ -378,9 +378,11 @@ int Loki::rhs(BoutReal t) {
   
   mesh->communicate(Ne);
 
+  /*
   BOUT_FOR(i, Ne.getMesh()->getRegion3D("RGN_GUARDS")) {
     Ne[i] = Ne_solution[i];
   }
+  */
   
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   //                                   Ne time evolution                                            //  
@@ -418,7 +420,7 @@ int Loki::rhs(BoutReal t) {
 
 	auto tmp = DDX(coord->J * coord->g11)*DDX(Ne) + coord->J * coord->g11 * D2DX2(Ne);
 	tmp += DDZ(coord->J * coord->g33)*DDZ(Ne) + coord->J * coord->g33 * D2DZ2(Ne);
-	ddt(Ne) += tmp/coord->J;
+	ddt(Ne) += D_perp * tmp/coord->J;
       }
     }
 
@@ -435,7 +437,7 @@ int Loki::rhs(BoutReal t) {
     if (Ne_diffusion_par){
       TRACE("Density parallel diffusion");
       //ddt(Ne) += Div_par_K_Grad_par(D_par,Ne);
-      ddt(Ne) += Grad2_par2(Ne);
+      ddt(Ne) += D_par * Grad2_par2(Ne);
     }
 
       
