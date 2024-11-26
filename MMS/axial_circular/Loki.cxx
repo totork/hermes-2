@@ -5,7 +5,7 @@
 #include <bout/derivs.hxx>
 #include "parallel_boundary_region.hxx"
 #include "boundary_region.hxx"
-#include "../../div_ops.hxx"
+#include "div_ops.hxx"
 #include "../../loadmetric.hxx"
 #include <algorithm> // For std::max
 #include <initializer_list>
@@ -283,6 +283,8 @@ int Loki::init(bool restarting) {
   }
   
 
+  _FCIDiv_a_Grad_perp = std::make_unique<FCI::dagp_fv>(*mesh);
+  
   SAVE_ONCE(RR,ZZ,theta,rho);
   
   OPTION(opt, upwind, false);
@@ -412,7 +414,7 @@ int Loki::rhs(BoutReal t) {
     if (Ne_diffusion_perp){
       TRACE("Density perpendicular diffusion");
       if(diffusion_perp_FV){
-	throw BoutException("FV for perp diffusion NI");
+	ddt(Ne) += FCIDiv_a_Grad_perp(D_perp,Ne);
 	//ddt(Ne) += FCIDiv_a_Grad_perp(D_perp,Ne);
       } else{
 	//ddt(Ne) += Delp2(Ne,CELL_DEFAULT,false);
@@ -450,3 +452,7 @@ int Loki::rhs(BoutReal t) {
 }
 
 
+
+Field3D Loki::FCIDiv_a_Grad_perp(const Field3D &a, const Field3D &f) {
+  return (*_FCIDiv_a_Grad_perp)(a, f);
+}

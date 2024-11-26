@@ -7,6 +7,14 @@ class Loki;
 #ifndef __Loki_H__
 #define __Loki_H__
 
+#include <bout/physicsmodel.hxx>
+
+#include <bout/invert_laplace.hxx>
+#include <bout/invert/laplacexy.hxx>
+#include <bout/invert/laplacexz.hxx>
+#include <bout/constants.hxx>
+#include <bout/mask.hxx>
+
 
 
 #include <bout/physicsmodel.hxx>
@@ -14,11 +22,8 @@ class Loki;
 #include <bout/derivs.hxx>
 #include "parallel_boundary_region.hxx"
 #include "boundary_region.hxx"
-#include "../../div_ops.hxx"
+#include "div_ops.hxx"
 #include <algorithm> // For std::max
-
-#include <bout/constants.hxx>
-#include <bout/mask.hxx> 
 #include <initializer_list>
 #include <bout/fv_ops.hxx>
 
@@ -69,10 +74,9 @@ private:
   
   //                         New operators
 
+
   std::unique_ptr<FCI::dagp_fv> _FCIDiv_a_Grad_perp;
   Field3D FCIDiv_a_Grad_perp(const Field3D &a, const Field3D &f);
-
-  
   
 };
 
