@@ -51,14 +51,19 @@ Bmag[r_,p_,z_,t_]=Sqrt[By^2 + Bx[r,p,z,t]^2+Bz[r,p,z,t]^2];
 Define normalised rho and MMS solution in terms of mode numbers \
 given above
 *)
-MmsU[x_, z_, y_, t_] = ampU*Sin[2.0*Pi*kxU*xn[x]]*Sin[kzU*z - phzU]*Cos[kyU*y- phyU]*Sin[omegaU*t - phtU];
+MmsPhi[x_, z_, y_, t_] = ampPhi*Sin[2.0*Pi*kxPhi*xn[x]]*Sin[kzPhi*z - phzPhi]*Cos[kyPhi*y- phyPhi]*Sin[omegaPhi*t - phtPhi];
 MmsApar[x_, z_, y_, t_] = ampApar*Sin[2.0*Pi*kxApar*xn[x]]*Sin[kzApar*z - phzApar]*Cos[kyApar*y- phyApar]*Sin[omegaApar*t - phtApar];
+MmsU[x_,z_,y_,t_]=1.0/Bmag[x,z,y,t]*LaplacePerp[MmsPhi,x,z,y,t];
+MmsJpar[x_,z_,y_,t_]=-LaplacePerp[MmsApar,x,z,y,t]
 
 
 
-pflux[x_, z_, y_, t_]=MmsDens[x, z, y, t];
-(*Smms[x_, z_, y_, t_]=D[MmsDens[x,z,y,t],t]-d2dpar2[MmsDens,x,z,y,t]-Laplaceperpe[MmsDens,x,z,y,t];*)
-Smms[x_, z_, y_, t_]=D[MmsDens[x,z,y,t],t]-Dperp * LaplacePerp[MmsDens,x,z,y,t]-d2dpar2[MmsDens,x,z,y,t];
+(*Smms[x_, z_, y_, t_]=D[MmsDens[x,z,y,t],t]-Dperp * LaplacePerp[MmsDens,x,z,y,t]-d2dpar2[MmsDens,x,z,y,t];*)
+MmsUSource[x_,z_,y_,t_]=D[MmsU[x,z,y,t],t] + SwitchUExB / Bmag[x,z,y,t]* Arakawa[MmsPhi,MmsU,x,z,y,t] - SwitchUDivpar * Bmag[x,z,y,t]^2 * pgrad[MmsJpar/Bmag,x,z,y,t]
+MmsAparSource[x_,z_,y_,t_]=D[MmsApar[x,z,y,t],t] + SwitchAparDivpar * pgrad[MmsPhi,x,z,y,t] + SwitchAparRes * eta * MmsJpar[x,z,y,t]
+
+
+
 
 
 Print["Finished MMS Terms"];

@@ -226,7 +226,8 @@ private:
   bool evolve_U,evolve_Apar;
   BoutReal mu,beta_hat,eta;
   std::unique_ptr<Laplacian> phiSolver{nullptr};
-
+  Field3D phi_solution;
+  Field3D xl,yl,zl;
   
   
 protected:
@@ -243,6 +244,12 @@ protected:
     OPTION(optMHD , eta , 0.0);
     OPTION(optMHD,evolve_U,false);
     OPTION(optMHD,evolve_Apar,false);
+
+    xl = opt["xl"].withDefault(Field3D{0.0});
+    yl = opt["yl"].withDefault(Field3D{0.0});
+    zl = opt["zl"].withDefault(Field3D{0.0});
+    SAVE_ONCE(xl,yl,zl);
+
     
     TRACE("SET VARIABLES");
     U = 0.0;
@@ -262,7 +269,9 @@ protected:
   
   int rhs(BoutReal UNUSED(time)) override {
 
-    mesh->communicate(U,Apar);
+    phi_solution = 0.75*cos(0.8 - 2*yl)*sin(0.3 - 0.5*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.3 - 8*zl);
+    
+    mesh->communicate(U,Apar,phi_solution);
 
 
     TRACE("CALCULATE POTENTIAL");
