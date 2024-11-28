@@ -42,8 +42,8 @@ d2dpar2[f_, x_, z_, y_, t_] = Dpar * ((D[D[f[x, z, y, t], y], y] + 2/q[x]*D[D[f[
 xn[x_] = (x-xmin)/(xmax-xmin);  
 
 Arakawa[a_,b_,r_,p_,z_,t_]=D[a[r,p,z,t],r]*D[b[r,p,z,t],p]-D[a[r,p,z,t],p]*D[b[r,p,z,t],r];
-Bx[r_,p_,z_,t_]=-r*Sin (p) / q[r];
-Bz[r_,p_,z_,t_]=r*Cos (p) / q[r];
+Bx[r_,p_,z_,t_]=-r*Sin[p] / q[r];
+Bz[r_,p_,z_,t_]=r*Cos[p] / q[r];
 Bmag[r_,p_,z_,t_]=Sqrt[By^2 + Bx[r,p,z,t]^2+Bz[r,p,z,t]^2];
 
 
@@ -59,7 +59,8 @@ MmsJpar[x_,z_,y_,t_]=-LaplacePerp[MmsApar,x,z,y,t]
 
 
 (*Smms[x_, z_, y_, t_]=D[MmsDens[x,z,y,t],t]-Dperp * LaplacePerp[MmsDens,x,z,y,t]-d2dpar2[MmsDens,x,z,y,t];*)
-MmsUSource[x_,z_,y_,t_]=D[MmsU[x,z,y,t],t] + SwitchUExB / Bmag[x,z,y,t]* Arakawa[MmsPhi,MmsU,x,z,y,t] - SwitchUDivpar * Bmag[x,z,y,t]^2 * pgrad[MmsJpar/Bmag,x,z,y,t]
+JpardivBmag[x_,z_,y_,t_]=MmsJpar[x,z,y,t]/Bmag[x,z,y,t];
+MmsUSource[x_,z_,y_,t_]=D[MmsU[x,z,y,t],t] + SwitchUExB / Bmag[x,z,y,t]* Arakawa[MmsPhi,MmsU,x,z,y,t] - SwitchUDivpar * Bmag[x,z,y,t]^2 * pgrad[JpardivBmag,x,z,y,t]-mu*LaplacePerp[MmsU,x,z,y,t]
 MmsAparSource[x_,z_,y_,t_]=D[MmsApar[x,z,y,t],t] + SwitchAparDivpar * pgrad[MmsPhi,x,z,y,t] + SwitchAparRes * eta * MmsJpar[x,z,y,t]
 
 

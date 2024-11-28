@@ -11,8 +11,242 @@
 #include <bout/assert.hxx>
 #include <bout/fv_ops.hxx>
 #include <cmath>
+using bout::globals::mesh;
 
 
+
+BoutReal BOUTMIN(const BoutReal &a, const BoutReal &b, const BoutReal &c,
+                 const BoutReal &d) {
+  BoutReal r1 = (a < b) ? a : b;
+  BoutReal r2 = (c < d) ? c : d;
+  return (r1 < r2) ? r1 : r2;
+}
+
+struct Stencil1D {
+  // Cell centre values
+  BoutReal c, m, p, mm, pp;
+
+  // Left and right cell face values
+  BoutReal L, R;
+};
+
+// First order upwind for testing
+void Upwind(Stencil1D &n) { n.L = n.R = n.c; }
+
+// Fromm method
+void Fromm(Stencil1D &n) {
+  n.L = n.c - 0.25 * (n.p - n.m);
+  n.R = n.c + 0.25 * (n.p - n.m);
+}
+
+/// The minmod function returns the value with the minimum magnitude
+/// If the inputs have different signs then returns zero
+BoutReal minmod(BoutReal a, BoutReal b) {
+  if (a * b <= 0.0)
+    return 0.0;
+
+  if (fabs(a) < fabs(b))
+    return a;
+  return b;
+}
+
+BoutReal minmod(BoutReal a, BoutReal b, BoutReal c) {
+  // If any of the signs are different, return zero gradient
+  if ((a * b <= 0.0) || (a * c <= 0.0)) {
+    return 0.0;
+  }
+
+  // Return the minimum absolute value
+  return SIGN(a) * BOUTMIN(fabs(a), fabs(b), fabs(c));
+}
+
+void MinMod(Stencil1D &n) {
+  // Choose the gradient within the cell
+  // as the minimum (smoothest) solution
+  BoutReal slope = minmod(n.p - n.c, n.c - n.m);
+  n.L = n.c - 0.5 * slope; // 0.25*(n.p - n.m);
+  n.R = n.c + 0.5 * slope; // 0.25*(n.p - n.m);
+}
+
+// Monotonized Central limiter (Van-Leer)
+void MC(Stencil1D &n) {
+  BoutReal slope =
+      minmod(2. * (n.p - n.c), 0.5 * (n.p - n.m), 2. * (n.c - n.m));
+  n.L = n.c - 0.5 * slope;
+  n.R = n.c + 0.5 * slope;
+}
+
+
+
+const Field3D Div_n_bxGrad_f_B_XPPM(const Field3D &n, const Field3D &f,
+                                    bool bndry_flux, bool poloidal,
+                                    bool positive) {
+  Field3D result{0.0};
+
+  Coordinates *coord = mesh->getCoordinates();
+  
+  //////////////////////////////////////////
+  // X-Z advection.
+  //
+  //             Z
+  //             |
+  //
+  //    fmp --- vU --- fpp
+  //     |      nU      |
+  //     |               |
+  //    vL nL        nR vR    -> X
+  //     |               |
+  //     |      nD       |
+  //    fmm --- vD --- fpm
+  //
+
+  int nz = mesh->LocalNz;
+  for (const auto& ind : f.getRegion("RGN_NOBNDRY")) {
+    auto kp = ind.zp();
+    auto km = ind.zm();
+
+    // 1) Interpolate stream function f onto corners fmp, fpp, fpm
+
+    BoutReal fmm = 0.25 * (f[ind] + f[ind.xm()] + f[km] +
+			   f[km.xm()]);
+    BoutReal fmp = 0.25 * (f[ind] + f[kp] + f[ind.xm()] +
+			   f[kp.xm()]); // 2nd order accurate
+    BoutReal fpp = 0.25 * (f[ind] + f[kp] + f[ind.xp()] +
+			   f[kp.xp()]);
+    BoutReal fpm = 0.25 * (f[ind] + f[ind.xp()] + f[km] +
+			   f[km.xp()]);
+
+    // 2) Calculate velocities on cell faces
+
+    BoutReal vU = 0.5 * (coord->J[ind] + coord->J[kp]) * (fmp - fpp) /
+      coord->dx[ind]; // -J*df/dx
+    BoutReal vD = 0.5 * (coord->J[ind] + coord->J[km]) * (fmm - fpm) /
+      coord->dx[ind]; // -J*df/dx
+
+    BoutReal vR = 0.5 * (coord->J[ind] + coord->J[ind.xp()]) * (fpp - fpm) /
+      coord->dz[ind]; // J*df/dz
+    BoutReal vL = 0.5 * (coord->J[ind] + coord->J[ind.xm()]) * (fmp - fmm) /
+      coord->dz[ind]; // J*df/dz
+
+    // output.write("NEW: (%d,%d,%d) : (%e/%e, %e/%e)\n", i,j,k,vL,vR,
+    // vU,vD);
+
+    // 3) Calculate n on the cell faces. The sign of the
+    //    velocity determines which side is used.
+
+    // X direction
+    Stencil1D s;
+    s.c = n[ind];
+    s.m = n[ind.xm()];
+    s.p = n[ind.xp()];
+#if CHECK > 1
+    s.pp = s.mm = BoutNaN;
+#endif
+
+    MC(s);
+
+    // Right side
+    if ((mesh->lastX()) && (ind.x() == mesh->xend)) {
+      // At right boundary in X
+
+      if (bndry_flux) {
+	BoutReal flux;
+	if (vR > 0.0) {
+	  // Flux to boundary
+          flux = vR * s.R ;
+        } else {
+          // Flux in from boundary
+          flux = vR * 0.5 * (n[ind.xp()] + n[ind]) ;
+        }
+        result[ind] += flux / (coord->dx[ind] * coord->J[ind]);
+        result[ind.xp()] -=
+	  flux / (coord->dx[ind.xp()] * coord->J[ind.xp()]);
+      }
+    } else {
+      // Not at a boundary
+      if (vR > 0.0) {
+	// Flux out into next cell
+        BoutReal flux = vR * s.R ;
+        result[ind] += flux / (coord->dx[ind] * coord->J[ind]);
+        result[ind.xp()] -= flux / (coord->dx[ind.xp()] * coord->J[ind.xp()]);
+      }
+    }
+
+    // Left side
+
+    if ((mesh->firstX()) && (ind.x() == mesh->xstart)) {
+      // At left boundary in X
+
+      if (bndry_flux) {
+	BoutReal flux;
+
+	if (vL < 0.0) {
+	  // Flux to boundary
+	  flux = vL * s.L;
+	} else {
+	  // Flux in from boundary
+	  flux = vL * 0.5 * (n[ind.xm()] + n[ind]);
+	}
+
+        result[ind] -= flux / (coord->dx[ind] * coord->J[ind]);
+        result[ind.xm()] += flux / (coord->dx[ind.xm()] * coord->J[ind.xm()]);
+      }
+    } else {
+      // Not at a boundary
+
+      if (vL < 0.0) {
+        const BoutReal flux = vL * s.L ;
+        result[ind] -= flux / (coord->dx[ind] * coord->J[ind]);
+        result[ind.xm()] += flux / (coord->dx[ind.xm()] * coord->J[ind.xm()]);
+      }
+    }
+
+    /// NOTE: Need to communicate fluxes
+
+    // Z direction
+    s.m = n[km];
+    s.p = n[kp];
+#if CHECK > 1
+    s.pp = s.mm = BoutNaN;
+#endif
+
+    // Upwind(s, coord->dz);
+    // XPPM(s, coord->dz);
+    // Fromm(s, coord->dz);
+    MC(s);
+
+    if (vU > 0.0) {
+      BoutReal flux = vU * s.R ; 
+      result[ind] += flux / (coord->J[ind] * coord->dz[ind]);
+      result[kp] -= flux / (coord->J[kp] * coord->dz[kp]);
+    }
+    if (vD < 0.0) {
+      BoutReal flux = vD * s.L ; 
+      result[ind] -= flux / (coord->J[ind] * coord->dz[ind]);
+      result[km] += flux  / (coord->J[km] * coord->dz[km]);
+    }
+  }
+  FV::communicateFluxes(result);
+
+  //////////////////////////////////////////
+  // X-Y advection.
+  //
+  //
+  //  This code does not deal with corners correctly. This may or may not be
+  //  important.
+  //
+  // 1/J d/dx ( J n (g^xx g^yz / B^2) df/dy) - 1/J d/dy( J n (g^xx g^yz / B^2)
+  // df/dx )
+  //
+  // Interpolating stream function f_in onto corners fmm, fmp, fpp, fpm
+  // is complicated because the corner point in X-Y is not communicated
+  // and at an X-point it is shared with 8 cells, rather than 4
+  // (being at the X-point itself)
+  // Corners also need to be shifted to the correct toroidal angle
+  ASSERT1(! poloidal)
+  
+  return result;
+}
 
 
 
@@ -228,7 +462,8 @@ private:
   std::unique_ptr<Laplacian> phiSolver{nullptr};
   Field3D phi_solution;
   Field3D xl,yl,zl;
-  
+  Field3D phi_boundary;
+  bool U_ExB,U_Delp2,U_gradpar;
   
 protected:
   int init(bool UNUSED(restart)) override {
@@ -245,12 +480,18 @@ protected:
     OPTION(optMHD,evolve_U,false);
     OPTION(optMHD,evolve_Apar,false);
 
+    OPTION(optMHD,U_ExB,false);
+    OPTION(optMHD,U_Delp2,false);
+    OPTION(optMHD,U_gradpar,false);
+    
+
+    
     xl = opt["xl"].withDefault(Field3D{0.0});
     yl = opt["yl"].withDefault(Field3D{0.0});
     zl = opt["zl"].withDefault(Field3D{0.0});
     SAVE_ONCE(xl,yl,zl);
-
-    
+    phi_boundary = 0.0;
+    SAVE_REPEAT(phi_boundary);
     TRACE("SET VARIABLES");
     U = 0.0;
     Apar = 0.0;
@@ -258,7 +499,7 @@ protected:
     phi = 0.0;
     mesh->communicate(Apar,Jpar,phi,U);    
     SOLVE_FOR( U , Apar );
-    SAVE_REPEAT( Jpar , phi );
+    SAVE_REPEAT( Jpar , phi ,phi_solution);
 
 
     TRACE("SET PHI SOLVER");
@@ -267,28 +508,57 @@ protected:
     return 0;
   }
   
-  int rhs(BoutReal UNUSED(time)) override {
+  int rhs(BoutReal t) override {
 
-    phi_solution = 0.75*cos(0.8 - 2*yl)*sin(0.3 - 0.5*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.3 - 8*zl);
+    phi_solution = 0.05*cos(0.8 - 2*yl)*sin(0.3 - 0.2*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.3 - zl);
     
     mesh->communicate(U,Apar,phi_solution);
 
 
-    TRACE("CALCULATE POTENTIAL");
-    phi = phiSolver->solve(Bxy*U,phi);
+    // SET BOUNDARIES FOR POTENTIAL AT THE CELL FACES
+    phi_boundary = phi_solution;
     
+    if (mesh->firstX()) {
+      for (int j = mesh->ystart; j <= mesh->yend; j++) {
+	for (int k = 0; k < mesh->LocalNz; k++) {
+	  phi_boundary(mesh->xstart - 1, j, k) = 0.5*(phi_solution(mesh->xstart - 1, j, k) + phi_solution(mesh->xstart, j, k));	  
+	}
+      }
+    }
 
+    if (mesh->lastX()) {
+      for (int j = mesh->ystart; j <= mesh->yend; j++) {
+	for (int k = 0; k < mesh->LocalNz; k++) {
+ 	  phi_boundary(mesh->xend + 1, j, k) = 0.5*(phi_solution(mesh->xend + 1, j, k) + phi_solution(mesh->xend, j, k));
+
+	}
+      }
+    }
+
+    TRACE("CALCULATE POTENTIAL");
+    phi = phiSolver->solve(Bxy*U,phi_boundary);
+    mesh->communicate(phi);
+
+
+    TRACE("Calculate parallel current");
+    
+    Jpar = -new_Delp2(Apar);
+    mesh->communicate(Jpar);
+    
     
     ddt(U) = 0.0;
 
     TRACE("U time evolution");
     if (evolve_U){
-
-      ddt(U) += SQ(Bxy) * Grad_par(div_all(Jpar,Bxy));
-
-      ddt(U) -= bracket(phi,U,BRACKET_ARAKAWA);
-
-      if (mu>0.0){
+      if (U_gradpar){
+	ddt(U) += SQ(Bxy) * Div_par(div_all(Jpar,Bxy));
+      }
+      if (U_ExB){
+	ddt(U) -= bracket(phi,U,BRACKET_ARAKAWA);
+	//ddt(U) -= Div_n_bxGrad_f_B_XPPM(U, phi, true, false,false);
+      }
+      
+      if (U_Delp2){
 	ddt(U) += mu * new_Delp2(U);
       }
 
