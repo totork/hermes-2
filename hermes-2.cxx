@@ -843,8 +843,8 @@ int Hermes::init(bool restarting) {
   *_FCIDiv_a_Grad_perp *= rho_s0;
 
 
-  SQSQ_g_11 = SQ_all(SQ_all(coord->g_11));
-  SQSQ_g_33 = SQ_all(SQ_all(coord->g_33));
+  SQSQ_g_11 = (SQ_all(coord->g_11));
+  SQSQ_g_33 = (SQ_all(coord->g_33));
 
   
   if (Options::root()["mesh:paralleltransform"]["type"].as<std::string>() == "fci") {
@@ -1323,7 +1323,7 @@ int Hermes::rhs(BoutReal t) {
   
 
   if (boussinesq) {
-    /*
+    
     if (mesh->firstX()) {
       for (int j = mesh->ystart; j <= mesh->yend; j++) {
 	for (int k = 0; k < mesh->LocalNz; k++) {
@@ -1331,7 +1331,7 @@ int Hermes::rhs(BoutReal t) {
 	}
       }
     }
-    */
+    
     
     if (mesh->lastX()) {
       for (int j = mesh->ystart; j <= mesh->yend; j++) {
@@ -1359,6 +1359,7 @@ int Hermes::rhs(BoutReal t) {
         
     // Hot ion term in vorticity
     debug_phibndry3d = phi_boundary3d;
+    phi.applyBoundary("neumann");
     mesh->communicate(phi);
     phi.applyParallelBoundary(parbc);
 
