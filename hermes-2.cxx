@@ -1188,12 +1188,6 @@ int Hermes::rhs(BoutReal t) {
   // Note: Parallel slices are not calculated because parallel derivatives
   // are calculated using field aligned quantities
 
-  Ne.applyBoundary();
-  NVi.applyBoundary();
-  Pe.applyBoundary();
-  Pi.applyBoundary();
-  Vort.applyBoundary();
-  VePsi.applyBoundary();
   mesh->communicate(EvolvingVars);
   Ne.applyParallelBoundary(parbc);
   Vort.applyParallelBoundary(parbc);
