@@ -892,15 +892,9 @@ int Hermes::init(bool restarting) {
     bout::checkPositive(coord->Bxy.yup(), "fyup", "RGN_YPAR_+1");
     bout::checkPositive(coord->Bxy.ydown(), "fdown", "RGN_YPAR_-1");
     logB = log(Bxyz);
-    logB.applyBoundary("neumann");
-    mesh->communicate(logB);
-    logB.applyParallelBoundary(parbc);
-    
+
     bracket_factor = sqrt(coord->g_22) / (coord->J * Bxyz);
-    bracket_factor.applyBoundary("neumann");
-    mesh->communicate(bracket_factor);
-    bracket_factor.applyParallelBoundary(parbc);
-    
+
     SAVE_ONCE(bracket_factor);
   }else{
     mesh->communicate(coord->Bxy);
@@ -1335,7 +1329,7 @@ int Hermes::rhs(BoutReal t) {
   
 
   if (boussinesq) {
-    
+    /*
     if (mesh->firstX()) {
       for (int j = mesh->ystart; j <= mesh->yend; j++) {
 	for (int k = 0; k < mesh->LocalNz; k++) {
@@ -1343,6 +1337,7 @@ int Hermes::rhs(BoutReal t) {
 	}
       }
     }
+    */
     
     if (mesh->lastX()) {
       for (int j = mesh->ystart; j <= mesh->yend; j++) {
@@ -1351,7 +1346,7 @@ int Hermes::rhs(BoutReal t) {
 	}
       }
     }
-    mesh->communicate(phi_boundary3d);
+
     ////////////////////////////////////////////
     // Boussinesq, non-split
     // Solve all components using X-Z solver
@@ -1420,11 +1415,14 @@ int Hermes::rhs(BoutReal t) {
 
   
   Jpar = sub_all(NVi,mul_all(Ne,Ve));
-
+  mesh->communicate(Jpar);
+  Jpar.applyParallelBoundary(parbc);
+  /*
   Jpar.applyBoundary("neumann");
   mesh->communicate(Jpar);
   Jpar.applyParallelBoundary(parbc);
-  
+  */
+
   //////////////////////////////////////////////////////////////
   // Sheath boundary conditions on Y up and Y down
   
@@ -1625,17 +1623,9 @@ int Hermes::rhs(BoutReal t) {
   }
 
 
-  kappa_epar.applyBoundary("neumann");
-  mesh->communicate(kappa_epar);
-  kappa_epar.applyParallelBoundary(parbc);
-  
-  
   // Ion parallel heat conduction
   kappa_ipar = mul_all(mul_all(mul_all(3.9, Ti), Ne), tau_i);
-  kappa_ipar.applyBoundary("neumann");
-  mesh->communicate(kappa_ipar);
-  kappa_ipar.applyParallelBoundary(parbc);
-
+  
 
   //////////////////////////////////////////////////////////////                                                                        
   TRACE("Calculating resistivity");
