@@ -1,19 +1,10 @@
 
-nout = 10
-timestep = 1e-10
+nout = 1000
+timestep = 1e-1
 
-
-TwistShift = false  # use twist-shift condition?
-ballooning = false  # ballooning transformation?
-shiftinitial = false
-ShiftWithoutTwist=false
-
-MYG=2
-MXG=2
 
 grid = "cor_islanddivertor_260_4_1024_6.0_1.0_0.8_0.4_0.1_0.875_0.0_0.0_0.0.fci.grid.nc"
 
-dump_format = nc
 
 [mesh]
 symmetricGlobalX = true
@@ -61,7 +52,7 @@ type = cvode
 #use_precon = true
 
 atol = 1.0e-12  # absolute tolerance
-rtol = 1.0e-8   # relative tolerance
+rtol = 1.0e-5   # relative tolerance
 mxstep = 1000000  # Maximum internal steps per output
 
 cvode_max_order = 2
@@ -79,7 +70,7 @@ ksptype = gmres # Linear iterative method
 pctype = hypre # Preconditioner. Direct "lu" or "ilu"; iterative "jacobi", "sor"
 
 atol=1e-12
-rtol = 1e-8
+rtol = 1e-5
 # Set package to perform factorisation for direct solves
 # "petsc" built-in solver only serial
 # "superlu", "superlu_dist", "mumps", "cusparse"
@@ -96,7 +87,7 @@ nonuniform = true   # NOTE: Necessary to avoid numerical instability
 [aparSolver]
 type = petsc
 
-rtol=1e-8
+rtol=1e-5
 atol=1e-12
 
 # ksptype = gmres   # Linear iterative method
@@ -109,8 +100,8 @@ atol=1e-12
 # factor_package = superlu_dist
 
 
-inner_boundary_flags = 0
-outer_boundary_flags = 0
+inner_boundary_flags = 2
+outer_boundary_flags = 2
 
 # all_terms = true
 # nonuniform = true
@@ -123,7 +114,7 @@ transform_from_field_aligned=False
 
 [Hermes]
 
-electromagnetic = false
+electromagnetic = true
 j_pol_pi = false
 j_pol_simplified = true
 boussinesq = true
@@ -135,6 +126,13 @@ evolve_te = true
 evolve_ti = true
 evolve_vort = true
 evolve_vepsi = true
+
+TE_Ne = true
+TE_NVi = true
+TE_Pe = true
+TE_Pi = true
+TE_Vort = true
+TE_VePsi = true
 
 
 verbose = true
@@ -153,17 +151,18 @@ anomalous_D = 0.1
 anomalous_nu = 0.1
 anomalous_chi = 0.1
 
-hyper_D = 1e-3
-hyper_nu = 1e-3
-hyper_chi = 1e-3
+hyper_D = 1e-10
+hyper_nu = 1e-20
+hyper_chi = 1e-10
 
-num_D = 1e-3
-num_nu = 1e-3
-num_chi = 1e-3
+num_D = 1e4
+num_nu = 1e4
+num_chi = 1e-10
 
 [Numerics]
 
-use_Div_n_bxGrad_f_B_XPPM = false
+
+use_Div_n_bxGrad_f_B_XPPM = true
 use_bracket = true
 
 ne_bndry_flux = false
@@ -176,6 +175,7 @@ eta_limit_alpha = -1
 
 resistivity_multiply = 1.0
 electron_weight = 1.0
+scale_ExB = 1.0
 
 
 [Sheath]
@@ -184,7 +184,7 @@ sheath_model = 0
 sheath_gamma_e = 6.0
 sheath_gamma_i = 3.5
 
-parallel_sheaths = 0.0
+parallel_sheaths = true
 sheath_allow_supersonic = true
 
 
@@ -195,7 +195,6 @@ sheath_allow_supersonic = true
 ########################################################################################
 
 [all]
-scale = 1.0
 
 bndry_all = neumann_o2
 bndry_xin = neumann_o2
@@ -206,6 +205,9 @@ bndry_par_all = parallel_neumann_o2
 
 
 [Ne] # Electron density
+bndry_xin = neumann
+bndry_xout =neumann
+bndry_par = parallel_neumann_o1
 scale = 1
 function = 2.0 - x
 source = 3e2*gauss(x, 0.24)
@@ -213,41 +215,47 @@ source = 3e2*gauss(x, 0.24)
 
 #Switches for terms
 
-Ne_ExB = false
-Ne_mag = false
-Ne_parflow = false
+Ne_ExB = true
+Ne_mag = true
+Ne_parflow = true
 Ne_collision = false
-Ne_anomalous = false
-Ne_sources = false
+Ne_anomalous = true
+Ne_sources = true
 Ne_hyper = false
-Ne_numdiff = false
+Ne_numdiff = true
 
 
 ########################################################################################
 
 
 [NVi]
-
+bndry_xin = neumann
+bndry_xout =neumann
+bndry_par = parallel_neumann_o1
 scale = 1
-function = 0.0
+function = 1e-2*sin(6*pi*x)*sin(12*z)*gauss(x,0.4)
 
 #Switches for terms
 
-NVi_ExB = false
-NVi_mag = false
-NVi_parflow = false
-NVi_parpressure = false
+NVi_ExB = true
+NVi_mag = true
+NVi_parflow = true
+NVi_parpressure = true
 NVi_parviscos = false
 NVi_collision = false
-NVi_anomalous = false
+NVi_anomalous = true
 NVi_hyper = false
-NVi_numdiff = false
+NVi_numdiff = true
 
 
 ########################################################################################
 
 
 [Pe]  # Electron pressure
+
+bndry_xin = neumann
+bndry_xout =neumann
+bndry_par_xin = parallel_neumann_o1
 scale = 1
 function = Ne:function + (2.0-x)*Ne:function
 source = 5.0*Ne:source
@@ -255,17 +263,17 @@ source = 5.0*Ne:source
 
 #Switches for terms
 
-Pe_ExB = false
-Pe_mag = false
-Pe_parflow = false
-Pe_conduction = false
-Pe_ohmic = false
-Pe_thermalforce = false
-Pe_thermalcurrent = false
+Pe_ExB = true
+Pe_mag = true
+Pe_parflow = true
+Pe_conduction = true
+Pe_ohmic = true
+Pe_thermalforce = true
+Pe_thermalcurrent = true
 Pe_collision = false
-Pe_anomalous = false
-Pe_sources = false
-Pe_energyexchange = false
+Pe_anomalous = true
+Pe_sources = true
+Pe_energyexchange = true
 Pe_hyper = false
 Pe_numdiff = false
 
@@ -274,6 +282,9 @@ Pe_numdiff = false
 
 
 [Pi]
+bndry_xin = neumann
+bndry_xout =neumann
+bndry_par = parallel_neumann_o1
 scale = 1
 function = Pe:function
 source = Pe:source
@@ -281,54 +292,59 @@ source = Pe:source
 
 #Switches for terms
 
-Pi_ExB = false
-Pi_mag = false
-Pi_parflow = false
-Pi_conduction = false
-Pi_diamagenergyexchange = false
-Pi_parviscousheat = false
+Pi_ExB = true
+Pi_mag = true
+Pi_parflow = true
+Pi_conduction = true
+Pi_diamagenergyexchange = true
+Pi_parviscousheat = true
 Pi_resistivedrift = false
 Pi_perpviscous = false
-Pi_sources = false
-Pi_hyper = false
+Pi_sources = true
+Pi_hyper =false
 Pi_numdiff = false
-Pi_anomalous = false
-Pi_energyexchange = false
+Pi_anomalous = true
+Pi_energyexchange = true
 
 ####################################################################################
 
 
 [Vort]
+bndry_xin = neumann
+bndry_xout =neumann
+bndry_par = parallel_neumann_o1
 scale=1.0
-function=1e-4*sin(14*pi*x)*sin(8*z)*gauss(x,0.4)
+function=1e-3*sin(14*pi*x)*sin(8*z)*gauss(x,0.4)
 
 
 #Switches for terms
 
-Vort_mag = false
-Vort_parcurrent = false
-Vort_polarcurrent = false
+Vort_mag = true
+Vort_parcurrent = true
+Vort_polarcurrent = true
 Vort_collision = false
 Vort_parviscous = false
-Vort_anomalous = false
+Vort_anomalous = true
 Vort_hyper = false
-Vort_numdiff = false
+Vort_numdiff = true
 
 ########################################################################################
 
 
 [VePsi] # Ve + 0.5*beta_e*mi_me*psi
+bndry_xin = neumann
+bndry_xout =neumann
+bndry_par = parallel_neumann_o1
 scale = 1
-bndry_xin = neumann_o2
-function = 0.0
+function = 1e-1*sin(14*pi*x)*sin(8*z)*gauss(x,0.4)
 
 #Switches for terms
 
-VePsi_parefield = false
-VePsi_parpressure = false
-VePsi_partemp = false
-VePsi_parcurrent = false
-VePsi_ExB = false
-VePsi_parflow = false
-VePsi_hyper = false
-VePsi_numdiff = false
+VePsi_parefield = true
+VePsi_parpressure = true
+VePsi_partemp = true
+VePsi_parcurrent = true
+VePsi_ExB = true
+VePsi_parflow = true
+VePsi_hyper = true
+VePsi_numdiff = true
