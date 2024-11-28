@@ -151,12 +151,12 @@ anomalous_D = 0.1
 anomalous_nu = 0.1
 anomalous_chi = 0.1
 
-hyper_D = 1e-10
-hyper_nu = 1e-20
-hyper_chi = 1e-10
+hyper_D = 1e-4
+hyper_nu = 1e-4
+hyper_chi = 1e-4
 
-num_D = 1e4
-num_nu = 1e4
+num_D = 1e-2
+num_nu = 1e-2
 num_chi = 1e-10
 
 [Numerics]
