@@ -651,8 +651,8 @@ int Hermes::init(bool restarting) {
   // Sheath switches
   
   OPTION(optsheath, sheath_model, 0);
-  OPTION(optsheath, sheath_gamma_e, 5.5);
-  OPTION(optsheath, sheath_gamma_i, 1.0);
+  OPTION(optsheath, sheath_gamma_e, 7.0);
+  OPTION(optsheath, sheath_gamma_i, 3.0);
 
   OPTION(optsheath, neutral_vwall, 1. / 3);  // 1/3rd Franck-Condon energy at wall
   OPTION(optsheath, sheath_yup, true);       // Apply sheath at yup?
@@ -671,23 +671,31 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, verbose, false);    // Save additional fields
   OPTION(optsc, output_ddt, false); // Save time derivatives
 
+  
   // Normalisation
   OPTION(optsc, Tnorm, 20);  // Reference temperature [eV]
   OPTION(optsc, Nnorm, 1e19); // Reference density [m^-3]
   OPTION(optsc, Bnorm, 1.0);  // Reference magnetic field [T]
   OPTION(optsc, AA, 2.0); // Ion mass (2 = Deuterium)
+
+  
   output.write("Normalisation Te={:e}, Ne={:e}, B={:e}\n", Tnorm, Nnorm, Bnorm);
   SAVE_ONCE(Tnorm, Nnorm, Bnorm, AA); // Save
+
   Cs0 = sqrt(qe * Tnorm / (AA * Mp)); // Reference sound speed [m/s]
   Omega_ci = qe * Bnorm / (AA * Mp);  // Ion cyclotron frequency [1/s]
   rho_s0 = Cs0 / Omega_ci;
+
   mi_me = AA * Mp / (electron_weight * Me);
   me_mi = (electron_weight * Me) / (AA * Mp);
   beta_e = qe * Tnorm * Nnorm / (SQ(Bnorm) / (2. * SI::mu0));
+
   output.write("\tmi_me={}, beta_e={}\n", mi_me, beta_e);
   SAVE_ONCE(mi_me, beta_e, me_mi);
+  
   output.write("\t Cs={:e}, rho_s={:e}, Omega_ci={:e}\n", Cs0, rho_s0, Omega_ci);
   SAVE_ONCE(Cs0, rho_s0, Omega_ci);
+  
   // Collision times
   BoutReal lambda_ei = 24. - log(sqrt(Nnorm / 1e6) / Tnorm);
   BoutReal lambda_ii = 23. - log(sqrt(2. * Nnorm / 1e6) / pow(Tnorm, 1.5));
@@ -833,6 +841,7 @@ int Hermes::init(bool restarting) {
 
   _FCIDiv_a_Grad_perp = std::make_unique<FCI::dagp_fv>(*mesh);
   *_FCIDiv_a_Grad_perp *= rho_s0;
+
 
   if (Options::root()["mesh:paralleltransform"]["type"].as<std::string>() == "fci") {
     fci_transform = true;
@@ -1302,12 +1311,11 @@ int Hermes::rhs(BoutReal t) {
  
   TRACE("Electrostatic potential");
   Field3D phi_boundary3d;
-  phi_boundary3d = 3.0 * Te;
+  phi_boundary3d = phi;
   
 
-    
   if (boussinesq) {
-		
+    /*	
     if (mesh->firstX()) {
       for (int j = mesh->ystart; j <= mesh->yend; j++) {
 	for (int k = 0; k < mesh->LocalNz; k++) {
@@ -1323,16 +1331,11 @@ int Hermes::rhs(BoutReal t) {
 	}
       }
     }
-
+    */
     if (mesh->lastX()) {
       for (int j = mesh->ystart; j <= mesh->yend; j++) {
 	for (int k = 0; k < mesh->LocalNz; k++) {
-	  phi_boundary3d(mesh->xend + 1, j, k) =
-	    0.5
-	    * (phi_boundary3d(mesh->xend + 1, j, k) +
-	       phi_boundary3d(mesh->xend, j, k) +
-	       Pi(mesh->xend + 1, j, k) +
-	       Pi(mesh->xend, j, k));
+	  phi_boundary3d(mesh->xend + 1, j, k) = 0.5 * ( 3.0*( Te(mesh->xend + 1, j, k) + Te(mesh->xend, j, k) ) + Pi(mesh->xend + 1, j, k) + Pi(mesh->xend, j, k) );
 	}
       }
     }
@@ -1389,7 +1392,7 @@ int Hermes::rhs(BoutReal t) {
       Ve = VePsi - 0.5 * beta_e * mi_me * psi + Vi;
 	
       Ve.applyBoundary(t);
-      mesh->communicate(Ve, psi);
+      mesh->communicate(Ve);
       Ve.applyParallelBoundary(parbc);
       
     } else {
@@ -1402,7 +1405,7 @@ int Hermes::rhs(BoutReal t) {
     // No psi contribution to VePsi
     Ve = add_all(VePsi , Vi);
   }
-
+  
   Jpar = sub_all(NVi,mul_all(Ne,Ve));
   mesh->communicate(Jpar);
   Jpar.applyParallelBoundary(parbc);
@@ -1507,6 +1510,7 @@ int Hermes::rhs(BoutReal t) {
             // 1. * nesheath * visheath;// - NVi(x, y, z);
         }
       }// End sheath loop
+      /*
       // Set inner to neumann for all variables
       for (const auto &bndry_par :
            mesh->getBoundariesPar(BoundaryParType::xin)) {
@@ -1523,7 +1527,7 @@ int Hermes::rhs(BoutReal t) {
 	  VePsi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = VePsi(x,y,z);
 	}
       }// End set inner
-
+      */
       
       break;
     }
@@ -1610,18 +1614,6 @@ int Hermes::rhs(BoutReal t) {
   kappa_ipar = mul_all(mul_all(mul_all(3.9, Ti), Ne), tau_i);
 
   
-  
-  if(floor_kappa_epar>0.0){
-    BOUT_FOR(i, Te.getRegion("RGN_ALL")){
-      floor_all(kappa_epar,floor_kappa_epar,i);
-    } 
-  }
-
-  if(floor_kappa_ipar>0.0){
-    BOUT_FOR(i, Te.getRegion("RGN_ALL")){
-      floor_all(kappa_ipar,floor_kappa_ipar,i);
-    }
-  }
 
 
   //////////////////////////////////////////////////////////////                                                                        
@@ -1648,7 +1640,7 @@ int Hermes::rhs(BoutReal t) {
     TRACE("Density");
 
     
-    if (Ne_ExB){
+    if (Ne_ExB){// Row 1 Term 1
       TRACE("Density ExB");
       
       if (use_Div_n_bxGrad_f_B_XPPM){
@@ -1660,14 +1652,14 @@ int Hermes::rhs(BoutReal t) {
     }  // End Ne_ExB
 
     
-    if (Ne_mag){
+    if (Ne_mag){// Row 1 Term 2
       TRACE("Density mag");
-      TE_Ne_mag = -fci_curvature(Pe , use_bracket);
+      TE_Ne_mag = fci_curvature(Pe , use_bracket);
       ddt(Ne) += TE_Ne_mag;
     }  // End Ne_mag
 
 
-    if (Ne_parflow){
+    if (Ne_parflow){// Row 2 
       TRACE("Density parflow");
       Field3D neve = mul_all(Ne,Ve);
       TE_Ne_parflow = -Div_par(neve);
@@ -1675,20 +1667,20 @@ int Hermes::rhs(BoutReal t) {
     }  // End Ne_parflow
 
     
-    if (Ne_collision){
+    if (Ne_collision){// Row 3
       TRACE("Density collisions");
       throw BoutException("Density collisions not implemented");
     }  // End Ne_collision
 
     
-    if (Ne_anomalous){
+    if (Ne_anomalous){// Row 4 
       TRACE("Density anomalous");
       TE_Ne_anomalous = FCIDiv_a_Grad_perp(a_d3d, Ne);
       ddt(Ne) += TE_Ne_anomalous;
     }  // End Ne_anomalous
 
     
-    if (Ne_sources){
+    if (Ne_sources){//Row 5 Term 2
       TRACE("Density sources");
       TE_Ne_sources=NeSource;
       ddt(Ne) += TE_Ne_sources;
@@ -1725,14 +1717,14 @@ int Hermes::rhs(BoutReal t) {
   if (evolve_vort){
     TRACE("Vorticity");
     
-    if(Vort_mag){
+    if(Vort_mag){// Row 1 
       TRACE("Vort_mag");
       TE_Vort_mag = fci_curvature(add_all(Pi , Pe),use_bracket);
       ddt(Vort) += TE_Vort_mag;
     } //End Vort_mag
 
     
-    if(Vort_parcurrent){
+    if(Vort_parcurrent){// Row 2
       TRACE("Vort_parcurrent");
       TE_Vort_parcurrent = Div_par(Jpar);
       ddt(Vort) += TE_Vort_parcurrent;
@@ -1749,7 +1741,7 @@ int Hermes::rhs(BoutReal t) {
 
 	  throw BoutException("j_pol_pi not implemented!");
 
-	}else if (j_pol_simplified) {
+	}else if (j_pol_simplified) {// Row 3 Term 2
 	  // use simplified polarization term from i.e. GBS                                                                                             
 	  if (use_Div_n_bxGrad_f_B_XPPM){
 
@@ -1775,7 +1767,7 @@ int Hermes::rhs(BoutReal t) {
     } //End Vort_polarcurrent
 
     
-    if (Vort_anomalous){
+    if (Vort_anomalous){//Row 6 
       TE_Vort_anomalous = FCIDiv_a_Grad_perp(a_nu3d, Vort);
       ddt(Vort) += TE_Vort_anomalous;
     } // End Vort_anomalous
@@ -1811,31 +1803,31 @@ int Hermes::rhs(BoutReal t) {
   if (evolve_vepsi){
     TRACE("Ohm's law");
     
-    if (VePsi_parefield){
+    if (VePsi_parefield){//Row 1 Term 1
       TE_VePsi_parefield = mi_me * Grad_par(phi);
       ddt(VePsi) += TE_VePsi_parefield;
     } //End VePsi_parefield
 
     
-    if (VePsi_parpressure){
+    if (VePsi_parpressure){//Row 1 Term 2
       TE_VePsi_parpressure = -mi_me * Grad_par(Pe) / Ne;
       ddt(VePsi) += TE_VePsi_parpressure;
     } //End VePsi_parpressure
 
 
-    if (VePsi_partemp){
+    if (VePsi_partemp){//Row 1 Term 3
       TE_VePsi_partemp = -mi_me * 0.71 * Grad_par(Te);
       ddt(VePsi) += TE_VePsi_partemp;
     } //End VePsi_partemp
 
     
-    if (VePsi_parcurrent){
+    if (VePsi_parcurrent){//Row 2
       TE_VePsi_parcurrent = mi_me * nu * (Vi - Ve);
       ddt(VePsi) += TE_VePsi_parcurrent;
     } //End VePsi_parcurrent
 
 
-    if (VePsi_ExB){
+    if (VePsi_ExB){//Row 3 Term 1
       if(use_Div_n_bxGrad_f_B_XPPM){
 	TE_VePsi_ExB = -Div_n_bxGrad_f_B_XPPM(Ve-Vi, phi, false,poloidal_flows , false, bracket_factor) * scale_ExB;
       } else {
@@ -1845,7 +1837,7 @@ int Hermes::rhs(BoutReal t) {
     } // End VePsi_ExB
 
     
-    if (VePsi_parflow){
+    if (VePsi_parflow){//Row 3 Term 2
       TE_VePsi_parflow = -Vi * Div_par(sub_all(Ve,Vi));
       ddt(VePsi) += TE_VePsi_parflow;
     } // End VePsi_parflow
@@ -1891,7 +1883,7 @@ int Hermes::rhs(BoutReal t) {
   if (evolve_nvi){
 
     
-    if (NVi_ExB){
+    if (NVi_ExB){//Row 1 Term 1
       if (use_Div_n_bxGrad_f_B_XPPM){
         TE_NVi_ExB = -Div_n_bxGrad_f_B_XPPM(NVi, phi, ne_bndry_flux , poloidal_flows , false , bracket_factor) * scale_ExB;
       } else {
@@ -1901,27 +1893,27 @@ int Hermes::rhs(BoutReal t) {
     } // End NVi_ExB
 
 
-    if (NVi_mag){
+    if (NVi_mag){//Row 1 Term 3
       TE_NVi_mag = -fci_curvature(mul_all(NVi , Ti),use_bracket);
       ddt(NVi) += TE_NVi_mag;
     } // End NVi_mag
 
 
-    if (NVi_parflow){
+    if (NVi_parflow){//Row 1 Term 2
       auto nvivi = mul_all(NVi,Vi);
       TE_NVi_parflow = -Div_par(nvivi);
       ddt(NVi) += TE_NVi_parflow;
     } // End NVi_parflow
 
     
-    if (NVi_parpressure){
+    if (NVi_parpressure){//Row 2
       Field3D peppi = add_all(Pe, Pi);
       TE_NVi_parpressure = -Grad_parP(peppi);
       ddt(NVi) += TE_NVi_parpressure;
     } // End NVi_parpressure
 
 
-    if (NVi_parviscos){
+    if (NVi_parviscos){//Row 3
       auto tmp = Div_par_K_Grad_par(div_all(mul_all(Pi,tau_i),coord->Bxy),mul_all(B12,Vi));
       TE_NVi_parviscos = 1.28*B12*tmp;
       ddt(NVi) += TE_NVi_parviscos;
@@ -1933,7 +1925,7 @@ int Hermes::rhs(BoutReal t) {
     }
 
     
-    if (NVi_anomalous){
+    if (NVi_anomalous){//Row 5
       TE_NVi_anomalous = FCIDiv_a_Grad_perp(mul_all(Vi, a_d3d), Ne);
       TE_NVi_anomalous += FCIDiv_a_Grad_perp(mul_all(Ne, a_nu3d), Vi);
       ddt(NVi) += TE_NVi_anomalous;
@@ -1971,7 +1963,7 @@ int Hermes::rhs(BoutReal t) {
     TRACE("Electron pressure");
 
     
-    if (Pe_ExB){
+    if (Pe_ExB){//Row 1 Term 1
       TRACE("Pe_ExB");
       if (use_Div_n_bxGrad_f_B_XPPM){
 	TE_Pe_ExB = -Div_n_bxGrad_f_B_XPPM(Pe, phi, pe_bndry_flux, poloidal_flows, true , bracket_factor) * scale_ExB;
@@ -1982,7 +1974,7 @@ int Hermes::rhs(BoutReal t) {
     } // End Pe_ExB
 
 
-    if (Pe_mag){
+    if (Pe_mag){//Row 1 Term 1 and Term 3
       TRACE("Pe_mag");
       TE_Pe_mag = (5. / 3) * fci_curvature(mul_all(Pe , Te),use_bracket);
       TE_Pe_mag += -(2. / 3) * Pe * fci_curvature(phi,use_bracket);
@@ -1990,7 +1982,7 @@ int Hermes::rhs(BoutReal t) {
     } // End Pe_mag
 
 
-    if (Pe_parflow){
+    if (Pe_parflow){//Row 2 
       // Parallel flow plus compression
       TRACE("Pe_parflow + compression");
       Field3D peve = mul_all(Pe,Ve);
@@ -1999,27 +1991,27 @@ int Hermes::rhs(BoutReal t) {
     } // End Pe_parflow
 
 
-    if (Pe_conduction){
+    if (Pe_conduction){//Row 3
       TRACE("Pe_conduction");
       TE_Pe_conduction = (2. / 3) * Div_par_K_Grad_par(kappa_epar, Te);
       ddt(Pe) += TE_Pe_conduction;
     } // End Pe_conduction
 
 
-    if (Pe_ohmic){
+    if (Pe_ohmic){//Row 4 Term 3
       TRACE("Pe_ohmic");
       TE_Pe_ohmic = nu * Jpar * (Jpar) / Ne;
       ddt(Pe) += TE_Pe_ohmic;
     } // End Pe_ohmic
 
 
-    if (Pe_thermalforce){
+    if (Pe_thermalforce){//Row 4 Term 2
       TE_Pe_thermalforce = -(2. / 3) * 0.71 * Jpar * Grad_parP(Te);
       ddt(Pe) += TE_Pe_thermalforce;
     } // End Pe_thermalforce
 
 
-    if (Pe_thermalcurrent){
+    if (Pe_thermalcurrent){//Row 4 Term 1
       Field3D tejpar = mul_all(Te,Jpar);
       TE_Pe_thermalcurrent = (2. / 3) * 0.71 * Div_parP(tejpar);
       ddt(Pe) += TE_Pe_thermalcurrent;
@@ -2031,21 +2023,21 @@ int Hermes::rhs(BoutReal t) {
     } //End Pe_collision
 
 
-    if (Pe_anomalous){
+    if (Pe_anomalous){//Row 6
       TRACE("Pe anomalous transport");
       TE_Pe_anomalous = FCIDiv_a_Grad_perp(mul_all(a_d3d, Te), Ne) + (2. / 3) * FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Te);
       ddt(Pe) += TE_Pe_anomalous;
     } // End Pe_anomalous
 
 
-    if (Pe_energyexchange){
+    if (Pe_energyexchange){//Row 7 Term 3
       TRACE("Pe energy exchange");
       TE_Pe_energyexchange = -(2. / 3) * Wi;
       ddt(Pe) += TE_Pe_energyexchange;
     } // End Pe_energyexchange
 
 
-    if (Pe_sources){
+    if (Pe_sources){//Row 7 Term 1
       TRACE("Pe sources");
       TE_Pe_sources = PeSource;
       ddt(Pe) += TE_Pe_sources;
@@ -2134,7 +2126,7 @@ int Hermes::rhs(BoutReal t) {
     TRACE("Ion pressure");
 
 
-    if (Pi_ExB){
+    if (Pi_ExB){//Row 1 Term 1 and Term 3
       TRACE("Pi ExB");
       if (use_Div_n_bxGrad_f_B_XPPM){
 	TE_Pi_ExB = -Div_n_bxGrad_f_B_XPPM(Pi, phi, pe_bndry_flux, poloidal_flows, true , bracket_factor) * scale_ExB;
@@ -2146,14 +2138,14 @@ int Hermes::rhs(BoutReal t) {
     } //End Pi_ExB
 
 
-    if (Pi_mag){
+    if (Pi_mag){//Row 1 Term 2
       TRACE("Pi magnetic drift");
       TE_Pi_mag = -(5. / 3) * fci_curvature(mul_all(Pi , Ti),use_bracket);         // Actual diamag drift, 1st row in manual
       ddt(Pi) += TE_Pi_mag;
     } //End Pi_mag
 
 
-    if (Pi_parflow){
+    if (Pi_parflow){//Row 2 Term 1 and Term 2
       TRACE("Pi parflow");
       Field3D pivi = mul_all(Pi,Vi);
       TE_Pi_parflow = -Div_parP(pivi);
@@ -2162,7 +2154,7 @@ int Hermes::rhs(BoutReal t) {
     } // End Pi_parflow
 
 
-    if (Pi_diamagenergyexchange){
+    if (Pi_diamagenergyexchange){//Row 3 Term 1 and Term 2
       TRACE("Pi energy exchange with diamag flows");
       TE_Pi_diamagenergyexchange = -(2. / 3) * Jpar * Grad_parP(Pi);
       TE_Pi_diamagenergyexchange += Pi * fci_curvature(Pi + Pe,use_bracket);
@@ -2170,7 +2162,7 @@ int Hermes::rhs(BoutReal t) {
     } // End Pi_diamagenergyexchange
     
 
-    if (Pi_conduction){
+    if (Pi_conduction){//Row 5 Term 1
       TRACE("Pi thermal conduction");
       TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par(kappa_ipar, Ti);
       ddt(Pi) = TE_Pi_conduction;
@@ -2187,7 +2179,7 @@ int Hermes::rhs(BoutReal t) {
     } // End Pi_perpviscous
 
 
-    if (Pi_sources){
+    if (Pi_sources){//Row 8 Term 1
       TE_Pi_sources = PiSource;
       ddt(Pi) += TE_Pi_sources;
     } // End Pi_sources
@@ -2200,7 +2192,7 @@ int Hermes::rhs(BoutReal t) {
     } // End Pi_anomalous
 
 
-    if (Pi_energyexchange){
+    if (Pi_energyexchange){//Row 8 Term 3
       TE_Pi_energyexchange = (2. / 3) * Wi;
       ddt(Pi) += TE_Pi_energyexchange;
     } // End Pi_energyexchange
