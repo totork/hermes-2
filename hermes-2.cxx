@@ -843,6 +843,10 @@ int Hermes::init(bool restarting) {
   *_FCIDiv_a_Grad_perp *= rho_s0;
 
 
+  SQSQ_g_11 = SQ_all(SQ_all(coord->g_11));
+  SQSQ_g_33 = SQ_all(SQ_all(coord->g_33));
+
+  
   if (Options::root()["mesh:paralleltransform"]["type"].as<std::string>() == "fci") {
     fci_transform = true;
   }else{
@@ -1135,6 +1139,8 @@ int Hermes::init(bool restarting) {
   
   // Magnetic field in boundary
   auto& Bxy = mesh->getCoordinates()->Bxy;
+
+
   
   opt["Pn"].setConditionallyUsed();
   opt["Nn"].setConditionallyUsed();
@@ -2296,7 +2302,7 @@ Field3D Hermes::fci_curvature(const Field3D &f, const bool &bool_bracket) {
 
 
 Field3D Hermes::hyperdissipation(const Field3D &a, const Field3D &b) {
-  return -a * (D4DX4(b) + D4DZ4(b));
+  return -a * (D4DX4(b)/SQSQ_g_11 + D4DZ4(b)/SQSQ_g_33);
 }
 
 Field3D Hermes::numericaldissipation(const Field3D &a, const Field3D &b) {
