@@ -892,8 +892,15 @@ int Hermes::init(bool restarting) {
     bout::checkPositive(coord->Bxy.yup(), "fyup", "RGN_YPAR_+1");
     bout::checkPositive(coord->Bxy.ydown(), "fdown", "RGN_YPAR_-1");
     logB = log(Bxyz);
-
+    logB.applyBoundary("neumann");
+    mesh->communicate(logB);
+    logB.applyParallelBoundary(parbc);
+    
     bracket_factor = sqrt(coord->g_22) / (coord->J * Bxyz);
+    bracket_factor.applyBoundary("neumann");
+    mesh->communicate(bracket_factor);
+    bracket_factor.applyParallelBoundary(parbc);
+    
     SAVE_ONCE(bracket_factor);
   }else{
     mesh->communicate(coord->Bxy);
@@ -1186,19 +1193,26 @@ int Hermes::rhs(BoutReal t) {
   // Communicate evolving variables
   // Note: Parallel slices are not calculated because parallel derivatives
   // are calculated using field aligned quantities
+
+  Ne.applyBoundary();
+  NVi.applyBoundary();
+  Pe.applyBoundary();
+  Pi.applyBoundary();
+  Vort.applyBoundary();
+  VePsi.applyBoundary();
   mesh->communicate(EvolvingVars);
-  Ne.applyParallelBoundary();
-  Vort.applyParallelBoundary();
+  Ne.applyParallelBoundary(parbc);
+  Vort.applyParallelBoundary(parbc);
   if (evolve_te){
-    Pe.applyParallelBoundary();
+    Pe.applyParallelBoundary(parbc);
   }
   if (evolve_ti){
-    Pi.applyParallelBoundary();
+    Pi.applyParallelBoundary(parbc);
   }
-  NVi.applyParallelBoundary();
+  NVi.applyParallelBoundary(parbc);
   
   if (evolve_vepsi){
-    VePsi.applyParallelBoundary();
+    VePsi.applyParallelBoundary(parbc);
   }
 
   Field3D sound_speed;
@@ -1321,23 +1335,15 @@ int Hermes::rhs(BoutReal t) {
   
 
   if (boussinesq) {
-    /*	
+    
     if (mesh->firstX()) {
       for (int j = mesh->ystart; j <= mesh->yend; j++) {
 	for (int k = 0; k < mesh->LocalNz; k++) {
-	  // Average phi + Pi at the boundary, and set the boundary cell
-	  // to this value. The phi solver will then put the value back
-	  // onto the cell mid-point
-	  phi_boundary3d(mesh->xstart - 1, j, k) =
-	    0.5
-	    * (phi_boundary3d(mesh->xstart - 1, j, k) +
-	       phi_boundary3d(mesh->xstart, j, k) +
-	       Pi(mesh->xstart - 1, j, k) +
-	       Pi(mesh->xstart, j, k));
+	  phi_boundary3d(mesh->xstart - 1, j, k) = 0.5 * ( 3.0*(Te(mesh->xstart - 1, j, k) + Te(mesh->xstart, j, k)) + Pi(mesh->xstart - 1, j, k) + Pi(mesh->xstart, j, k));
 	}
       }
     }
-    */
+    
     if (mesh->lastX()) {
       for (int j = mesh->ystart; j <= mesh->yend; j++) {
 	for (int k = 0; k < mesh->LocalNz; k++) {
@@ -1345,7 +1351,7 @@ int Hermes::rhs(BoutReal t) {
 	}
       }
     }
-        
+    mesh->communicate(phi_boundary3d);
     ////////////////////////////////////////////
     // Boussinesq, non-split
     // Solve all components using X-Z solver
@@ -1411,11 +1417,13 @@ int Hermes::rhs(BoutReal t) {
     // No psi contribution to VePsi
     Ve = add_all(VePsi , Vi);
   }
+
   
   Jpar = sub_all(NVi,mul_all(Ne,Ve));
+
+  Jpar.applyBoundary("neumann");
   mesh->communicate(Jpar);
   Jpar.applyParallelBoundary(parbc);
-    
   
   //////////////////////////////////////////////////////////////
   // Sheath boundary conditions on Y up and Y down
@@ -1549,6 +1557,7 @@ int Hermes::rhs(BoutReal t) {
   }
 
 
+  
   //////////////////////////////////////////////////////////////
   // Plasma quantities calculated.
   // At this point we have calculated all boundary conditions,
@@ -1590,21 +1599,20 @@ int Hermes::rhs(BoutReal t) {
      * R.Schneider et al. Contrib. Plasma Phys. 46, No. 1-2, 3 – 191 (2006)
      * DOI 10.1002/ctpp.200610001
      */
-    kappa_epar.applyBoundary("neumann");
-    mesh->communicate(kappa_epar);
-    kappa_epar.applyParallelBoundary(parbc);
-      
-    Field3D gradTe = Grad_parP(Te);
+    
+    Field3D gradTe = Grad_par(Te);
+    
     gradTe.applyBoundary("neumann");
     mesh->communicate(gradTe);
-    gradTe.applyParallelBoundary(parbc);
-  
+    gradTe.applyParallelBoundary("parallel_neumann_o1");
+    
     Field3D q_SH = mul_all(kappa_epar,gradTe);      
     Field3D q_fl = mul_all(kappa_limit_alpha,mul_all(sqrt(mi_me),mul_all(Ne,Te32)));
     Field3D one;
     set_all(one, 1.0);
 
     Field3D denom = one + abs(div_all(q_SH,q_fl));
+
     denom.applyBoundary("neumann");
     mesh->communicate(denom);
     denom.applyParallelBoundary(parbc);
@@ -1616,10 +1624,17 @@ int Hermes::rhs(BoutReal t) {
     kappa_epar = div_all(kappa_epar,denom);
   }
 
+
+  kappa_epar.applyBoundary("neumann");
+  mesh->communicate(kappa_epar);
+  kappa_epar.applyParallelBoundary(parbc);
+  
+  
   // Ion parallel heat conduction
   kappa_ipar = mul_all(mul_all(mul_all(3.9, Ti), Ne), tau_i);
-
-  
+  kappa_ipar.applyBoundary("neumann");
+  mesh->communicate(kappa_ipar);
+  kappa_ipar.applyParallelBoundary(parbc);
 
 
   //////////////////////////////////////////////////////////////                                                                        
@@ -1632,6 +1647,23 @@ int Hermes::rhs(BoutReal t) {
 
   Wi = (3. / mi_me) * Ne * (Te - Ti) / tau_e;
 
+
+
+  // UP UNTIL NOW I NEED                                                                                                                                                                                          
+  // Jpar                                                                                                                                                                                                         
+  // Vi                                                                                                                                                                                                           
+  // Ve                                                                                                                                                                                                           
+  // Te                                                                                                                                                                                                           
+  // Ti
+  // kappa_epar
+  // kappa_ipar
+  // nu
+  // W
+  // tau_e
+  // tau_i
+
+
+  
   
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////                                                                                                                                                                
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////                                                                                                                                                                 
@@ -2163,7 +2195,7 @@ int Hermes::rhs(BoutReal t) {
     if (Pi_diamagenergyexchange){//Row 3 Term 1 and Term 2
       TRACE("Pi energy exchange with diamag flows");
       TE_Pi_diamagenergyexchange = -(2. / 3) * Jpar * Grad_parP(Pi);
-      TE_Pi_diamagenergyexchange += Pi * fci_curvature(Pi + Pe,use_bracket);
+      TE_Pi_diamagenergyexchange += Pi * fci_curvature(add_all(Pi , Pe),use_bracket);
       ddt(Pi) += TE_Pi_diamagenergyexchange;
     } // End Pi_diamagenergyexchange
     
