@@ -1188,6 +1188,14 @@ int Hermes::rhs(BoutReal t) {
   // Note: Parallel slices are not calculated because parallel derivatives
   // are calculated using field aligned quantities
 
+
+  Ne.applyBoundary("neumann");
+  NVi.applyBoundary("neumann");
+  Pe.applyBoundary("neumann");
+  Vort.applyBoundary("neumann");
+  Pi.applyBoundary("neumann");
+  VePsi.applyBoundary("neumann");
+  
   mesh->communicate(EvolvingVars);
   Ne.applyParallelBoundary(parbc);
   Vort.applyParallelBoundary(parbc);
@@ -2319,7 +2327,8 @@ Field3D Hermes::fci_curvature(const Field3D &f, const bool &bool_bracket) {
 
 
 Field3D Hermes::hyperdissipation(const Field3D &a, const Field3D &b) {
-  return -a * (D4DX4(b)/SQSQ_g_11 + D4DZ4(b)/SQSQ_g_33);
+  //return -a * (D4DX4(b)/SQSQ_g_11 + D4DZ4(b)/SQSQ_g_33);
+  return -a * (D4DZ4(b)/SQSQ_g_33);
 }
 
 Field3D Hermes::numericaldissipation(const Field3D &a, const Field3D &b) {
