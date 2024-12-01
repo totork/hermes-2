@@ -1327,7 +1327,7 @@ int Hermes::rhs(BoutReal t) {
  
   TRACE("Electrostatic potential");
   Field3D phi_boundary3d;
-  phi_boundary3d = phi;
+  phi_boundary3d = 0.0;
   
 
   if (boussinesq) {
@@ -1345,6 +1345,7 @@ int Hermes::rhs(BoutReal t) {
       for (int j = mesh->ystart; j <= mesh->yend; j++) {
 	for (int k = 0; k < mesh->LocalNz; k++) {
 	  phi_boundary3d(mesh->xend + 1, j, k) = 0.5 * ( 3.0*( Te(mesh->xend + 1, j, k) + Te(mesh->xend, j, k) ) + Pi(mesh->xend + 1, j, k) + Pi(mesh->xend, j, k) );
+
 	}
       }
     }
@@ -2024,7 +2025,11 @@ int Hermes::rhs(BoutReal t) {
 
     if (Pe_conduction){//Row 3
       TRACE("Pe_conduction");
-      TE_Pe_conduction = (2. / 3) * Div_par_K_Grad_par(kappa_epar, Te);
+      Field3D gradTe = Grad_par(Te);
+      mesh->communicate(gradTe);
+      gradTe.applyParallelBoundary(parbc);
+      TE_Pe_conduction = (2.0/3.0) * ( Div_par(kappa_epar)*gradTe + kappa_epar*Div_par(gradTe) );
+      //TE_Pe_conduction = (2. / 3) * Div_par_K_Grad_par(kappa_epar, Te);
       ddt(Pe) += TE_Pe_conduction;
     } // End Pe_conduction
 
@@ -2195,7 +2200,13 @@ int Hermes::rhs(BoutReal t) {
 
     if (Pi_conduction){//Row 5 Term 1
       TRACE("Pi thermal conduction");
-      TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par(kappa_ipar, Ti);
+
+      Field3D gradTi = Grad_par(Ti);
+      mesh->communicate(gradTi);
+      gradTi.applyParallelBoundary(parbc);
+      TE_Pi_conduction = (2.0/3.0) * ( Div_par(kappa_ipar)*gradTi + kappa_ipar*Div_par(gradTi) );
+
+      //TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par(kappa_ipar, Ti);
       ddt(Pi) = TE_Pi_conduction;
     } // End Pi_conduction 
 
@@ -2327,8 +2338,8 @@ Field3D Hermes::fci_curvature(const Field3D &f, const bool &bool_bracket) {
 
 
 Field3D Hermes::hyperdissipation(const Field3D &a, const Field3D &b) {
-  //return -a * (D4DX4(b)/SQSQ_g_11 + D4DZ4(b)/SQSQ_g_33);
-  return -a * (D4DZ4(b)/SQSQ_g_33);
+  return -a * (D4DX4(b)/SQSQ_g_11 + D4DZ4(b)/SQSQ_g_33);
+  //return -a * (D4DZ4(b)/SQSQ_g_33);
 }
 
 Field3D Hermes::numericaldissipation(const Field3D &a, const Field3D &b) {
