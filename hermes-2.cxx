@@ -504,7 +504,10 @@ int Hermes::init(bool restarting) {
   VePsi_parflow = optvepsi["VePsi_parflow"].doc("Use parallel flow effects in electron velocity").withDefault<bool>(false);
   VePsi_hyper = optvepsi["VePsi_hyper"].doc("Use hyperdiffusion in electron velocity").withDefault<bool>(false);
   VePsi_numdiff = optvepsi["VePsi_numdiff"].doc("Use parallel numerical diffusion in electron velocity").withDefault<bool>(false);
+  VePsi_parallelvisc = optvepsi["VePsi_parallelvisc"].doc("Use parallel viscosity as diffusion in electron velocity").withDefault<bool>(false);
+  
 
+  
   // Initialize the corresponding fields
 
   TE_Ne = optsc["TE_Ne"].doc("Save all terms in time evolution of density").withDefault<bool>(false);
@@ -608,9 +611,10 @@ int Hermes::init(bool restarting) {
   TE_VePsi_parflow = 0.0;
   TE_VePsi_hyper = 0.0;
   TE_VePsi_numdiff = 0.0;
+  TE_VePsi_parallelvisc = 0.0;
   if (TE_VePsi) {
     SAVE_REPEAT(TE_VePsi_parefield, TE_VePsi_parpressure, TE_VePsi_partemp, TE_VePsi_parcurrent, TE_VePsi_ExB, TE_VePsi_parflow);
-    SAVE_REPEAT(TE_VePsi_hyper, TE_VePsi_numdiff);
+    SAVE_REPEAT(TE_VePsi_hyper, TE_VePsi_numdiff,TE_VePsi_parallelvisc);
   }
 
 
@@ -1083,6 +1087,7 @@ int Hermes::init(bool restarting) {
   nu = 0.0;
   kappa_epar = 0.0;
   kappa_ipar = 0.0;
+  eta_epar = 0.0;
   Dn = 0.0;
   debug_visheath = 0.0;
   debug_vesheath = 0.0;
@@ -1114,7 +1119,7 @@ int Hermes::init(bool restarting) {
       SAVE_REPEAT(debug_denom);
     }
     
-    SAVE_REPEAT(kappa_epar); // Parallel electron heat conductivity
+    SAVE_REPEAT(kappa_epar,eta_epar); // Parallel electron heat conductivity
     SAVE_REPEAT(kappa_ipar); // Parallel ion heat conductivity
     SAVE_REPEAT(nu);
     SAVE_REPEAT(debug_visheath,debug_vesheath,debug_sheathexp);
@@ -1189,12 +1194,12 @@ int Hermes::rhs(BoutReal t) {
   // are calculated using field aligned quantities
 
 
-  Ne.applyBoundary("neumann");
-  NVi.applyBoundary("neumann");
-  Pe.applyBoundary("neumann");
-  Vort.applyBoundary("neumann");
-  Pi.applyBoundary("neumann");
-  VePsi.applyBoundary("neumann");
+  Ne.applyBoundary();
+  NVi.applyBoundary();
+  Pe.applyBoundary();
+  Vort.applyBoundary();
+  Pi.applyBoundary();
+  VePsi.applyBoundary();
   
   mesh->communicate(EvolvingVars);
   Ne.applyParallelBoundary(parbc);
@@ -1402,7 +1407,7 @@ int Hermes::rhs(BoutReal t) {
       
       Ve = VePsi - 0.5 * beta_e * mi_me * psi + Vi;
 	
-      Ve.applyBoundary(t);
+      Ve.applyBoundary("neumann");
       mesh->communicate(Ve);
       Ve.applyParallelBoundary(parbc);
       
@@ -1897,6 +1902,22 @@ int Hermes::rhs(BoutReal t) {
       ddt(VePsi) += TE_VePsi_numdiff;
     } // End VePsi_numdiff
 
+
+    if (VePsi_parallelvisc){
+      TRACE("VePsi parallel viscosity");
+      eta_epar = mul_all(0.973, mul_all(mi_me,mul_all(tau_e,Te)));
+      mesh->communicate(eta_epar);
+      eta_epar.applyParallelBoundary(parbc);
+      /*
+      Field3D gradVe = Grad_par(Ve);
+      mesh->communicate(gradVe);
+      gradVe.applyParallelBoundary(parbc);
+      TE_VePsi_parallelvisc = Div_par(eta_epar)*gradVe + eta_epar * Div_par(gradVe);
+      */
+      TE_VePsi_parallelvisc = Div_par_K_Grad_par(eta_epar,Ve);
+      ddt(VePsi) += TE_VePsi_parallelvisc; 
+    } // End VePsi_parallelvisc
+
     
   } //End evolve_vepsi
 
@@ -2025,11 +2046,13 @@ int Hermes::rhs(BoutReal t) {
 
     if (Pe_conduction){//Row 3
       TRACE("Pe_conduction");
+      /*
       Field3D gradTe = Grad_par(Te);
       mesh->communicate(gradTe);
       gradTe.applyParallelBoundary(parbc);
       TE_Pe_conduction = (2.0/3.0) * ( Div_par(kappa_epar)*gradTe + kappa_epar*Div_par(gradTe) );
-      //TE_Pe_conduction = (2. / 3) * Div_par_K_Grad_par(kappa_epar, Te);
+      */
+      TE_Pe_conduction = (2. / 3) * Div_par_K_Grad_par(kappa_epar, Te);
       ddt(Pe) += TE_Pe_conduction;
     } // End Pe_conduction
 
@@ -2201,12 +2224,13 @@ int Hermes::rhs(BoutReal t) {
     if (Pi_conduction){//Row 5 Term 1
       TRACE("Pi thermal conduction");
 
+      /*
       Field3D gradTi = Grad_par(Ti);
       mesh->communicate(gradTi);
       gradTi.applyParallelBoundary(parbc);
       TE_Pi_conduction = (2.0/3.0) * ( Div_par(kappa_ipar)*gradTi + kappa_ipar*Div_par(gradTi) );
-
-      //TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par(kappa_ipar, Ti);
+      */
+      TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par(kappa_ipar, Ti);
       ddt(Pi) = TE_Pi_conduction;
     } // End Pi_conduction 
 

@@ -92,7 +92,7 @@ private:
   Field3D Telim, Tilim;
 
   // Collisional terms
-  Field3D nu, kappa_epar, kappa_ipar, Dn;
+  Field3D nu, kappa_epar, kappa_ipar, Dn,eta_epar;
   BoutReal tau_e0, tau_i0;
   Field3D tau_e, tau_i;          // Collision times for electrons and ions
   Field3D Wi;                    // Energy transfer from electrons to ions
@@ -141,7 +141,7 @@ private:
   bool poloidal_flows;
   // Electron velocity
   bool VePsi_parefield, VePsi_parpressure, VePsi_partemp, VePsi_parcurrent, VePsi_ExB, VePsi_parflow,VePsi_hyper,VePsi_numdiff;
-
+  bool VePsi_parallelvisc;
 
 
   
@@ -168,7 +168,7 @@ private:
   
   // Fields for electron velocity terms
   Field3D TE_VePsi_parefield, TE_VePsi_parpressure, TE_VePsi_partemp, TE_VePsi_parcurrent, TE_VePsi_ExB, TE_VePsi_parflow;
-  Field3D TE_VePsi_hyper, TE_VePsi_numdiff;
+  Field3D TE_VePsi_hyper, TE_VePsi_numdiff , TE_VePsi_parallelvisc;
 
   
   //////////////////////////////////////////////////////
