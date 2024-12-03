@@ -716,9 +716,9 @@ int Hermes::init(bool restarting) {
   anomalous_nu = opttransport["anomalous_nu"].doc("Anomalous viscosity").withDefault(0.0);
   anomalous_chi = opttransport["anomalous_chi"].doc("Anomalous condoctivity").withDefault(0.0);
 
-  hyper_D = opttransport["hyper_D"].doc("hyperdiffusion").withDefault(0.0);
-  hyper_chi = opttransport["hyper_chi"].doc("hyperconductivity").withDefault(0.0);
-  hyper_nu = opttransport["hyper_nu"].doc("hyperviscosity").withDefault(0.0);
+  hyper_D = opttransport["hyper_D"].doc("hyperdiffusion").withDefault(Field3D{0.0});
+  hyper_chi = opttransport["hyper_chi"].doc("hyperconductivity").withDefault(Field3D{0.0});
+  hyper_nu = opttransport["hyper_nu"].doc("hyperviscosity").withDefault(Field3D{0.0});
 
   num_D = opttransport["num_D"].doc("numerical parallel diffusion").withDefault(0.0);
   num_nu = opttransport["num_nu"].doc("numerical parallel viscosity").withDefault(0.0);
@@ -1076,7 +1076,9 @@ int Hermes::init(bool restarting) {
   phi.setBoundary("phi"); // For y boundaries                                                                                                     
 
   restart.addOnce(phi, "phi");
+  
   aparSolver = LaplaceXZ::create(mesh,&opt["aparSolver"],CELL_CENTRE);
+  
   Ve.setBoundary("Ve");
   nu.setBoundary("nu");
   Jpar.setBoundary("Jpar");
@@ -1399,8 +1401,8 @@ int Hermes::rhs(BoutReal t) {
       auto tmp = -Ne*0.5*mi_me*beta_e;
       
       aparSolver->setCoefs(1.0,tmp);
-	
-      psi = aparSolver->solve(-Ne*VePsi, psi);
+      
+      psi = aparSolver->solve(-Ne*VePsi,psi);
       mesh->communicate(psi);
       
       psi.applyParallelBoundary(parbc);
@@ -1424,8 +1426,7 @@ int Hermes::rhs(BoutReal t) {
 
   
   Jpar = sub_all(NVi,mul_all(Ne,Ve));
-  mesh->communicate(Jpar);
-  Jpar.applyParallelBoundary(parbc);
+
   /*
   Jpar.applyBoundary("neumann");
   mesh->communicate(Jpar);
@@ -1515,11 +1516,11 @@ int Hermes::rhs(BoutReal t) {
           Pi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Pi(x, y, z);
 
           // Dirichlet conditions
-
+	  /*
 	  if (electromagnetic || FiniteElMass){
 	    VePsi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = VePsisheath;
 	  }
-
+	  */
 	  
           Vi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = visheath;//2. * visheath - Vi(x, y, z);
           if (par_sheath_ve){
