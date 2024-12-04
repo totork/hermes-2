@@ -464,6 +464,8 @@ private:
   Field3D xl,yl,zl;
   Field3D phi_boundary;
   bool U_ExB,U_Delp2,U_gradpar;
+  Field3D bracket_factor;
+
   
 protected:
   int init(bool UNUSED(restart)) override {
@@ -484,7 +486,7 @@ protected:
     OPTION(optMHD,U_Delp2,false);
     OPTION(optMHD,U_gradpar,false);
     
-
+    bracket_factor = sqrt(coord->g_22) / (coord->J);
     
     xl = opt["xl"].withDefault(Field3D{0.0});
     yl = opt["yl"].withDefault(Field3D{0.0});
@@ -510,8 +512,8 @@ protected:
   
   int rhs(BoutReal t) override {
 
-    phi_solution = 0.05*cos(0.8 - 2*yl)*sin(0.3 - 0.2*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.3 - zl);
     
+    phi_solution = 0.2*cos(0.8 - 2*yl)*sin(0.3 - 0.2*t)*sin(31.41592653589794*(-0.4 + xl))*sin(0. - 8*zl);
     mesh->communicate(U,Apar,phi_solution);
 
 
@@ -536,7 +538,7 @@ protected:
     }
 
     TRACE("CALCULATE POTENTIAL");
-    phi = phiSolver->solve(Bxy*U,phi_boundary);
+    phi = phiSolver->solve(U,phi_boundary);
     mesh->communicate(phi);
 
 
@@ -551,11 +553,11 @@ protected:
     TRACE("U time evolution");
     if (evolve_U){
       if (U_gradpar){
-	ddt(U) += SQ(Bxy) * Div_par(div_all(Jpar,Bxy));
+	ddt(U) += Div_par(Jpar);
       }
       if (U_ExB){
-	ddt(U) -= bracket(phi,U,BRACKET_ARAKAWA);
-	//ddt(U) -= Div_n_bxGrad_f_B_XPPM(U, phi, true, false,false);
+	ddt(U) +=  -bracket(phi_solution,U,BRACKET_ARAKAWA)*bracket_factor;
+	//ddt(U) -= Div_n_bxGrad_f_B_XPPM(U, phi_solution, true, false,false);
       }
       
       if (U_Delp2){
