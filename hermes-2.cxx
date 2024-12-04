@@ -1869,7 +1869,7 @@ int Hermes::rhs(BoutReal t) {
       if(use_Div_n_bxGrad_f_B_XPPM){
 	TE_VePsi_ExB = -Div_n_bxGrad_f_B_XPPM(Ve-Vi, phi, false,poloidal_flows , false, bracket_factor) * scale_ExB;
       } else {
-	TE_VePsi_ExB = -bracket(phi , Ve-Vi , BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
+	TE_VePsi_ExB = -bracket(phi , sub_all(Ve,Vi) , BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
       }
       ddt(VePsi) += TE_VePsi_ExB;
     } // End VePsi_ExB
