@@ -505,7 +505,7 @@ int Hermes::init(bool restarting) {
   VePsi_hyper = optvepsi["VePsi_hyper"].doc("Use hyperdiffusion in electron velocity").withDefault<bool>(false);
   VePsi_numdiff = optvepsi["VePsi_numdiff"].doc("Use parallel numerical diffusion in electron velocity").withDefault<bool>(false);
   VePsi_parallelvisc = optvepsi["VePsi_parallelvisc"].doc("Use parallel viscosity as diffusion in electron velocity").withDefault<bool>(false);
-  
+  VePsi_supsonicdampening = optvepsi["VePsi_supsonicdampening"].doc("Use supersonic dampening in electron velocity").withDefault<bool>(false);
 
   
   // Initialize the corresponding fields
@@ -612,9 +612,10 @@ int Hermes::init(bool restarting) {
   TE_VePsi_hyper = 0.0;
   TE_VePsi_numdiff = 0.0;
   TE_VePsi_parallelvisc = 0.0;
+  TE_VePsi_supsonicdampening = 0.0;
   if (TE_VePsi) {
     SAVE_REPEAT(TE_VePsi_parefield, TE_VePsi_parpressure, TE_VePsi_partemp, TE_VePsi_parcurrent, TE_VePsi_ExB, TE_VePsi_parflow);
-    SAVE_REPEAT(TE_VePsi_hyper, TE_VePsi_numdiff,TE_VePsi_parallelvisc);
+    SAVE_REPEAT(TE_VePsi_hyper, TE_VePsi_numdiff,TE_VePsi_parallelvisc,TE_VePsi_supsonicdampening);
   }
 
 
@@ -652,6 +653,9 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, resistivity_multiply, 1.0);
   OPTION(optnumerics, electron_weight, 1.0);
   OPTION(optnumerics, poloidal_flows, false);
+
+  OPTION(optvepsi, Ve_supsonic_factor, 1.0);
+  
   // Sheath switches
   
   OPTION(optsheath, sheath_model, 0);
@@ -1876,7 +1880,7 @@ int Hermes::rhs(BoutReal t) {
 
     
     if (VePsi_parflow){//Row 3 Term 2
-      TE_VePsi_parflow = -Vi * Div_par(sub_all(Ve,Vi));
+      TE_VePsi_parflow = -Ve * Div_par(sub_all(Ve,Vi));
       ddt(VePsi) += TE_VePsi_parflow;
     } // End VePsi_parflow
 
@@ -1919,6 +1923,11 @@ int Hermes::rhs(BoutReal t) {
       ddt(VePsi) += TE_VePsi_parallelvisc; 
     } // End VePsi_parallelvisc
 
+
+    if (VePsi_supsonicdampening){
+      Field3D tmp = floor((abs(Ve) - sqrt(mi_me)*sound_speed),0.0);                                                                                                                                                     TE_VePsi_supsonicdampening = -(Ve/abs(Ve))*Ve_supsonic_factor * (exp(tmp)-1.0);                                                                                                                             
+      ddt(VePsi) += TE_VePsi_supsonicdampening;      
+    } // End VePsi_supsonicdampening
     
   } //End evolve_vepsi
 
@@ -2051,7 +2060,8 @@ int Hermes::rhs(BoutReal t) {
       Field3D gradTe = Grad_par(Te);
       mesh->communicate(gradTe);
       gradTe.applyParallelBoundary(parbc);
-      TE_Pe_conduction = (2.0/3.0) * ( Div_par(kappa_epar)*gradTe + kappa_epar*Div_par(gradTe) );
+      //TE_Pe_conduction = (2.0/3.0) * ( Div_par(kappa_epar)*gradTe + kappa_epar*Div_par(gradTe) );
+      //TE_Pe_conduction = (2.0/3.0) * ( kappa_epar*Div_par(gradTe) );
       */
       TE_Pe_conduction = (2. / 3) * Div_par_K_Grad_par(kappa_epar, Te);
       ddt(Pe) += TE_Pe_conduction;
