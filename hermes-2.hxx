@@ -104,6 +104,8 @@ private:
   BoutReal eta_limit_alpha;   // Momentum flux limiter from SOLPS
   BoutReal scale_ExB;
   BoutReal floor_kappa_epar,floor_kappa_ipar;
+
+  BoutReal floor_Ne,floor_Te,floor_Ti;
   
   // Switches for evolving variables
   bool evolve_plasma;   // Should plasma be evolved?
@@ -139,9 +141,10 @@ private:
   bool Vort_mag, Vort_parcurrent, Vort_polarcurrent, Vort_collision, Vort_parviscous;
   bool Vort_anomalous,Vort_hyper,Vort_numdiff;
   bool poloidal_flows;
+  bool Vort_dirichlet;
   // Electron velocity
   bool VePsi_parefield, VePsi_parpressure, VePsi_partemp, VePsi_parcurrent, VePsi_ExB, VePsi_parflow,VePsi_hyper,VePsi_numdiff;
-  bool VePsi_parallelvisc,VePsi_supsonicdampening;
+  bool VePsi_parallelvisc,VePsi_supsonicdampening, VePsi_anomalous;
 
 
   
@@ -168,13 +171,14 @@ private:
   
   // Fields for electron velocity terms
   Field3D TE_VePsi_parefield, TE_VePsi_parpressure, TE_VePsi_partemp, TE_VePsi_parcurrent, TE_VePsi_ExB, TE_VePsi_parflow;
-  Field3D TE_VePsi_hyper, TE_VePsi_numdiff , TE_VePsi_parallelvisc, TE_VePsi_supsonicdampening;
+  Field3D TE_VePsi_hyper, TE_VePsi_numdiff , TE_VePsi_parallelvisc, TE_VePsi_supsonicdampening, TE_VePsi_anomalous;
 
   
   //////////////////////////////////////////////////////
   
   bool j_pol_pi;       // Polarisation current with explicit Pi dependence
   bool j_pol_simplified;       // Polarisation current with explicit Pi dependence
+  bool calc_potential;
   bool resistivity; // Resistivity: Psi -> Pe
   bool use_Div_n_bxGrad_f_B_XPPM; //Use stencil operator for ExB
   bool use_bracket;                 //Use the bracket for the curvature drifts
