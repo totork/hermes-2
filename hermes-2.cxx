@@ -1125,14 +1125,16 @@ int Hermes::init(bool restarting) {
   debug_phibndry3d = 0.0;
   NVi_dampening = 0.0;
   Ve_dampening = 0.0;
-  
+
+  debug_Pe_conduction_A = 0.0;
+  debug_Pe_conduction_B = 0.0;
   
   SAVE_REPEAT(Te, Ti);
   if (verbose) {
     // Save additional fields
     SAVE_REPEAT(debug_soundspeed,debug_phibndry3d);
     SAVE_REPEAT(tau_e, tau_i);
-
+    SAVE_REPEAT(debug_Pe_conduction_A,debug_Pe_conduction_B);
     if(NVi_supsonic_dissipation){
       SAVE_REPEAT(NVi_dampening);
     }
@@ -1420,7 +1422,8 @@ int Hermes::rhs(BoutReal t) {
       phi.applyParallelBoundary(parbc);
       
       phi = sub_all(phi, Pi);
-    
+      mesh->communicate(phi);
+      phi.applyParallelBoundary(parbc);
     } else {
       ////////////////////////////////////////////
       // Non-Boussinesq
@@ -2105,9 +2108,14 @@ int Hermes::rhs(BoutReal t) {
       Field3D gradTe = Grad_par(Te);
       mesh->communicate(gradTe);
       gradTe.applyParallelBoundary(parbc);
-      //TE_Pe_conduction = (2.0/3.0) * ( Div_par(kappa_epar)*gradTe + kappa_epar*Div_par(gradTe) );
-      //TE_Pe_conduction = (2.0/3.0) * ( kappa_epar*Div_par(gradTe) );
+      TE_Pe_conduction = (2.0/3.0) * ( Div_par(kappa_epar)*gradTe + kappa_epar*Div_par(gradTe) );
       */
+
+      if (verbose){
+	debug_Pe_conduction_A = Div_par(kappa_epar) * Grad_par(Te);
+	debug_Pe_conduction_B = kappa_epar * Grad2_par2(Te);
+      }
+      
       TE_Pe_conduction = (2. / 3) * Div_par_K_Grad_par(kappa_epar, Te);
       ddt(Pe) += TE_Pe_conduction;
     } // End Pe_conduction

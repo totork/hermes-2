@@ -85,6 +85,7 @@ private:
   Field3D debug_phisheath;
   Field3D debug_denom,debug_soundspeed;
   Field3D debug_phibndry3d;
+  Field3D debug_Pe_conduction_A,debug_Pe_conduction_B;
   
   bool J_equalize;
   bool set_inner_neumann;
