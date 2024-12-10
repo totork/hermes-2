@@ -86,7 +86,12 @@ private:
   Field3D debug_denom,debug_soundspeed;
   Field3D debug_phibndry3d;
   Field3D debug_Pe_conduction_A,debug_Pe_conduction_B;
-  
+
+  Field3D Vi_sheath , Ve_sheath , Ne_sheath , Te_sheath , Ti_sheath , Vort_sheath;
+  bool new_sheaths;
+  bool sheath_infsink;
+  BoutReal infsink_Te, infsink_amp;
+  Field3D debug_sheath_infsink;
   bool J_equalize;
   bool set_inner_neumann;
   // Limited variables

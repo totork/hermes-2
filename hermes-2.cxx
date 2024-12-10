@@ -63,6 +63,15 @@ BoutReal floor(BoutReal var, BoutReal f) {
   return var;
 }
 
+BoutReal limitFree(BoutReal fc, BoutReal fm, BoutReal floorval){
+  if (fc>fm){
+    return fc;
+  }
+  BoutReal fp = 2.0*fc - fm;
+  return floor(fp,floorval);
+}
+
+
 /// Returns a copy of input \p var with all values greater than \p f replaced by
 /// \p f.
 const Field3D ceil(const Field3D &var, BoutReal f, REGION rgn = RGN_ALL) {
@@ -681,7 +690,9 @@ int Hermes::init(bool restarting) {
   OPTION(optsheath, sheath_model, 0);
   OPTION(optsheath, sheath_gamma_e, 7.0);
   OPTION(optsheath, sheath_gamma_i, 3.0);
-
+  OPTION(optsheath, sheath_infsink, false);
+  OPTION(optsheath, infsink_Te, 2.0);
+  OPTION(optsheath, infsink_amp, 1.0);
   OPTION(optsheath, neutral_vwall, 1. / 3);  // 1/3rd Franck-Condon energy at wall
   OPTION(optsheath, sheath_yup, true);       // Apply sheath at yup?
   OPTION(optsheath, sheath_ydown, true);     // Apply sheath at ydown?
@@ -692,6 +703,8 @@ int Hermes::init(bool restarting) {
   sheath_allow_supersonic = optsheath["sheath_allow_supersonic"]
           .doc("If plasma is faster than sound speed, go to plasma velocity")
           .withDefault<bool>(true);
+  
+
 
   
   
@@ -1126,19 +1139,32 @@ int Hermes::init(bool restarting) {
   NVi_dampening = 0.0;
   Ve_dampening = 0.0;
 
+
+  Vi_sheath = 0.0;
+  Ve_sheath = 0.0;
+  Ne_sheath = 0.0;
+  Te_sheath = 0.0;
+  Ti_sheath = 0.0;
+  Vort_sheath = 0.0;
+  
+
+  
   debug_Pe_conduction_A = 0.0;
   debug_Pe_conduction_B = 0.0;
-  
+  debug_sheath_infsink = 0.0;
   SAVE_REPEAT(Te, Ti);
   if (verbose) {
     // Save additional fields
     SAVE_REPEAT(debug_soundspeed,debug_phibndry3d);
     SAVE_REPEAT(tau_e, tau_i);
     SAVE_REPEAT(debug_Pe_conduction_A,debug_Pe_conduction_B);
+    SAVE_REPEAT(Ne_sheath,Ve_sheath,Vi_sheath,Te_sheath,Ti_sheath,Vort_sheath);
     if(NVi_supsonic_dissipation){
       SAVE_REPEAT(NVi_dampening);
     }
-    
+    if(sheath_infsink){
+      SAVE_REPEAT(debug_sheath_infsink);
+    }
     if(Ve_supsonic_dissipation){
       SAVE_REPEAT(Ve_dampening);
     }
@@ -1607,7 +1633,30 @@ int Hermes::rhs(BoutReal t) {
       break;
     }
     case 1: { // insulating boundary      break;
-      throw BoutException("Not implemented");
+      for (const auto &bndry_par : mesh->getBoundariesPar(BoundaryParType::xout)) {
+        for (const auto &pnt : *bndry_par)  {
+	  TRACE("Setting new parallel sheaths with linear interpolation");
+	  int x = pnt.ind().x();
+          int y = pnt.ind().y();
+          int z = pnt.ind().z();
+	  BoutReal bdir = bndry_par->dir;
+
+	  // limitFree(BoutReal fc, BoutReal fm, BoutReal floorval)
+	  // Set the densities and temperatures
+
+	  Ne_sheath(x,y,z) = limitFree(Ne(x,y,z),Ne.ynext(bdir)(x, y-bdir, z),floor_Ne);
+
+	  Te_sheath(x,y,z) = limitFree(Te(x,y,z),Te.ynext(bdir)(x, y-bdir, z),floor_Te);
+
+	  Ti_sheath(x,y,z) = limitFree(Ti(x,y,z),Ti.ynext(bdir)(x, y-bdir, z),floor_Ti);
+
+	  
+
+	  
+	  Ve_sheath(x,y,z) = 2.0 * Ve(x,y,z) - Ve(x,y-bdir,z);
+	  Vi_sheath(x,y,z) = 2.0 * Vi(x,y,z) - Vi(x,y-bdir,z);
+	}
+      }
       break;
     }
     default: {
@@ -1966,7 +2015,7 @@ int Hermes::rhs(BoutReal t) {
 
 
     if (VePsi_supsonicdampening){
-      Field3D tmp = floor((abs(Ve) - sqrt(mi_me)*sound_speed),0.0);                                                                                                                                                     TE_VePsi_supsonicdampening = -(Ve/abs(Ve))*Ve_supsonic_factor * (exp(tmp)-1.0);                                                                                                                             
+      Field3D tmp = floor((abs(Ve) - sqrt(mi_me)*sound_speed),0.0);                                                                                        TE_VePsi_supsonicdampening = -(Ve/abs(Ve))*Ve_supsonic_factor * (exp(tmp)-1.0);                                                                        
       ddt(VePsi) += TE_VePsi_supsonicdampening;      
     } // End VePsi_supsonicdampening
 
@@ -2210,10 +2259,19 @@ int Hermes::rhs(BoutReal t) {
             / (coord->dy(x, y, z) * coord->J(x, y, z));
           // ddt(Pe)(x, y, z) -= (2. / 3) * power;
           sheath_dpe(x, y, z) -= (2. / 3) * power;
+
+	  if(sheath_infsink){
+	    // sheath_infsink , infsink_Te , infsink_amp ,  debug_sheath_infsink
+	    BoutReal tmp = floor(Te(x,y,z)-infsink_Te, 0.0);
+	    debug_sheath_infsink(x,y,z) = -infsink_amp * (exp(tmp) - 1.0);
+	  }
         }
       }
       sheath_dpe.name = "sheath physics";
       ddt(Pe) += sheath_dpe;
+      if (sheath_infsink){
+	ddt(Pe) += debug_sheath_infsink;
+      }
     } //End parallel_sheaths
 
 
