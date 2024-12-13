@@ -87,7 +87,7 @@ private:
   Field3D debug_phibndry3d;
   Field3D debug_Pe_conduction_A,debug_Pe_conduction_B;
 
-  Field3D Vi_sheath , Ve_sheath , Ne_sheath , Te_sheath , Ti_sheath , Vort_sheath;
+  Field3D Vi_sheath , Ve_sheath , Jpar_sheath , Ne_sheath , Te_sheath , Ti_sheath , Vort_sheath,phi_sheath;
   bool new_sheaths;
   bool sheath_infsink;
   BoutReal infsink_Te, infsink_amp;
@@ -109,9 +109,11 @@ private:
   BoutReal kappa_limit_alpha; // Heat flux limiter from SOLPS
   BoutReal eta_limit_alpha;   // Momentum flux limiter from SOLPS
   BoutReal scale_ExB;
+  Field3D eta_limit_denom;
   BoutReal floor_kappa_epar,floor_kappa_ipar;
 
   BoutReal floor_Ne,floor_Te,floor_Ti;
+  Field3D Te_yup,Te_ydown;
   
   // Switches for evolving variables
   bool evolve_plasma;   // Should plasma be evolved?
@@ -190,6 +192,9 @@ private:
   bool use_bracket;                 //Use the bracket for the curvature drifts
   bool norm_dxdydz;
   bool use_Div_parP_n;
+  bool use_new_conduction;
+  bool use_new_div_par;
+  bool use_new_viscosity;
   
   // Anomalous perpendicular diffusion coefficients
   BoutReal anomalous_D;    // Density diffusion
@@ -287,7 +292,7 @@ private:
   
   // Perturbed parallel gradient operators
   Field3D Grad_parP(const Field3D &f);
-  Field3D Div_parP(const Field3D &f);
+  Field3D Div_parP(const Field3D &f, const bool newop);
   Field3D Div_parP_f(const Field3D &f, const Field3D &v, Field3D &cs);
   Field3D Div_parP_n(const Field3D &f, const Field3D &v, Field3D &cs,
                      const BoutMask &fwd, const BoutMask &bwd);
