@@ -195,6 +195,7 @@ private:
   bool use_new_conduction;
   bool use_new_div_par;
   bool use_new_viscosity;
+  bool use_Vi;
   
   // Anomalous perpendicular diffusion coefficients
   BoutReal anomalous_D;    // Density diffusion

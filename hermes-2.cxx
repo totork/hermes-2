@@ -456,7 +456,8 @@ int Hermes::init(bool restarting) {
   Ne_sources = optne["Ne_sources"].doc("Use sources in density").withDefault<bool>(false);
   Ne_hyper = optne["Ne_hyper"].doc("Use hyperdiffusion in density").withDefault<bool>(false);
   Ne_numdiff = optne["Ne_numdiff"].doc("Use parallel numerical diffusion in density").withDefault<bool>(false);
-
+  
+  use_Vi = optne["use_Vi"].doc("Use ion velocity instead of electron velocity in density equation").withDefault<bool>(false);
   
   // bool NVi_ExB, NVi_mag, NVi_parflow, NVi_parpressure, NVi_parviscos, NVi_collision, NVi_anomalous;
 
@@ -663,6 +664,7 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, use_new_conduction, true);
   OPTION(optnumerics, use_new_viscosity, true);
   OPTION(optnumerics, use_new_div_par, false);
+  
   
   OPTION(optsc, boussinesq, false);
   
@@ -1883,10 +1885,15 @@ int Hermes::rhs(BoutReal t) {
     }  // End Ne_mag
 
 
-    if (Ne_parflow){// Row 2 
+    if (Ne_parflow){// Row 2
       TRACE("Density parflow");
-      Field3D neve = mul_all(Ne,Ve);
-      TE_Ne_parflow = -Div_parP(neve,use_new_div_par);
+      if(!use_Vi){
+	Field3D neve = mul_all(Ne,Ve);
+	TE_Ne_parflow = -Div_parP(neve,use_new_div_par);
+      } else {
+	Field3D nevi = mul_all(Ne,Vi);
+	TE_Ne_parflow = -Div_parP(nevi,use_new_div_par);
+      }
       ddt(Ne) += TE_Ne_parflow;
     }  // End Ne_parflow
 
