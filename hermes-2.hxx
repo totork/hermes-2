@@ -195,6 +195,11 @@ private:
   bool use_new_conduction;
   bool use_new_div_par;
   bool use_new_viscosity;
+  bool use_Te_limiter;
+  bool use_Ti_limiter;
+  BoutReal Te_limiter_value;
+  BoutReal Ti_limiter_value;
+  
   bool use_Vi;
   
   // Anomalous perpendicular diffusion coefficients

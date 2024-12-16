@@ -665,7 +665,6 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, use_new_viscosity, true);
   OPTION(optnumerics, use_new_div_par, false);
   
-  
   OPTION(optsc, boussinesq, false);
   
   // Switches for different methods to support numerical stability
@@ -695,6 +694,13 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, floor_Ne,5e-2);
   OPTION(optnumerics, floor_Te,0.1);
   OPTION(optnumerics, floor_Ti,0.1);
+
+  OPTION(optnumerics, use_Te_limiter, false);
+  OPTION(optnumerics, use_Ti_limiter, false);
+  OPTION(optnumerics, Te_limiter_value, 1.0);
+  OPTION(optnumerics, Ti_limiter_value, 1.0);
+
+  
   
   // Sheath switches
   
@@ -1323,6 +1329,25 @@ int Hermes::rhs(BoutReal t) {
 
     floor_all(Te, floor_Te, i);
     // ASSERT0(Te[i] > 1e-10);
+
+    if(use_Te_limiter){
+      const auto iyp = i.yp();
+      const auto iym = i.ym();
+
+      // up field
+      
+      if ( Te.yup()[iyp]> (Te[i]+Te_limiter_value) ){
+	Te.yup()[iyp] = Te[i]+Te_limiter_value;
+      } else if (Te.yup()[iyp] < (Te[i]-Te_limiter_value)){
+	Te.yup()[iyp] = Te[i]-Te_limiter_value;
+      }
+
+      if ( Te.ydown()[iym]> (Te[i]+Te_limiter_value) ){
+	Te.ydown()[iym] = Te[i]+Te_limiter_value;
+      } else if	(Te.ydown()[iym] < (Te[i]-Te_limiter_value)){
+	Te.ydown()[iym] = Te[i]-Te_limiter_value;
+      }
+    }
     
     mul_all(Pe, Te, Ne, i);
 
@@ -1332,6 +1357,26 @@ int Hermes::rhs(BoutReal t) {
 
     div_all(Ti, Pi, Ne, i);
     floor_all(Ti, floor_Ti, i);
+
+    if(use_Ti_limiter){
+      const auto iyp = i.yp();
+      const auto iym = i.ym();
+      // up field                                                                                                                                                                                          
+
+      if ( Ti.yup()[iyp]> (Ti[i]+Ti_limiter_value) ){
+	Ti.yup()[iyp] =	Ti[i]+Ti_limiter_value;
+      } else if	(Ti.yup()[iyp] < (Ti[i]-Ti_limiter_value)){
+	Ti.yup()[iyp] =	Ti[i]-Ti_limiter_value;
+      }
+
+      if ( Ti.ydown()[iym]> (Ti[i]+Ti_limiter_value) ){
+	Ti.ydown()[iym] = Ti[i]+Ti_limiter_value;
+      } else if (Ti.ydown()[iym] < (Ti[i]-Ti_limiter_value)){
+        Ti.ydown()[iym] = Ti[i]-Ti_limiter_value;
+      }
+    }
+
+    
     mul_all(Pi, Ti, Ne, i);
     div_all(Te, Pe, Ne, i);
     // ASSERT0(Te[i] > 1e-10);
