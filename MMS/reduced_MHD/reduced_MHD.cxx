@@ -513,7 +513,7 @@ protected:
   int rhs(BoutReal t) override {
 
     
-    phi_solution = 0.2*cos(0.8 - 2*yl)*sin(0.3 - 0.2*t)*sin(31.41592653589794*(-0.4 + xl))*sin(0. - 8*zl);
+    phi_solution = 0.03*cos(0.8512 - 2*yl)*sin(0.3512331 - 0.2*t)*sin(31.41592653589794*(-0.4 + xl))*sin(0.4213 - 8*zl);
     mesh->communicate(U,Apar,phi_solution);
 
 
@@ -556,8 +556,8 @@ protected:
 	ddt(U) += Div_par(Jpar);
       }
       if (U_ExB){
-	ddt(U) +=  -bracket(phi_solution,U,BRACKET_ARAKAWA)*bracket_factor;
-	//ddt(U) -= Div_n_bxGrad_f_B_XPPM(U, phi_solution, true, false,false);
+	//ddt(U) +=  -bracket(phi_solution,U,BRACKET_ARAKAWA)*bracket_factor;
+	ddt(U) -= Div_n_bxGrad_f_B_XPPM(U, phi_solution, true, false,false);
       }
       
       if (U_Delp2){
