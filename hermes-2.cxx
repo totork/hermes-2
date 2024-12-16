@@ -1407,11 +1407,12 @@ int Hermes::rhs(BoutReal t) {
         Te(1, j, k) = 2. * te_bndry - Te(2, j, k);
         Ti(1, j, k) = 2. * ti_bndry - Ti(2, j, k);
         Vi(0, j, k) = Vi(1, j, k) = Vi(2, j, k);
-
+	/*
         if (te_bndry < 0.1 / Tnorm)
           te_bndry = 0.1 / Tnorm;
         if (ti_bndry < 0.1 / Tnorm)
           ti_bndry = 0.1 / Tnorm;
+	*/
 
         Te(1, j, k) = 2. * te_bndry - Te(2, j, k);
         Ti(1, j, k) = 2. * ti_bndry - Ti(2, j, k);
@@ -1435,11 +1436,13 @@ int Hermes::rhs(BoutReal t) {
         Ti(n - 1, j, k) = 2. * ti_bndry - Ti(n - 2, j, k);
         Vi(n - 1, j, k) = Vi(n - 2, j, k);
 
+	/*
         if (te_bndry < 0.05)
           te_bndry = 0.05;
         if (ti_bndry < 0.05)
           ti_bndry = 0.05;
-
+	*/
+	
         Te(n - 1, j, k) = 2. * te_bndry - Te(n - 2, j, k);
         Ti(n - 1, j, k) = 2. * ti_bndry - Ti(n - 2, j, k);
       }
@@ -1450,7 +1453,7 @@ int Hermes::rhs(BoutReal t) {
   // Output some yup, ydown fields
 
   if (verbose){
-    BOUT_FOR(i, Ne.getRegion("RGN_ALL")) {
+    BOUT_FOR(i, Ne.getRegion("RGN_NOY")) {
       const auto iyp = i.yp();
       const auto iym = i.ym();
       Te_yup[i] = Te.yup()[iyp];
