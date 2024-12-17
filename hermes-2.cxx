@@ -505,6 +505,7 @@ int Hermes::init(bool restarting) {
   Pi_numdiff = optpi["Pi_numdiff"].doc("Use parallel numerical diffusion in ion pressure").withDefault<bool>(false);
   Pi_anomalous = optpi["Pi_anomalous"].doc("Include anomalous effects in ion energy").withDefault<bool>(false);
   Pi_energyexchange = optpi["Pi_energyexchange"].doc("Include anomalous effects in ion energy").withDefault<bool>(false);
+  
   // bool Vort_mag, Vort_parcurrent, Vort_polarcurrent, Vort_collision, Vort_parviscous;
   // bool Vort_anomalous;
 
@@ -516,7 +517,7 @@ int Hermes::init(bool restarting) {
   Vort_anomalous = optvort["Vort_anomalous"].doc("Include anomalous effects in vorticity").withDefault<bool>(false);
   Vort_hyper = optvort["Vort_hyper"].doc("Use hyperdiffusion in vorticity").withDefault<bool>(false);
   Vort_numdiff = optvort["Vort_numdiff"].doc("Use parallel numerical diffusion in vorticity").withDefault<bool>(false);
-
+  Vort_parflow = optvort["Vort_parflow"].doc("Use parallel ion flow in vorticity").withDefault<bool>(false);
   if (optvort["bndry_xout"] == "dirichlet"){
     Vort_dirichlet=true;
   } else {
@@ -627,9 +628,10 @@ int Hermes::init(bool restarting) {
   TE_Vort_anomalous = 0.0;
   TE_Vort_hyper = 0.0;
   TE_Vort_numdiff = 0.0;
+  TE_Vort_parflow = 0.0;
   if (TE_Vort) {
     SAVE_REPEAT(TE_Vort_mag, TE_Vort_parcurrent, TE_Vort_polarcurrent, TE_Vort_collision, TE_Vort_parviscous, TE_Vort_anomalous);
-    SAVE_REPEAT(TE_Vort_hyper, TE_Vort_numdiff);
+    SAVE_REPEAT(TE_Vort_hyper, TE_Vort_numdiff,TE_Vort_parflow);
   }
 
 
@@ -968,6 +970,9 @@ int Hermes::init(bool restarting) {
 
   /////////////////////////////////////////////////////////
   // Read profiles from the mesh
+
+  /*
+  
   TRACE("Reading profiles");
 
   Field3D NeMesh, TeMesh, TiMesh;
@@ -1039,6 +1044,10 @@ int Hermes::init(bool restarting) {
 
     mesh->communicateXZ(Ne, Pe);
   }
+
+  
+  */
+  
 
   /////////////////////////////////////////////////////////
   // Read curvature components
@@ -1249,6 +1258,14 @@ int Hermes::init(bool restarting) {
   alloc_all(d);
 
 
+  alloc_all(Ne);
+  alloc_all(Te);
+  alloc_all(Ti);
+  alloc_all(Vi);
+  alloc_all(Pi);
+  alloc_all(Pe);
+
+  
   // Here are some sanity checks for the flags
 
   if (evolve_vort && !calc_potential){
@@ -1265,15 +1282,6 @@ int Hermes::rhs(BoutReal t) {
     printf("TIME = %e\r", t);
   }
 
-  if (!evolve_plasma) {
-    Ne = 0.0;
-    Pe = 0.0;
-    Pi = 0.0;
-    Vort = 0.0;
-    VePsi = 0.0;
-    NVi = 0.0;
-    sheath_model = 0;
-  }
 
   Coordinates *coord = mesh->getCoordinates();
   
@@ -1281,16 +1289,18 @@ int Hermes::rhs(BoutReal t) {
   // Note: Parallel slices are not calculated because parallel derivatives
   // are calculated using field aligned quantities
 
-
+  /*
   Ne.applyBoundary();
   NVi.applyBoundary();
   Pe.applyBoundary();
   Vort.applyBoundary();
   Pi.applyBoundary();
   VePsi.applyBoundary();
-  
+  */
   mesh->communicate(EvolvingVars);
+
   Ne.applyParallelBoundary(parbc);
+
   Vort.applyParallelBoundary(parbc);
   if (evolve_te){
     Pe.applyParallelBoundary(parbc);
@@ -1304,14 +1314,34 @@ int Hermes::rhs(BoutReal t) {
     VePsi.applyParallelBoundary(parbc);
   }
 
-  Field3D sound_speed;
-  sound_speed.allocate();
 
-  alloc_all(Te);
-  alloc_all(Ti);
-  alloc_all(Vi);
-  alloc_all(Pi);
-  alloc_all(Pe);
+  BOUT_FOR(i, Ne.getRegion("RGN_NOY")){
+    ASSERT0(std::isfinite(Pe[i]));
+    const auto iyp = i.yp();
+    const auto iym = i.ym();
+    //ASSERT0(std::isfinite(Ne.yup()[iyp]));                                                                                                                                                              
+    //ASSERT0(std::isfinite(Ne.ydown()[iym]));                                                                                                                                                            
+    if(std::isfinite(Pe.yup()[iyp])==false || std::isfinite(Pe.ydown()[iym])==false){
+      throw BoutException("Nonfinite value in electron pressure");
+    }
+  }
+
+  
+  BOUT_FOR(i, Ne.getRegion("RGN_NOY")){
+    ASSERT0(std::isfinite(Ne[i]));
+    const auto iyp = i.yp();
+    const auto iym = i.ym();
+    //ASSERT0(std::isfinite(Ne.yup()[iyp]));
+    //ASSERT0(std::isfinite(Ne.ydown()[iym]));
+
+    if(std::isfinite(Ne.yup()[iyp])==false || std::isfinite(Ne.ydown()[iym])==false){
+      throw BoutException("Nonfinite value in density");
+    }
+    
+  }
+  
+  Field3D sound_speed;
+  alloc_all(sound_speed);
 
   
   
@@ -1876,13 +1906,16 @@ int Hermes::rhs(BoutReal t) {
   //////////////////////////////////////////////////////////////                                                                        
   TRACE("Calculating resistivity");
 
-  nu = resistivity_multiply / (1.96 * tau_e * mi_me);
+  //nu = resistivity_multiply / (1.96 * tau_e * mi_me);
+  nu = div_all(resistivity_multiply,mul_all(1.96,mul_all(tau_e,mi_me)));
+  /*
   nu.applyBoundary("neumann");
   mesh->communicate(nu);
   nu.applyParallelBoundary(parbc);
-
-  Wi = (3. / mi_me) * Ne * (Te - Ti) / tau_e;
-
+  */
+  
+  //Wi = (3. / mi_me) * Ne * (Te - Ti) / tau_e;
+  Wi = mul_all(div_all(3.0,mi_me),mul_all(Ne,div_all(sub_all(Te,Ti),tau_e)));
 
 
   // UP UNTIL NOW I NEED                                                                                                                                                                                          
@@ -2065,6 +2098,14 @@ int Hermes::rhs(BoutReal t) {
       ddt(Vort) += TE_Vort_numdiff;
     } // End Vort_numdiff
 
+
+    if (Vort_parflow){
+      TRACE("Vorticity parallel flow");
+      Field3D VortVi = mul_all(Vort,Vi);
+      TE_Vort_parflow = -Div_parP(VortVi,use_new_div_par);
+      ddt(Vort) += TE_Vort_parflow;
+    }
+
     
   }  //End evolve_vort
 
@@ -2117,7 +2158,11 @@ int Hermes::rhs(BoutReal t) {
 
     
     if (VePsi_parflow){//Row 3 Term 2
-      TE_VePsi_parflow = -Ve * Div_parP(sub_all(Ve,Vi),use_new_div_par);
+      if(!use_Vi){
+	TE_VePsi_parflow = -Ve * Div_parP(sub_all(Ve,Vi),use_new_div_par);
+      } else {
+	TE_VePsi_parflow = -Vi * Div_parP(sub_all(Ve,Vi),use_new_div_par);
+      }
       ddt(VePsi) += TE_VePsi_parflow;
     } // End VePsi_parflow
 
