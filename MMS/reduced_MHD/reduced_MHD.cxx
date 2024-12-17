@@ -78,6 +78,37 @@ void MC(Stencil1D &n) {
 
 
 
+const Field3D Div_parP(const Field3D &f, const bool newop) {
+  if (!newop){
+    return Div_par(f);
+  } else {
+    Mesh* mesh = f.getMesh();
+    Field3D result{zeroFrom(f)};
+    Coordinates* coord = f.getCoordinates();
+    BOUT_FOR(i, result.getRegion("RGN_NOBNDRY")) {
+      // Calculate flux at upper surface                                                                                                                
+      // coord->J.yup()[ind.yp()];                                                                                                                      
+      const auto iyp = i.yp();
+      const auto iym = i.ym();
+      BoutReal c = 0.5 * (f[i] + f.yup()[iyp]);             // K at the upper boundary                                                               
+      BoutReal J = 0.5 * (coord->J[i] + coord->J.yup()[iyp]); // Jacobian at boundary                                                                
+      BoutReal sqrtg_22 = sqrt(0.5 * (coord->g_22[i] + coord->g_22.yup()[iyp]));
+      BoutReal flux = c * J / sqrtg_22;
+      result[i] += flux / (coord->dy[i] * coord->J[i]);
+
+      // Calculate flux at lower surface                                                                                                                
+      c = 0.5 * (f[i] + f.ydown()[iym]);           // K at the lower boundary                                                                        
+      J = 0.5 * (coord->J[i] + coord->J.ydown()[iym]); // Jacobian at boundary                                                                       
+      sqrtg_22 = sqrt(0.5 * (coord->g_22[i] + coord->g_22.ydown()[iym]));
+      flux = c * J / sqrtg_22;
+      result[i] -= flux / (coord->dy[i] * coord->J[i]);
+    }
+    return result;
+  }
+}
+
+
+
 const Field3D Div_n_bxGrad_f_B_XPPM(const Field3D &n, const Field3D &f,
                                     bool bndry_flux, bool poloidal,
                                     bool positive) {
@@ -465,7 +496,7 @@ private:
   Field3D phi_boundary;
   bool U_ExB,U_Delp2,U_gradpar;
   Field3D bracket_factor;
-
+  bool new_operators;
   
 protected:
   int init(bool UNUSED(restart)) override {
@@ -485,6 +516,8 @@ protected:
     OPTION(optMHD,U_ExB,false);
     OPTION(optMHD,U_Delp2,false);
     OPTION(optMHD,U_gradpar,false);
+
+    OPTION(optMHD,new_operators,false);
     
     bracket_factor = sqrt(coord->g_22) / (coord->J);
     
@@ -512,10 +545,25 @@ protected:
   
   int rhs(BoutReal t) override {
 
+
+
+    
+    
     
     phi_solution = 0.03*cos(0.8512 - 2*yl)*sin(0.3512331 - 0.2*t)*sin(31.41592653589794*(-0.4 + xl))*sin(0.4213 - 8*zl);
     mesh->communicate(U,Apar,phi_solution);
 
+
+    BOUT_FOR(i, U.getRegion("RGN_NOY")){
+      ASSERT0(std::isfinite(U[i]));
+      const auto iyp = i.yp();
+      const auto iym = i.ym();
+      //ASSERT0(std::isfinite(Ne.yup()[iyp]));                                                                                                                                                                                                                                      
+      //ASSERT0(std::isfinite(Ne.ydown()[iym]));                                                                                                                                                                                                                                    
+      if(std::isfinite(U.yup()[iyp])==false || std::isfinite(U.ydown()[iym])==false){
+	throw BoutException("Nonfinite value in U");
+      }
+    }
 
     // SET BOUNDARIES FOR POTENTIAL AT THE CELL FACES
     phi_boundary = phi_solution;
@@ -553,11 +601,15 @@ protected:
     TRACE("U time evolution");
     if (evolve_U){
       if (U_gradpar){
-	ddt(U) += Div_par(Jpar);
+	ddt(U) += Div_parP(Jpar, new_operators);
       }
       if (U_ExB){
-	//ddt(U) +=  -bracket(phi_solution,U,BRACKET_ARAKAWA)*bracket_factor;
-	ddt(U) -= Div_n_bxGrad_f_B_XPPM(U, phi_solution, true, false,false);
+	if (!new_operators){
+	  ddt(U) +=  -bracket(phi_solution,U,BRACKET_ARAKAWA)*bracket_factor;
+	} else{
+	  ddt(U) +=  -bracket(phi_solution,U,BRACKET_ARAKAWA)*bracket_factor;
+	  //ddt(U) -= Div_n_bxGrad_f_B_XPPM(U, phi_solution, true, false,false);
+	}
       }
       
       if (U_Delp2){
