@@ -497,6 +497,8 @@ private:
   bool U_ExB,U_Delp2,U_gradpar;
   Field3D bracket_factor;
   bool new_operators;
+  Field3D TE_U_ExB, TE_U_Delp2, TE_U_gradpar;
+
   
 protected:
   int init(bool UNUSED(restart)) override {
@@ -518,6 +520,7 @@ protected:
     OPTION(optMHD,U_gradpar,false);
 
     OPTION(optMHD,new_operators,false);
+
     
     bracket_factor = sqrt(coord->g_22) / (coord->J);
     
@@ -528,13 +531,18 @@ protected:
     phi_boundary = 0.0;
     SAVE_REPEAT(phi_boundary);
     TRACE("SET VARIABLES");
+    TE_U_ExB = 0.0;
+    TE_U_Delp2 = 0.0;
+    TE_U_gradpar = 0.0;
+
+      
     U = 0.0;
     Apar = 0.0;
     Jpar = 0.0;
     phi = 0.0;
     mesh->communicate(Apar,Jpar,phi,U);    
     SOLVE_FOR( U , Apar );
-    SAVE_REPEAT( Jpar , phi ,phi_solution);
+    SAVE_REPEAT( Jpar , phi ,phi_solution , TE_U_gradpar , TE_U_Delp2 , TE_U_ExB);
 
 
     TRACE("SET PHI SOLVER");
@@ -550,11 +558,12 @@ protected:
     
     
     
-    phi_solution = 0.03*cos(0.8512 - 2*yl)*sin(0.3512331 - 0.2*t)*sin(31.41592653589794*(-0.4 + xl))*sin(0.4213 - 8*zl);
+    //phi_solution = 0.03*cos(0.8512 - 2*yl)*sin(0.3512331 - 0.2*t)*sin(31.41592653589794*(-0.4 + xl))*sin(0.4213 - 8*zl);
+    phi_solution = 0.03*cos(0.8512 - 2*yl)*sin(0.3512331 - 0.2*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.4213 - 4*zl);
     mesh->communicate(U,Apar,phi_solution);
+    U.applyParallelBoundary("parallel_neumann_o1");
 
-
-    BOUT_FOR(i, U.getRegion("RGN_NOY")){
+    BOUT_FOR(i, U.getRegion("RGN_NOBNDRY")){
       ASSERT0(std::isfinite(U[i]));
       const auto iyp = i.yp();
       const auto iym = i.ym();
@@ -564,6 +573,17 @@ protected:
 	throw BoutException("Nonfinite value in U");
       }
     }
+
+    BOUT_FOR(i, U.getRegion("RGN_NOBNDRY")){
+      ASSERT0(std::isfinite(U[i]));
+      const auto iyp = i.yp();
+      const auto iym = i.ym();
+     
+      if(std::isfinite(Apar.yup()[iyp])==false || std::isfinite(Apar.ydown()[iym])==false){
+        throw BoutException("Nonfinite value in Apar");
+      }
+    }
+    
 
     // SET BOUNDARIES FOR POTENTIAL AT THE CELL FACES
     phi_boundary = phi_solution;
@@ -588,32 +608,36 @@ protected:
     TRACE("CALCULATE POTENTIAL");
     phi = phiSolver->solve(U,phi_boundary);
     mesh->communicate(phi);
-
+    phi.applyParallelBoundary("parallel_neumann_o2");
 
     TRACE("Calculate parallel current");
     
     Jpar = -new_Delp2(Apar);
     mesh->communicate(Jpar);
-    
+    Jpar.applyParallelBoundary("parallel_neumann_o1");
     
     ddt(U) = 0.0;
 
     TRACE("U time evolution");
     if (evolve_U){
       if (U_gradpar){
-	ddt(U) += Div_parP(Jpar, new_operators);
+	TE_U_gradpar = Div_parP(Jpar, new_operators);
+	ddt(U) += TE_U_gradpar;
       }
       if (U_ExB){
 	if (!new_operators){
-	  ddt(U) +=  -bracket(phi_solution,U,BRACKET_ARAKAWA)*bracket_factor;
+	  TE_U_ExB = -bracket(phi_solution,U,BRACKET_ARAKAWA)*bracket_factor;
+	  ddt(U) +=  TE_U_ExB;
 	} else{
-	  ddt(U) +=  -bracket(phi_solution,U,BRACKET_ARAKAWA)*bracket_factor;
-	  //ddt(U) -= Div_n_bxGrad_f_B_XPPM(U, phi_solution, true, false,false);
+	  //ddt(U) +=  -bracket(phi_solution,U,BRACKET_ARAKAWA)*bracket_factor;
+	  TE_U_ExB = -Div_n_bxGrad_f_B_XPPM(U, phi_solution, true, false,false)*bracket_factor;
+	  ddt(U) += TE_U_ExB;
 	}
       }
       
       if (U_Delp2){
-	ddt(U) += mu * new_Delp2(U);
+	TE_U_Delp2 = mu * new_Delp2(U);
+	ddt(U) += TE_U_Delp2;
       }
 
       
