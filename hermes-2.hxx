@@ -94,6 +94,7 @@ private:
   Field3D debug_sheath_infsink;
   bool J_equalize;
   bool set_inner_neumann;
+  bool check_finite;
   // Limited variables
   Field3D Telim, Tilim;
 
@@ -114,6 +115,7 @@ private:
 
   BoutReal floor_Ne,floor_Te,floor_Ti;
   Field3D Te_yup,Te_ydown;
+  BoutReal floor_vel;
   
   // Switches for evolving variables
   bool evolve_plasma;   // Should plasma be evolved?
@@ -136,7 +138,8 @@ private:
 
   // Ion momentum
   bool NVi_ExB, NVi_mag, NVi_parflow, NVi_parpressure, NVi_parviscos, NVi_collision, NVi_anomalous,NVi_hyper,NVi_numdiff; 
-
+  bool NVi_supsonicdampening;
+  
   // Electron pressure
   bool Pe_ExB, Pe_mag, Pe_parflow, Pe_conduction, Pe_ohmic, Pe_thermalforce, Pe_thermalcurrent;
   bool Pe_collision, Pe_anomalous, Pe_sources, Pe_energyexchange,Pe_hyper,Pe_numdiff;
@@ -164,7 +167,7 @@ private:
   // Fields for ion momentum terms
   Field3D TE_NVi_ExB, TE_NVi_mag, TE_NVi_parflow, TE_NVi_parpressure, TE_NVi_parviscos, TE_NVi_collision, TE_NVi_anomalous, 
     TE_NVi_hyper, TE_NVi_numdiff;
-
+  Field3D TE_NVi_supsonicdampening;
   // Fields for electron pressure terms
   Field3D TE_Pe_ExB, TE_Pe_mag, TE_Pe_parflow, TE_Pe_conduction, TE_Pe_ohmic, TE_Pe_thermalforce, TE_Pe_thermalcurrent;
   Field3D TE_Pe_collision, TE_Pe_anomalous, TE_Pe_sources, TE_Pe_energyexchange, TE_Pe_hyper, TE_Pe_numdiff;

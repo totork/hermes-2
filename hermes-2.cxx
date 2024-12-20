@@ -470,8 +470,8 @@ int Hermes::init(bool restarting) {
   NVi_anomalous = optnvi["NVi_anomalous"].doc("Use anomalous transport in ion momentum").withDefault<bool>(false);
   NVi_hyper = optnvi["NVi_hyper"].doc("Use hyperdiffusion in ion momentum").withDefault<bool>(false);
   NVi_numdiff = optnvi["NVi_numdiff"].doc("Use parallel numerical diffusion in ion momentum").withDefault<bool>(false);
+  NVi_supsonicdampening = optnvi["NVi_supsonicdampening"].doc("Use supersonic dampening in ion momentum").withDefault<bool>(false);
 
-  
   // bool Pe_ExB, Pe_mag, Pe_parflow, Pe_conduction, Pe_ohmic, Pe_thermalforce, Pe_thermalcurrent; 
   // bool Pe_collision, Pe_anomalous, Pe_sources, Pe_energyexchange;
 
@@ -573,9 +573,10 @@ int Hermes::init(bool restarting) {
   TE_NVi_anomalous = 0.0;
   TE_NVi_hyper = 0.0;
   TE_NVi_numdiff = 0.0;
+  TE_NVi_supsonicdampening = 0.0;
   if (TE_NVi) {
     SAVE_REPEAT(TE_NVi_ExB, TE_NVi_mag, TE_NVi_parflow, TE_NVi_parpressure, TE_NVi_parviscos, TE_NVi_collision, TE_NVi_anomalous);
-    SAVE_REPEAT(TE_NVi_hyper, TE_NVi_numdiff);
+    SAVE_REPEAT(TE_NVi_hyper, TE_NVi_numdiff,TE_NVi_supsonicdampening);
   }
 
   
@@ -668,7 +669,8 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, use_new_div_par, false);
   
   OPTION(optsc, boussinesq, false);
-  
+  OPTION(optnumerics, check_finite, false);
+  OPTION(optnumerics, floor_vel , -1.0);
   // Switches for different methods to support numerical stability
   
   OPTION(optnumerics, floor_kappa_ipar, -1.0);
@@ -1315,29 +1317,28 @@ int Hermes::rhs(BoutReal t) {
   }
 
 
-  BOUT_FOR(i, Ne.getRegion("RGN_NOY")){
-    ASSERT0(std::isfinite(Pe[i]));
-    const auto iyp = i.yp();
-    const auto iym = i.ym();
-    //ASSERT0(std::isfinite(Ne.yup()[iyp]));                                                                                                                                                              
-    //ASSERT0(std::isfinite(Ne.ydown()[iym]));                                                                                                                                                            
-    if(std::isfinite(Pe.yup()[iyp])==false || std::isfinite(Pe.ydown()[iym])==false){
-      throw BoutException("Nonfinite value in electron pressure");
+  if (check_finite){
+    BOUT_FOR(i, Ne.getRegion("RGN_NOY")){
+      ASSERT0(std::isfinite(Pe[i]));
+      const auto iyp = i.yp();
+      const auto iym = i.ym();
+      //ASSERT0(std::isfinite(Ne.yup()[iyp]));                                                                                                                                                              
+      //ASSERT0(std::isfinite(Ne.ydown()[iym]));                                                                                                                                                            
+      if(std::isfinite(Pe.yup()[iyp])==false || std::isfinite(Pe.ydown()[iym])==false){
+	throw BoutException("Nonfinite value in electron pressure");
+      }
     }
-  }
-
-  
-  BOUT_FOR(i, Ne.getRegion("RGN_NOY")){
-    ASSERT0(std::isfinite(Ne[i]));
-    const auto iyp = i.yp();
-    const auto iym = i.ym();
-    //ASSERT0(std::isfinite(Ne.yup()[iyp]));
-    //ASSERT0(std::isfinite(Ne.ydown()[iym]));
-
-    if(std::isfinite(Ne.yup()[iyp])==false || std::isfinite(Ne.ydown()[iym])==false){
-      throw BoutException("Nonfinite value in density");
+    BOUT_FOR(i, Ne.getRegion("RGN_NOY")){
+      ASSERT0(std::isfinite(Ne[i]));
+      const auto iyp = i.yp();
+      const auto iym = i.ym();
+      //ASSERT0(std::isfinite(Ne.yup()[iyp]));
+      //ASSERT0(std::isfinite(Ne.ydown()[iym]));
+      
+      if(std::isfinite(Ne.yup()[iyp])==false || std::isfinite(Ne.ydown()[iym])==false){
+	throw BoutException("Nonfinite value in density");
+      }    
     }
-    
   }
   
   Field3D sound_speed;
@@ -1357,6 +1358,13 @@ int Hermes::rhs(BoutReal t) {
     /// printf("%f\n", Te[i]);
     div_all(Vi, NVi, Ne, i);
 
+    if (floor_vel > 0.0){
+      if (abs(Vi[i])<floor_vel){
+	Vi[i] = floor_vel;
+      }
+    }
+			    
+
     floor_all(Te, floor_Te, i);
     // ASSERT0(Te[i] > 1e-10);
 
@@ -1366,13 +1374,13 @@ int Hermes::rhs(BoutReal t) {
 
       // up field
       
-      if ( Te.yup()[iyp]> (Te[i]+Te_limiter_value) ){
+      if ( Te.yup()[iyp] > (Te[i]+Te_limiter_value) ){
 	Te.yup()[iyp] = Te[i]+Te_limiter_value;
       } else if (Te.yup()[iyp] < (Te[i]-Te_limiter_value)){
 	Te.yup()[iyp] = Te[i]-Te_limiter_value;
       }
 
-      if ( Te.ydown()[iym]> (Te[i]+Te_limiter_value) ){
+      if ( Te.ydown()[iym] > (Te[i]+Te_limiter_value) ){
 	Te.ydown()[iym] = Te[i]+Te_limiter_value;
       } else if	(Te.ydown()[iym] < (Te[i]-Te_limiter_value)){
 	Te.ydown()[iym] = Te[i]-Te_limiter_value;
@@ -1408,7 +1416,7 @@ int Hermes::rhs(BoutReal t) {
 
     
     mul_all(Pi, Ti, Ne, i);
-    div_all(Te, Pe, Ne, i);
+    // div_all(Te, Pe, Ne, i);
     // ASSERT0(Te[i] > 1e-10);
 
     sound_speed[i] =  sqrt(Te[i] + Ti[i] * (5. / 3));
@@ -1605,6 +1613,16 @@ int Hermes::rhs(BoutReal t) {
     zero_all(psi);
     // No psi contribution to VePsi
     Ve = add_all(VePsi , Vi);
+  }
+
+  if (floor_vel > 0.0){
+    BOUT_FOR(i, Ne.getRegion("RGN_NOY")) {
+      const auto iyp = i.yp();
+      const auto iym = i.ym();
+      if (abs(Ve[i])<floor_vel){
+	Ve[i] = floor_vel;
+      }
+    }
   }
 
   
@@ -2305,6 +2323,12 @@ int Hermes::rhs(BoutReal t) {
       ddt(NVi) += TE_NVi_numdiff;
     } // End NVi_numdiff
 
+
+    if (NVi_supsonicdampening){
+      Field3D tmp = floor((abs(Vi) - sound_speed),0.0);                                                                                  
+      TE_NVi_supsonicdampening = -(Vi/abs(Vi)) * NVi_supsonic_factor * (exp(tmp)-1.0);                                                                
+      ddt(NVi) += TE_NVi_supsonicdampening;
+    } // End NVi_supsonicdampening
     
   } // End evolve_nvi
 
