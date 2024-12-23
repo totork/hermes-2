@@ -2245,10 +2245,10 @@ int Hermes::rhs(BoutReal t) {
       TE_VePsi_supsonicdampening = 0.0;
       BOUT_FOR(i, VePsi.getRegion("RGN_NOBNDRY")){
 	if(Ve[i] < (-sqrt(mi_me)*sound_speed[i])){
-	  BoutReal tmp = abs(Ve[i] - sqrt(mi_me)*sound_speed[i]);
+	  BoutReal tmp = abs(Ve[i]) - sqrt(mi_me)*sound_speed[i];
 	  TE_VePsi_supsonicdampening[i] = Ve_supsonic_factor * (exp(tmp)-1.0);
-	} else if (Ve[i] > sqrt(mi_me)*sound_speed[i]){
-	  BoutReal tmp = abs(Ve[i] - sqrt(mi_me)*sound_speed[i]);
+	} else if (Ve[i] > (sqrt(mi_me)*sound_speed[i])){
+	  BoutReal tmp = abs(Ve[i]) - sqrt(mi_me)*sound_speed[i];
 	  TE_VePsi_supsonicdampening[i] = -Ve_supsonic_factor * (exp(tmp)-1.0);
 	}
       }
