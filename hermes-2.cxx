@@ -665,7 +665,7 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, pe_bndry_flux, false);
   OPTION(optnumerics, vort_bndry_flux, false);
   OPTION(optnumerics, use_new_conduction, true);
-  OPTION(optnumerics, use_new_viscosity, true);
+  OPTION(optnumerics, use_new_viscosity, false);
   OPTION(optnumerics, use_new_div_par, false);
   
   OPTION(optsc, boussinesq, false);
@@ -1291,14 +1291,14 @@ int Hermes::rhs(BoutReal t) {
   // Note: Parallel slices are not calculated because parallel derivatives
   // are calculated using field aligned quantities
 
-  /*
+  
   Ne.applyBoundary();
   NVi.applyBoundary();
   Pe.applyBoundary();
   Vort.applyBoundary();
   Pi.applyBoundary();
   VePsi.applyBoundary();
-  */
+  
   mesh->communicate(EvolvingVars);
 
   Ne.applyParallelBoundary(parbc);
@@ -1317,29 +1317,6 @@ int Hermes::rhs(BoutReal t) {
   }
 
 
-  if (check_finite){
-    BOUT_FOR(i, Ne.getRegion("RGN_NOY")){
-      ASSERT0(std::isfinite(Pe[i]));
-      const auto iyp = i.yp();
-      const auto iym = i.ym();
-      //ASSERT0(std::isfinite(Ne.yup()[iyp]));                                                                                                                                                              
-      //ASSERT0(std::isfinite(Ne.ydown()[iym]));                                                                                                                                                            
-      if(std::isfinite(Pe.yup()[iyp])==false || std::isfinite(Pe.ydown()[iym])==false){
-	throw BoutException("Nonfinite value in electron pressure");
-      }
-    }
-    BOUT_FOR(i, Ne.getRegion("RGN_NOY")){
-      ASSERT0(std::isfinite(Ne[i]));
-      const auto iyp = i.yp();
-      const auto iym = i.ym();
-      //ASSERT0(std::isfinite(Ne.yup()[iyp]));
-      //ASSERT0(std::isfinite(Ne.ydown()[iym]));
-      
-      if(std::isfinite(Ne.yup()[iyp])==false || std::isfinite(Ne.ydown()[iym])==false){
-	throw BoutException("Nonfinite value in density");
-      }    
-    }
-  }
   
   Field3D sound_speed;
   alloc_all(sound_speed);
@@ -1483,6 +1460,23 @@ int Hermes::rhs(BoutReal t) {
 	
         Te(n - 1, j, k) = 2. * te_bndry - Te(n - 2, j, k);
         Ti(n - 1, j, k) = 2. * ti_bndry - Ti(n - 2, j, k);
+      }
+    }
+  }
+
+
+
+  if (check_finite){
+    BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")){
+      ASSERT0(std::isfinite(Pe[i]));
+      const auto iyp = i.yp();
+      const auto iym = i.ym();
+                                                                                                                                                   
+      if(std::isfinite(Pe.yup()[iyp])==false || std::isfinite(Pe.ydown()[iym])==false){
+	throw BoutException("Nonfinite value in electron pressure");
+      }
+      if(std::isfinite(Ne.yup()[iyp])==false || std::isfinite(Ne.ydown()[iym])==false){
+        throw BoutException("Nonfinite value in density");
       }
     }
   }
@@ -1703,6 +1697,26 @@ int Hermes::rhs(BoutReal t) {
 	  if (verbose){
 	    debug_VePsisheath (x,y,z) = VePsisheath;
 	  }
+
+	  if (check_finite){
+	    if(std::isfinite(phi_te)==false ){
+	      throw BoutException("Nonfinite value in phi_te");
+	    }
+	    if(std::isfinite(vesheath)==false ){
+              throw BoutException("Nonfinite value in vesheath");
+            }
+	    if(std::isfinite(visheath)==false ){
+              throw BoutException("Nonfinite value in visheath");
+            }
+	    if(std::isfinite(phisheath)==false ){
+              throw BoutException("Nonfinite value in phisheath");
+            }
+	    if(std::isfinite(jsheath)==false ){
+              throw BoutException("Nonfinite value in jsheath");
+            }
+	    
+	  }
+	  
 
           // Neumann conditions
           Ne.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = nesheath;
@@ -2228,7 +2242,16 @@ int Hermes::rhs(BoutReal t) {
 
 
     if (VePsi_supsonicdampening){
-      Field3D tmp = floor((abs(Ve) - sqrt(mi_me)*sound_speed),0.0);                                                                                        TE_VePsi_supsonicdampening = -(Ve/abs(Ve))*Ve_supsonic_factor * (exp(tmp)-1.0);                                                                        
+      TE_VePsi_supsonicdampening = 0.0;
+      BOUT_FOR(i, VePsi.getRegion("RGN_NOBNDRY")){
+	if(Ve[i] < (-sqrt(mi_me)*sound_speed[i])){
+	  BoutReal tmp = abs(Ve[i] - sqrt(mi_me)*sound_speed[i]);
+	  TE_VePsi_supsonicdampening[i] = Ve_supsonic_factor * (exp(tmp)-1.0);
+	} else if (Ve[i] > sqrt(mi_me)*sound_speed[i]){
+	  BoutReal tmp = abs(Ve[i] - sqrt(mi_me)*sound_speed[i]);
+	  TE_VePsi_supsonicdampening[i] = -Ve_supsonic_factor * (exp(tmp)-1.0);
+	}
+      }
       ddt(VePsi) += TE_VePsi_supsonicdampening;      
     } // End VePsi_supsonicdampening
 
