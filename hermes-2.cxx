@@ -488,7 +488,11 @@ int Hermes::init(bool restarting) {
   Pe_energyexchange = optpe["Pe_energyexchange"].doc("Include energy exchange terms in electron energy").withDefault<bool>(false);
   Pe_hyper = optpe["Pe_hyper"].doc("Use hyperdiffusion in electron pressure").withDefault<bool>(false);
   Pe_numdiff = optpe["Pe_numdiff"].doc("Use parallel numerical diffusion in electron pressure").withDefault<bool>(false);
+  Pe_dampening = optpe["Pe_dampening"].doc("Use dampening of high temperatures in electron pressure").withDefault<bool>(false);
 
+
+
+  
   // bool Pi_ExB, Pi_mag, Pi_parflow, Pi_conduction, Pi_diamagenergyexchange, Pi_parviscousheat;
   // bool Pi_resistivedrift, Pi_perpviscous, Pi_sources;
 
@@ -594,9 +598,11 @@ int Hermes::init(bool restarting) {
   TE_Pe_energyexchange = 0.0;
   TE_Pe_hyper = 0.0;
   TE_Pe_numdiff = 0.0;
+  TE_Pe_dampening = 0.0;
   if (TE_Pe) {
     SAVE_REPEAT(TE_Pe_ExB, TE_Pe_mag, TE_Pe_parflow, TE_Pe_conduction, TE_Pe_ohmic, TE_Pe_thermalforce, TE_Pe_thermalcurrent);
     SAVE_REPEAT(TE_Pe_collision, TE_Pe_anomalous, TE_Pe_sources, TE_Pe_energyexchange, TE_Pe_hyper, TE_Pe_numdiff);
+    SAVE_REPEAT(TE_Pe_dampening);
   }
   
 
@@ -679,7 +685,11 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, NVi_supsonic_factor, 1.0);
   OPTION(optnumerics, Ve_supsonic_dissipation, false);
   OPTION(optnumerics, Ve_supsonic_factor, 1.0);
+  OPTION(optnumerics, Ve_supsonic_cut, 1.0);
+  OPTION(optnumerics, Pe_dampening_Te, 8.0);
+  OPTION(optnumerics, Pe_dampening_factor , 1.0);
 
+  
   OPTION(optnumerics, ne_bndry_flux, false);
   OPTION(optnumerics, pe_bndry_flux, false);
   OPTION(optnumerics, vort_bndry_flux, false);
@@ -693,7 +703,7 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, electron_weight, 1.0);
   OPTION(optnumerics, poloidal_flows, false);
 
-  OPTION(optvepsi, Ve_supsonic_factor, 1.0);
+  OPTION(optnumerics, Ve_supsonic_factor, 1.0);
 
   OPTION(optnumerics, floor_Ne,5e-2);
   OPTION(optnumerics, floor_Te,0.1);
@@ -703,7 +713,8 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, use_Ti_limiter, false);
   OPTION(optnumerics, Te_limiter_value, 1.0);
   OPTION(optnumerics, Ti_limiter_value, 1.0);
-
+  OPTION(optnumerics, use_Ve_limiter, false);
+  OPTION(optnumerics, Ve_limiter_value, 5.0);
   
   
   // Sheath switches
@@ -1181,13 +1192,15 @@ int Hermes::init(bool restarting) {
   eta_limit_denom = 0.0;
   Te_yup = 0.0;
   Te_ydown = 0.0;
+  Ve_yup = 0.0;
+  Ve_ydown = 0.0;
   debug_Pe_conduction_A = 0.0;
   debug_Pe_conduction_B = 0.0;
   debug_sheath_infsink = 0.0;
   SAVE_REPEAT(Te, Ti);
   if (verbose) {
     SAVE_REPEAT(eta_limit_denom);
-    SAVE_REPEAT(Te_yup,Te_ydown);
+    SAVE_REPEAT(Te_yup,Te_ydown,Ve_yup , Ve_ydown);
     // Save additional fields
     SAVE_REPEAT(debug_soundspeed,debug_phibndry3d);
     SAVE_REPEAT(tau_e, tau_i);
@@ -1490,6 +1503,8 @@ int Hermes::rhs(BoutReal t) {
       const auto iym = i.ym();
       Te_yup[i] = Te.yup()[iyp];
       Te_ydown[i] = Te.ydown()[iym];
+      Ve_yup[i] = Ve.yup()[iyp];
+      Ve_ydown[i] = Ve.ydown()[iym];
     }
   }
   
@@ -1619,6 +1634,27 @@ int Hermes::rhs(BoutReal t) {
     }
   }
 
+
+  if(use_Ve_limiter){
+    BOUT_FOR(i,Ne.getRegion("RGN_NOBNDRY")){
+      const auto iyp = i.yp();
+      const auto iym = i.ym();
+
+      if ( (Ve.yup()[iyp]-Ve[i])>Ve_limiter_value ){
+        Ve.yup()[iyp] = Ve[i]+Ve_limiter_value;
+      } else if ( (Ve.yup()[iyp]-Ve[i])<(-Ve_limiter_value) ){
+        Ve.yup()[iyp] = Ve[i]-Ve_limiter_value;
+      }
+
+      if ( (Ve.ydown()[iym]-Ve[i])>Ve_limiter_value ){
+        Ve.ydown()[iym] = Ve[i]+Ve_limiter_value;
+      } else if ( (Ve.ydown()[iym]-Ve[i])<(-Ve_limiter_value) ){
+        Ve.ydown()[iym] = Ve[i]-Ve_limiter_value;
+      }
+
+    }
+  }
+  
   
   Jpar = sub_all(NVi,mul_all(Ne,Ve));
 
@@ -2244,12 +2280,14 @@ int Hermes::rhs(BoutReal t) {
     if (VePsi_supsonicdampening){
       TE_VePsi_supsonicdampening = 0.0;
       BOUT_FOR(i, VePsi.getRegion("RGN_NOBNDRY")){
-	if(Ve[i] < (-sqrt(mi_me)*sound_speed[i])){
-	  BoutReal tmp = abs(Ve[i]) - sqrt(mi_me)*sound_speed[i];
-	  TE_VePsi_supsonicdampening[i] = Ve_supsonic_factor * (exp(tmp)-1.0);
-	} else if (Ve[i] > (sqrt(mi_me)*sound_speed[i])){
-	  BoutReal tmp = abs(Ve[i]) - sqrt(mi_me)*sound_speed[i];
-	  TE_VePsi_supsonicdampening[i] = -Ve_supsonic_factor * (exp(tmp)-1.0);
+	if(Ve[i] < (-Ve_supsonic_cut*sqrt(mi_me)*sound_speed[i])){
+	  //BoutReal tmp = abs(Ve[i]) - Ve_supsonic_cut*sqrt(mi_me)*sound_speed[i];
+	  BoutReal tmp = abs(Ve[i])/(Ve_supsonic_cut*sqrt(mi_me)*sound_speed[i]);
+	  TE_VePsi_supsonicdampening[i] = Ve_supsonic_factor * (floor(exp(tmp)-1.0,0.0));
+	} else if (Ve[i] > (Ve_supsonic_cut*sqrt(mi_me)*sound_speed[i])){
+	  //BoutReal tmp = abs(Ve[i]) - Ve_supsonic_cut*sqrt(mi_me)*sound_speed[i];
+	  BoutReal tmp = abs(Ve[i])/(Ve_supsonic_cut*sqrt(mi_me)*sound_speed[i]);
+	  TE_VePsi_supsonicdampening[i] = -Ve_supsonic_factor * (floor(exp(tmp)-1.0,0.0));
 	}
       }
       ddt(VePsi) += TE_VePsi_supsonicdampening;      
@@ -2348,12 +2386,22 @@ int Hermes::rhs(BoutReal t) {
 
 
     if (NVi_supsonicdampening){
-      Field3D tmp = floor((abs(Vi) - sound_speed),0.0);                                                                                  
-      TE_NVi_supsonicdampening = -(Vi/abs(Vi)) * NVi_supsonic_factor * (exp(tmp)-1.0);                                                                
+      TE_NVi_supsonicdampening = 0.0;
+      BOUT_FOR(i, Vi.getRegion("RGN_NOBNDRY")){
+        if(Vi[i] < (-sound_speed[i])){
+          BoutReal tmp = abs(Vi[i]) - sound_speed[i];
+          TE_NVi_supsonicdampening[i] = NVi_supsonic_factor * (floor(exp(tmp)-1.0,0.0));
+        } else if (Vi[i] > (sound_speed[i])){
+          BoutReal tmp = abs(Vi[i]) - sound_speed[i];
+          TE_NVi_supsonicdampening[i] = -NVi_supsonic_factor * (floor(exp(tmp)-1.0,0.0));
+        }
+      }
       ddt(NVi) += TE_NVi_supsonicdampening;
     } // End NVi_supsonicdampening
+
     
   } // End evolve_nvi
+  
 
 
 
@@ -2573,7 +2621,19 @@ int Hermes::rhs(BoutReal t) {
       TE_Pe_numdiff = numericaldissipation(num_chi,Pe);
       ddt(Pe) += TE_Pe_numdiff;
     } // End Pe_numdiff
-    
+
+
+    if (Pe_dampening){
+      TRACE("Electron pressure dampening");
+      TE_Pe_dampening = 0.0;
+      BOUT_FOR(i, Pe.getRegion("RGN_NOBNDRY")){
+        if(Te[i] > Pe_dampening_Te){
+          BoutReal tmp = abs(Te[i]) - Pe_dampening_Te;
+          TE_Pe_dampening[i] = -Pe_dampening_factor * (floor(exp(tmp),0.0));
+        } 
+      }
+      ddt(Pe) += TE_Pe_dampening ; 
+    } // End Pe_dampening
     
   } // End evolve_te
 

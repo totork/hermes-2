@@ -115,6 +115,7 @@ private:
 
   BoutReal floor_Ne,floor_Te,floor_Ti;
   Field3D Te_yup,Te_ydown;
+  Field3D Ve_yup, Ve_ydown;
   BoutReal floor_vel;
   
   // Switches for evolving variables
@@ -143,7 +144,7 @@ private:
   // Electron pressure
   bool Pe_ExB, Pe_mag, Pe_parflow, Pe_conduction, Pe_ohmic, Pe_thermalforce, Pe_thermalcurrent;
   bool Pe_collision, Pe_anomalous, Pe_sources, Pe_energyexchange,Pe_hyper,Pe_numdiff;
-
+  bool Pe_dampening;
   // Ion Pressure
   bool Pi_ExB, Pi_mag, Pi_parflow, Pi_conduction, Pi_diamagenergyexchange, Pi_parviscousheat;
   bool Pi_resistivedrift, Pi_perpviscous, Pi_sources,Pi_hyper,Pi_numdiff,Pi_anomalous, Pi_energyexchange;
@@ -171,7 +172,7 @@ private:
   // Fields for electron pressure terms
   Field3D TE_Pe_ExB, TE_Pe_mag, TE_Pe_parflow, TE_Pe_conduction, TE_Pe_ohmic, TE_Pe_thermalforce, TE_Pe_thermalcurrent;
   Field3D TE_Pe_collision, TE_Pe_anomalous, TE_Pe_sources, TE_Pe_energyexchange, TE_Pe_hyper, TE_Pe_numdiff;
-
+  Field3D TE_Pe_dampening;
   // Fields for ion pressure terms
   Field3D TE_Pi_ExB, TE_Pi_mag, TE_Pi_parflow, TE_Pi_conduction, TE_Pi_diamagenergyexchange, TE_Pi_parviscousheat;
   Field3D TE_Pi_resistivedrift, TE_Pi_perpviscous, TE_Pi_sources, TE_Pi_hyper, TE_Pi_numdiff,TE_Pi_anomalous, TE_Pi_energyexchange;
@@ -200,8 +201,10 @@ private:
   bool use_new_viscosity;
   bool use_Te_limiter;
   bool use_Ti_limiter;
+  bool use_Ve_limiter;
   BoutReal Te_limiter_value;
   BoutReal Ti_limiter_value;
+  BoutReal Ve_limiter_value;
   
   bool use_Vi;
   
@@ -252,8 +255,8 @@ private:
   // Numerical dissipation
 
 
-  
-  
+  BoutReal Pe_dampening_Te;
+  BoutReal Pe_dampening_factor;
 
   bool NVi_supsonic_dissipation;
   BoutReal NVi_supsonic_factor;
@@ -261,6 +264,7 @@ private:
 
   bool Ve_supsonic_dissipation;
   BoutReal Ve_supsonic_factor;
+  BoutReal Ve_supsonic_cut;
   Field3D Ve_dampening;
   
   
