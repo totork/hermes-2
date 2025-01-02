@@ -2387,17 +2387,20 @@ int Hermes::rhs(BoutReal t) {
 
     if (NVi_supsonicdampening){
       TE_NVi_supsonicdampening = 0.0;
-      BOUT_FOR(i, Vi.getRegion("RGN_NOBNDRY")){
+      BOUT_FOR(i, NVi.getRegion("RGN_NOBNDRY")){
         if(Vi[i] < (-sound_speed[i])){
-          BoutReal tmp = abs(Vi[i]) - sound_speed[i];
+          BoutReal tmp = abs(Vi[i])/(sound_speed[i]);
           TE_NVi_supsonicdampening[i] = NVi_supsonic_factor * (floor(exp(tmp)-1.0,0.0));
         } else if (Vi[i] > (sound_speed[i])){
-          BoutReal tmp = abs(Vi[i]) - sound_speed[i];
+          BoutReal tmp = abs(Vi[i])/(sound_speed[i]);
           TE_NVi_supsonicdampening[i] = -NVi_supsonic_factor * (floor(exp(tmp)-1.0,0.0));
-        }
+	}
       }
       ddt(NVi) += TE_NVi_supsonicdampening;
     } // End NVi_supsonicdampening
+
+
+
 
     
   } // End evolve_nvi
