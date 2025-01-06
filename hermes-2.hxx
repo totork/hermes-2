@@ -202,10 +202,11 @@ private:
   bool use_Te_limiter;
   bool use_Ti_limiter;
   bool use_Ve_limiter;
+  bool use_viscosity_limiter;
   BoutReal Te_limiter_value;
   BoutReal Ti_limiter_value;
   BoutReal Ve_limiter_value;
-  
+  BoutReal viscosity_limiter_value;
   bool use_Vi;
   
   // Anomalous perpendicular diffusion coefficients
@@ -312,7 +313,7 @@ private:
 
   Field3D hyperdissipation(const Field3D &a, const Field3D &b);
   Field3D numericaldissipation(const Field3D &a, const Field3D &b);
-  
+  Field3D term_limiter(const Field3D &a, const BoutReal &val);
   // Electromagnetic solver for finite electron mass case
   bool split_n0_psi;   // Split the n=0 component of Apar (psi)?
   //Laplacian *aparSolver;

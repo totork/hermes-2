@@ -716,6 +716,8 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, use_Ve_limiter, false);
   OPTION(optnumerics, Ve_limiter_value, 5.0);
   
+  OPTION(optnumerics, use_viscosity_limiter,false);
+  OPTION(optnumerics, viscosity_limiter_value, 10.0);
   
   // Sheath switches
   
@@ -2235,14 +2237,6 @@ int Hermes::rhs(BoutReal t) {
     } // End VePsi_parflow
 
     
-    /*
-    if(Ve_supsonic_dissipation){
-      Field3D tmp = floor((abs(Ve) - sqrt(mi_me)*sound_speed),0.0);
-      Ve_dampening = -(Ve/abs(Ve))*Ve_supsonic_factor * (exp(tmp)-1.0);
-      ddt(VePsi) += Ve_dampening;
-    }
-    */
-
 
     if (VePsi_hyper){
       TRACE("VePsi hyperdiffusion");
@@ -2260,18 +2254,15 @@ int Hermes::rhs(BoutReal t) {
 
     if (VePsi_parallelvisc){
       TRACE("VePsi parallel viscosity");
-      //mesh->communicate(eta_epar);
-      //eta_epar.applyParallelBoundary(parbc);
-      /*
-      Field3D gradVe = Grad_par(Ve);
-      mesh->communicate(gradVe);
-      gradVe.applyParallelBoundary(parbc);
-      TE_VePsi_parallelvisc = Div_par(eta_epar)*gradVe + eta_epar * Div_par(gradVe);
-      */
+      
       if(!use_new_conduction){
 	TE_VePsi_parallelvisc = Div_par_K_Grad_par(eta_epar,Ve);
       } else {
 	TE_VePsi_parallelvisc = Div_par_K_Grad_par_mod(eta_epar,Ve);
+      }
+
+      if (use_viscosity_limiter){
+	TE_VePsi_parallelvisc = term_limiter(TE_VePsi_parallelvisc, viscosity_limiter_value);
       }
       ddt(VePsi) += TE_VePsi_parallelvisc; 
     } // End VePsi_parallelvisc
@@ -2868,6 +2859,19 @@ Field3D Hermes::numericaldissipation(const Field3D &a, const Field3D &b) {
   return a * Grad2_par2(b);
 }
 
+Field3D Hermes::term_limiter(const Field3D &a, const BoutReal &val){
+  Field3D result{zeroFrom(a)};
+  BOUT_FOR(i, a.getRegion("RGN_NOBNDRY")){
+    if(a[i] > val){
+      result[i] = val;
+    } else if (a[i] < (-val)){
+      result[i] = -val;
+    } else {
+      result[i] = a[i];
+    }
+  }
+  return result;
+}
 
 
 
