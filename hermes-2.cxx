@@ -718,7 +718,9 @@ int Hermes::init(bool restarting) {
   
   OPTION(optnumerics, use_viscosity_limiter,false);
   OPTION(optnumerics, viscosity_limiter_value, 10.0);
-  
+
+  OPTION(optnumerics, use_conduction_limiter,false);
+  OPTION(optnumerics, conduction_limiter_value, 1.0);
   // Sheath switches
   
   OPTION(optsheath, sheath_model, 0);
@@ -2454,6 +2456,12 @@ int Hermes::rhs(BoutReal t) {
       } else {
 	TE_Pe_conduction = (2.0/3.0) * Div_par_K_Grad_par_mod(kappa_epar,Te,false);
       }
+
+      if (use_conduction_limiter){
+        TE_Pe_conduction = term_limiter(TE_Pe_conduction, conduction_limiter_value);
+      }
+
+      
       ddt(Pe) += TE_Pe_conduction;
     } // End Pe_conduction
   

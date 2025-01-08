@@ -203,10 +203,12 @@ private:
   bool use_Ti_limiter;
   bool use_Ve_limiter;
   bool use_viscosity_limiter;
+  bool use_conduction_limiter;
   BoutReal Te_limiter_value;
   BoutReal Ti_limiter_value;
   BoutReal Ve_limiter_value;
   BoutReal viscosity_limiter_value;
+  BoutReal conduction_limiter_value;
   bool use_Vi;
   
   // Anomalous perpendicular diffusion coefficients
