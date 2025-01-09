@@ -1313,12 +1313,12 @@ int Hermes::rhs(BoutReal t) {
   // are calculated using field aligned quantities
 
   
-  Ne.applyBoundary();
-  NVi.applyBoundary();
-  Pe.applyBoundary();
-  Vort.applyBoundary();
-  Pi.applyBoundary();
-  VePsi.applyBoundary();
+  Ne.applyBoundary("neumann");
+  NVi.applyBoundary("neumann");
+  Pe.applyBoundary("neumann");
+  Vort.applyBoundary("neumann");
+  Pi.applyBoundary("neumann");
+  VePsi.applyBoundary("neumann");
   
   mesh->communicate(EvolvingVars);
 
@@ -1483,6 +1483,11 @@ int Hermes::rhs(BoutReal t) {
         Ti(n - 1, j, k) = 2. * ti_bndry - Ti(n - 2, j, k);
       }
     }
+  }
+
+
+  if (!evolve_ti){
+    Pi=Pe;
   }
 
 
@@ -1771,15 +1776,19 @@ int Hermes::rhs(BoutReal t) {
 	    VePsi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = VePsisheath;
 	  }
 	  */
+
 	  
-          Vi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = visheath;//2. * visheath - Vi(x, y, z);
+	  
+          Vi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = visheath;
           if (par_sheath_ve){
-            Ve.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = vesheath;//2. * vesheath - Ve(x, y, z);
+            Ve.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = vesheath;
           }
           Jpar.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = jsheath;
-            // 2. * jsheath - Jpar(x, y, z);
           NVi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = nesheath * visheath;//
-            // 1. * nesheath * visheath;// - NVi(x, y, z);
+          
+
+
+	  
         }
       }// End sheath loop      
      
