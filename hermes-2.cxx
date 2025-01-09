@@ -599,10 +599,11 @@ int Hermes::init(bool restarting) {
   TE_Pe_hyper = 0.0;
   TE_Pe_numdiff = 0.0;
   TE_Pe_dampening = 0.0;
+  TE_Pe_sheath = 0.0;
   if (TE_Pe) {
     SAVE_REPEAT(TE_Pe_ExB, TE_Pe_mag, TE_Pe_parflow, TE_Pe_conduction, TE_Pe_ohmic, TE_Pe_thermalforce, TE_Pe_thermalcurrent);
     SAVE_REPEAT(TE_Pe_collision, TE_Pe_anomalous, TE_Pe_sources, TE_Pe_energyexchange, TE_Pe_hyper, TE_Pe_numdiff);
-    SAVE_REPEAT(TE_Pe_dampening);
+    SAVE_REPEAT(TE_Pe_dampening,TE_Pe_sheath);
   }
   
 
@@ -1198,11 +1199,14 @@ int Hermes::init(bool restarting) {
   Te_ydown = 0.0;
   Ve_yup = 0.0;
   Ve_ydown = 0.0;
+  Vi_yup = 0.0;
+  Vi_ydown = 0.0;
   debug_Pe_conduction_A = 0.0;
   debug_Pe_conduction_B = 0.0;
   debug_sheath_infsink = 0.0;
   SAVE_REPEAT(Te, Ti);
   if (verbose) {
+    SAVE_REPEAT(Vi_yup,Vi_ydown);
     SAVE_REPEAT(eta_limit_denom);
     SAVE_REPEAT(Te_yup,Te_ydown,Ve_yup , Ve_ydown);
     // Save additional fields
@@ -1498,19 +1502,6 @@ int Hermes::rhs(BoutReal t) {
     }
   }
 
-  /////////////////////////////////////////////////////////////
-  // Output some yup, ydown fields
-
-  if (verbose){
-    BOUT_FOR(i, Ne.getRegion("RGN_NOY")) {
-      const auto iyp = i.yp();
-      const auto iym = i.ym();
-      Te_yup[i] = Te.yup()[iyp];
-      Te_ydown[i] = Te.ydown()[iym];
-      Ve_yup[i] = Ve.yup()[iyp];
-      Ve_ydown[i] = Ve.ydown()[iym];
-    }
-  }
   
   /////////////////////////////////////////////////////////////
   // Calculate additional variables that are used for various calculations
@@ -1893,6 +1884,20 @@ int Hermes::rhs(BoutReal t) {
     }
   }
 
+
+  if (verbose){
+    BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")) {
+      const auto iyp = i.yp();
+      const auto iym = i.ym();
+      Te_yup[i] = Te.yup()[iyp];
+      Te_ydown[i] = Te.ydown()[iym];
+      Ve_yup[i] = Ve.yup()[iyp];
+      Ve_ydown[i] = Ve.ydown()[iym];
+      Vi_yup[i] = Vi.yup()[iyp];
+      Vi_ydown[i] = Vi.ydown()[iym];
+
+    }
+  }
 
   
   //////////////////////////////////////////////////////////////
@@ -2493,7 +2498,9 @@ int Hermes::rhs(BoutReal t) {
 
     if (Pe_anomalous){//Row 6
       TRACE("Pe anomalous transport");
-      TE_Pe_anomalous = FCIDiv_a_Grad_perp(mul_all(a_d3d, Te), Ne) + (2. / 3) * FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Te);
+      //TE_Pe_anomalous = FCIDiv_a_Grad_perp(mul_all(a_d3d, Te), Ne) + (2. / 3) * FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Te);
+      TE_Pe_anomalous = (2. / 3) * FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Te);
+      //TE_Pe_anomalous += FCIDiv_a_Grad_perp(mul_all(a_d3d, Te), Ne);
       ddt(Pe) += TE_Pe_anomalous;
     } // End Pe_anomalous
 
@@ -2567,6 +2574,7 @@ int Hermes::rhs(BoutReal t) {
 	}
 	sheath_dpe.name = "sheath physics";
 	ddt(Pe) += sheath_dpe;
+	TE_Pe_sheath = sheath_dpe;
 	if (sheath_infsink){
 	  ddt(Pe) += debug_sheath_infsink;
 	}

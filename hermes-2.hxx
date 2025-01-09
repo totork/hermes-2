@@ -115,7 +115,7 @@ private:
 
   BoutReal floor_Ne,floor_Te,floor_Ti;
   Field3D Te_yup,Te_ydown;
-  Field3D Ve_yup, Ve_ydown;
+  Field3D Ve_yup, Ve_ydown,Vi_yup,Vi_ydown;
   BoutReal floor_vel;
   
   // Switches for evolving variables
@@ -172,7 +172,7 @@ private:
   // Fields for electron pressure terms
   Field3D TE_Pe_ExB, TE_Pe_mag, TE_Pe_parflow, TE_Pe_conduction, TE_Pe_ohmic, TE_Pe_thermalforce, TE_Pe_thermalcurrent;
   Field3D TE_Pe_collision, TE_Pe_anomalous, TE_Pe_sources, TE_Pe_energyexchange, TE_Pe_hyper, TE_Pe_numdiff;
-  Field3D TE_Pe_dampening;
+  Field3D TE_Pe_dampening,TE_Pe_sheath;
   // Fields for ion pressure terms
   Field3D TE_Pi_ExB, TE_Pi_mag, TE_Pi_parflow, TE_Pi_conduction, TE_Pi_diamagenergyexchange, TE_Pi_parviscousheat;
   Field3D TE_Pi_resistivedrift, TE_Pi_perpviscous, TE_Pi_sources, TE_Pi_hyper, TE_Pi_numdiff,TE_Pi_anomalous, TE_Pi_energyexchange;
