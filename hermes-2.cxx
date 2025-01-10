@@ -1791,7 +1791,7 @@ int Hermes::rhs(BoutReal t) {
 	  
         }
       }// End sheath loop      
-     
+      break;
     }
       /*
     case 1: { // Linearly interpolating into the sheath
@@ -2588,6 +2588,7 @@ int Hermes::rhs(BoutReal t) {
 	if (sheath_infsink){
 	  ddt(Pe) += debug_sheath_infsink;
 	}
+	break;
       } // End case 0
 
 	/*
@@ -2796,6 +2797,7 @@ int Hermes::rhs(BoutReal t) {
 	  }
 	}
 	ddt(Pi) += sheath_dpi;
+	break;
       } // End Case 1
 	/*
       case 1 :{
