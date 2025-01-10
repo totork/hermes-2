@@ -1793,6 +1793,7 @@ int Hermes::rhs(BoutReal t) {
       }// End sheath loop      
      
     }
+      /*
     case 1: { // Linearly interpolating into the sheath
       for (const auto &bndry_par : mesh->getBoundariesPar(BoundaryParType::xout)) {
         for (const auto &pnt : *bndry_par)  {
@@ -1885,7 +1886,7 @@ int Hermes::rhs(BoutReal t) {
 	}
       }
       break;
-    }
+      }*/
     default: {
       throw BoutException("Not implemented");
       break;
@@ -2589,7 +2590,7 @@ int Hermes::rhs(BoutReal t) {
 	}
       } // End case 0
 
-	
+	/*
       case 1 : {
 	TRACE("Parallel sheaths in electron pressure");
         wall_power = 0.0; // Diagnostic output                                                                                                        
@@ -2624,6 +2625,7 @@ int Hermes::rhs(BoutReal t) {
           ddt(Pe) += debug_sheath_infsink;
         }
       } // End case 1
+	*/
       } // End switch
     } //End parallel_sheaths
 
@@ -2795,6 +2797,7 @@ int Hermes::rhs(BoutReal t) {
 	}
 	ddt(Pi) += sheath_dpi;
       } // End Case 1
+	/*
       case 1 :{
 
 	TRACE("Ion parallel sheaths");
@@ -2822,6 +2825,7 @@ int Hermes::rhs(BoutReal t) {
 	ddt(Pi) += sheath_dpi;
 	
       } // End case 1
+	*/
       } // End Swith 
     } //End parallel_sheaths
 
