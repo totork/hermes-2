@@ -1780,9 +1780,13 @@ int Hermes::rhs(BoutReal t) {
 	  
 	  
           Vi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = visheath;
-          if (par_sheath_ve){
-            Ve.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = vesheath;
-          }
+	  
+	  if (evolve_vepsi){
+	    Ve.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = vesheath;
+	  } else {
+	    Ve.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = visheath;
+	  }
+	  
           Jpar.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = jsheath;
           NVi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = nesheath * visheath;//
           
@@ -2582,12 +2586,15 @@ int Hermes::rhs(BoutReal t) {
 	    }
 	  }
 	}
+
+	if (sheath_infsink){
+          sheath_dpe += debug_sheath_infsink;
+        }
+
+	
 	sheath_dpe.name = "sheath physics";
 	ddt(Pe) += sheath_dpe;
 	TE_Pe_sheath = sheath_dpe;
-	if (sheath_infsink){
-	  ddt(Pe) += debug_sheath_infsink;
-	}
 	break;
       } // End case 0
 
