@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.9...3.12)
+project(higher_order_operators LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 14)
+find_package(bout++ REQUIRED)
+add_executable(higher_order_operators higher_order_operators.cxx)
+target_link_libraries(higher_order_operators PRIVATE bout++::bout++)
