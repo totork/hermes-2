@@ -1201,11 +1201,14 @@ int Hermes::init(bool restarting) {
   Ve_ydown = 0.0;
   Vi_yup = 0.0;
   Vi_ydown = 0.0;
+  kappa_epar_yup = 0.0;
+  kappa_epar_ydown = 0.0;
   debug_Pe_conduction_A = 0.0;
   debug_Pe_conduction_B = 0.0;
   debug_sheath_infsink = 0.0;
   SAVE_REPEAT(Te, Ti);
   if (verbose) {
+    SAVE_REPEAT(kappa_epar_yup,kappa_epar_ydown);
     SAVE_REPEAT(Vi_yup,Vi_ydown);
     SAVE_REPEAT(eta_limit_denom);
     SAVE_REPEAT(Te_yup,Te_ydown,Ve_yup , Ve_ydown);
@@ -1969,6 +1972,16 @@ int Hermes::rhs(BoutReal t) {
     kappa_epar = div_all(kappa_epar,denom);
   }
 
+  if (verbose){
+    BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")) {
+      const auto iyp = i.yp();
+      const auto iym = i.ym();
+      kappa_epar_yup[i] = kappa_epar.yup()[iyp];
+      kappa_epar_ydown[i] = kappa_epar.ydown()[iym];
+    }
+  }
+
+  
 
   // Ion parallel heat conduction
   kappa_ipar = mul_all(mul_all(mul_all(3.9, Ti), Ne), tau_i);
