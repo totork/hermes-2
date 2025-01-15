@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.9...3.12)
+project(distorted_grid LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 14)
+find_package(bout++ REQUIRED)
+add_executable(distorted_grid distorted_grid.cxx)
+target_link_libraries(distorted_grid PRIVATE bout++::bout++)
