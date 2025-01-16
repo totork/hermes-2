@@ -57,12 +57,7 @@ T max_abs(T first, Args... args) {
 }
 
 
-BoutReal floor(BoutReal var, BoutReal f) {
-  if (var < f)
-    return f;
-  return var;
-}
-
+/*
 BoutReal limitFree(BoutReal fc, BoutReal fm, BoutReal floorval){
   if (fc>fm){
     return fc;
@@ -77,6 +72,31 @@ BoutReal limitFree(BoutReal fc, BoutReal fm){
   }
   BoutReal fp = fc + 0.5*(fc-fm);
   return fp;
+}
+*/
+
+
+
+
+
+BoutReal clip(BoutReal value, BoutReal min, BoutReal max) {
+  if (value < min)
+    return min;
+  if (value > max)
+    return max;
+  return value;
+}
+
+BoutReal floor(BoutReal value, BoutReal min) {
+  if (value < min)
+    return min;
+  return value;
+}
+
+Ind3D indexAt(const Field3D& f, int x, int y, int z) {
+  int ny = f.getNy();
+  int nz = f.getNz();
+  return Ind3D{(x * ny + y) * nz + z, ny, nz};
 }
 
 
@@ -1674,226 +1694,69 @@ int Hermes::rhs(BoutReal t) {
   if (parallel_sheaths){
     switch (par_sheath_model) {
     case 0 :{
+
+      sheath_dpe = 0.0;
+      sheath_dpi = 0.0;
+
       for (const auto &bndry_par :
            mesh->getBoundariesPar(BoundaryParType::xout)) {
-        for (const auto &pnt : *bndry_par)  {
-          int x = pnt.ind().x();
-          int y = pnt.ind().y();
-          int z = pnt.ind().z();
+	for (const auto& pnt : *bndry_par) {
+
+	  auto i = pnt.ind();
 	  
-          // Zero-gradient density
-          BoutReal nesheath = floor(Ne(x, y, z), 0.0);
+	  pnt.ynext(Ne) = limitFree( Ne, pnt );
+	  pnt.ynext(Te) = limitFree( Te, pnt );
+	  pnt.ynext(Pe) = limitFree( Pe , pnt );
 
-          // Temperature at the sheath entrance
-          BoutReal tesheath = floor(Te(x, y, z), 0.0);
-          BoutReal tisheath = floor(Ti(x, y, z), 0.0);
+	  pnt.ynext(Ti) = limitFree( Ti , pnt );
+	  pnt.ynext(Pi) = limitFree( Pi , pnt );
 
-          // Zero-gradient potential
-          BoutReal phisheath = phi(x, y, z);
-	  if (verbose){
-	    debug_phisheath(x,y,z) = phisheath;
-	  }
-          BoutReal visheath = bndry_par->dir * sqrt(tisheath + tesheath);
+	  BoutReal phisheath = log(sqrt(Te[i] / (Te[i] + Ti[i]))) * Te[i];
 
-	  if (sheath_allow_supersonic) {
-            if (bndry_par->dir == 1){
-              if (Vi(x, y, z) > visheath){
-                // If plasma is faster, go to plasma velocity
-                visheath = Vi(x, y, z);
-              }
-            } else {
-              if (Vi(x, y, z) < visheath){
-                visheath = Vi(x, y, z);
-              }
-            }
-          }
+	  phi[i] = phisheath;
+	  pnt.ynext(phi) = phisheath;
 
-	  if (verbose){
-	    debug_visheath(x,y,z) = visheath;
-	  }
+	  const BoutReal nesheath = pnt.interpolate_sheath_o1(Ne);
+	  const BoutReal tesheath = pnt.interpolate_sheath_o1(Te);
+	  const BoutReal tisheath = pnt.interpolate_sheath_o1(Ti);
 
+	  const BoutReal vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
+	  const BoutReal visheath = pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath);
+
+	  const BoutReal jsheath = nesheath * (visheath - vesheath);
+	  const BoutReal nvisheath = nesheath * visheath;
 	  
-          // Sheath current
-          // Note that phi/Te >= 0.0 since for phi < 0
-          // vesheath is the electron saturation current
-          BoutReal phi_te =
-            floor(phisheath / tesheath, 0.0);
+	  pnt.dirichlet_o2(Vi, visheath);
+	  pnt.dirichlet_o2(Ve, vesheath);
 
-          BoutReal vesheath =
-            bndry_par->dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-phi_te);
+	  pnt.dirichlet_o2(Jpar, jsheath);
+	  pnt.dirichlet_o2(NVi, nvisheath);
+
+	  // Vorticity sheath boundary condition
+	  // Neumann
+
+	  pnt.ynext(Vort) = Vort[i];
+
+	  // Take into account the flow of energy due to fluid flow
+	  // This is additional energy flux through the sheath
+	  // Note: sign depends on sign of vesheath
 	  
-	  if (verbose){
-	    debug_sheathexp(x,y,z) = exp(-phi_te);
-	    debug_vesheath(x,y,z) = vesheath;
-	  }
-          // J = n*(Vi - Ve)
-          BoutReal jsheath = nesheath * (visheath - vesheath);
-	  BoutReal VePsisheath= vesheath-visheath;
-	  if (nesheath < 1e-10) {
-            vesheath = visheath;
-            jsheath = 0.0;
-          }
-	  if (verbose){
-	    debug_VePsisheath (x,y,z) = VePsisheath;
-	  }
+	  const BoutReal q_e = floor( (sheath_gamma_e - 1.5) * tesheath * nesheath * vesheath * pnt.dir , 0.0);
+	  const BoutReal flux_e = q_e * coord->J[i] / sqrt(coord->g_22[i]);
+	  const BoutReal power_e = flux_e / (coord->dy[i] * coord->J[i]);
+	  sheath_dpe[i] -= (3.0/2.0) * power_e;
 
-	  if (check_finite){
-	    if(std::isfinite(phi_te)==false ){
-	      throw BoutException("Nonfinite value in phi_te");
-	    }
-	    if(std::isfinite(vesheath)==false ){
-              throw BoutException("Nonfinite value in vesheath");
-            }
-	    if(std::isfinite(visheath)==false ){
-              throw BoutException("Nonfinite value in visheath");
-            }
-	    if(std::isfinite(phisheath)==false ){
-              throw BoutException("Nonfinite value in phisheath");
-            }
-	    if(std::isfinite(jsheath)==false ){
-              throw BoutException("Nonfinite value in jsheath");
-            }
-	    
-	  }
+	  const BoutReal q_i = floor( (sheath_gamma_i - 1.0) * tisheath * nesheath * visheath * pnt.dir , 0.0);
+	  const BoutReal flux_i = q_i * coord->J[i] / sqrt(coord->g_22[i]);
+	  const BoutReal power_i = flux_i / (coord->dy[i] * coord->J[i]);
+	  sheath_dpi[i] -= (3.0/2.0) * power_i;
 	  
-
-          // Neumann conditions
-          Ne.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = nesheath;
-          phi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = phisheath;
-
-	  if (Vort_dirichlet){
-	    Vort.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = 0.0;
-	  } else {
-	    Vort.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Vort(x, y, z);
-	  }
-          // Here zero-gradient Te, heat flux applied later
-          Te.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Te(x, y, z);
-          Ti.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Ti(x, y, z);
-
-          Pe.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Pe(x, y, z);
-          Pi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Pi(x, y, z);
-
-          // Dirichlet conditions
-	  /*
-	  if (electromagnetic || FiniteElMass){
-	    VePsi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = VePsisheath;
-	  }
-	  */
+	} // End for (const auto& pnt : region)
+      } // End iter_regions([&](auto& region)
 
 	  
-	  
-          Vi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = visheath;
-	  
-	  if (evolve_vepsi){
-	    Ve.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = vesheath;
-	  } else {
-	    Ve.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = visheath;
-	  }
-	  
-          Jpar.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = jsheath;
-          NVi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = nesheath * visheath;//
-          
-
-
-	  
-        }
-      }// End sheath loop      
       break;
-    }
-      /*
-    case 1: { // Linearly interpolating into the sheath
-      for (const auto &bndry_par : mesh->getBoundariesPar(BoundaryParType::xout)) {
-        for (const auto &pnt : *bndry_par)  {
-	  TRACE("Setting new parallel sheaths with linear interpolation");
-	  int x = pnt.ind().x();
-          int y = pnt.ind().y();
-          int z = pnt.ind().z();
-	  BoutReal bdir = bndry_par->dir;
-
-	  // limitFree(BoutReal fc, BoutReal fm, BoutReal floorval)
-	  // Set the densities and temperatures
-
-	  Ne_sheath(x,y,z) = limitFree(Ne(x,y,z),Ne.ynext(bdir)(x, y-bdir, z),floor_Ne);
-
-	  Te_sheath(x,y,z) = limitFree(Te(x,y,z),Te.ynext(bdir)(x, y-bdir, z),floor_Te);
-
-	  Ti_sheath(x,y,z) = limitFree(Ti(x,y,z),Ti.ynext(bdir)(x, y-bdir, z),floor_Ti);
-
-	  // Set the ion velocity
-	  
-	  Vi_sheath(x,y,z) = bdir * sqrt( (5.0/3.0)*Ti_sheath(x,y,z) + Te_sheath(x,y,z) );
-	  if (bdir == 1){
-	    if (Vi(x, y, z) > Vi_sheath(x,y,z)){
-	      // If plasma is faster, go to plasma velocity
-	      Vi_sheath(x,y,z) = Vi(x, y, z);
-	    }
-	  } else {
-	    if (Vi(x, y, z) < Vi_sheath(x,y,z)){
-	      Vi_sheath(x,y,z) = Vi(x, y, z);
-	    }
-	  }
-
-	  // Set the electrostatic potential at the sheath
-
-	  //phi_sheath(x,y,z) = limitFree(phi(x,y,z),phi.ynext(bdir)(x, y-bdir, z));
-	  phi_sheath(x,y,z) = 3.0 * Te_sheath(x,y,z)+0.00001;
-	  BoutReal phi_Te = floor(phi_sheath(x,y,z)/Te_sheath(x,y,z),0.0);
-
-	  // Set the electron velocity
-	  
-	  Ve_sheath(x,y,z) = bdir * sqrt(Te_sheath(x,y,z)) * (sqrt(mi_me) / (2.0 * sqrt(PI))) * exp(-phi_Te);
-
-	  if (bdir == 1){
-            if (Ve(x, y, z) > Ve_sheath(x,y,z)){
-              // If plasma is faster, go to plasma velocity                                                                                          
-              Ve_sheath(x,y,z) = Ve(x, y, z);
-            }
-          } else {
-            if (Ve(x, y, z) < Ve_sheath(x,y,z)){
-              Ve_sheath(x,y,z) = Ve(x, y, z);
-            }
-          }
-
-
-	  
-	  // Calculate the parallel current
-
-	  Jpar_sheath(x,y,z) = Ne_sheath(x,y,z) * (Vi_sheath(x,y,z) - Ve_sheath(x,y,z));
-
-	  // All quantities calculated, set relevant dirichlet conditions
-
-	  Ne.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Ne(x,y,z) + 2.0*(Ne_sheath(x,y,z)-Ne(x,y,z));
-
-	  Te.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Te(x,y,z) + 2.0*(Te_sheath(x,y,z)-Te(x,y,z));
-	  Pe.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Te.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) *
-	    Ne.ynext(bndry_par->dir)(x, y+bndry_par->dir, z);
-
-	  Ti.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Ti(x,y,z) + 2.0*(Ti_sheath(x,y,z)-Ti(x,y,z));
-          Pi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Ti.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) *
-	    Ne.ynext(bndry_par->dir)(x, y+bndry_par->dir, z);
-
-	  Vi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Vi(x,y,z) + 2.0*(Vi_sheath(x,y,z)-Vi(x,y,z));
-          NVi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Vi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) *
-	    Ne.ynext(bndry_par->dir)(x, y+bndry_par->dir, z);
-
-	  Ve.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Ve(x,y,z) + 2.0*(Ve_sheath(x,y,z)-Ve(x,y,z));
-
-	  Jpar.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Jpar(x,y,z) + 2.0*(Jpar_sheath(x,y,z)-Jpar(x,y,z));
-
-	  phi.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = phi(x,y,z) + 2.0*(phi_sheath(x,y,z)-phi(x,y,z));
-	  
-	  // Set relecant neumann conditions
-
-	  if (Vort_dirichlet){
-            Vort.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = 0.0;
-          } else {
-            Vort.ynext(bndry_par->dir)(x, y+bndry_par->dir, z) = Vort(x, y, z);
-          }
-	  
-	}
-      }
-      break;
-      }*/
+    } // End case 0
     default: {
       throw BoutException("Not implemented");
       break;
@@ -2549,104 +2412,11 @@ int Hermes::rhs(BoutReal t) {
     if (parallel_sheaths){
       switch (par_sheath_model) {
       case 0 :{
-	TRACE("Parallel sheaths in electron pressure");
-	wall_power = 0.0; // Diagnostic output
-	sheath_dpe = 0.;
-	
-	for (const auto &bndry_par :
-	       mesh->getBoundariesPar(BoundaryParType::xout)) {
-	  for (const auto &pnt : *bndry_par) {
-	    int x = pnt.ind().x();
-	    int y = pnt.ind().y();
-	    int z = pnt.ind().z();
-	    // Temperature and density at the sheath entrance
-	    BoutReal tesheath =
-              floor(0.5 * (Te(x, y, z) +
-                           Te.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
-                    0.0);
-	    BoutReal nesheath =
-              floor(0.5 * (Ne(x, y, z) +
-                           Ne.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
-                    0.0);
-	    BoutReal vesheath =
-	      0.5 * (Ve(x, y, z) +
-		     Ve.ynext(bndry_par->dir)(x, y + bndry_par->dir, z));
-	    // BoutReal tisheath = floor(
-	    //                               0.5 * (Ti(x, y, z) +
-	    // Ti.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
-	    // 0.0);
-
-	    // Sound speed (normalised units)
-	    // BoutReal Cs =bndry_par->dir* sqrt(tesheath + tisheath);
-
-	    // Heat flux
-	    BoutReal q = floor((sheath_gamma_e - 1.5) * tesheath * nesheath * vesheath *
-			       bndry_par->dir,0.0);
-	    // Multiply by cell area to get power
-	    BoutReal flux = q * coord->J(x, y, z) / sqrt(coord->g_22(x, y, z));
-	  
-	    // Divide by volume of cell, and 2/3 to get pressure
-	    BoutReal power =
-	      flux
-	      / (coord->dy(x, y, z) * coord->J(x, y, z));
-	    // ddt(Pe)(x, y, z) -= (2. / 3) * power;
-	    sheath_dpe(x, y, z) -= (2. / 3) * power;
-
-	    if(sheath_infsink){
-	      // sheath_infsink , infsink_Te , infsink_amp ,  debug_sheath_infsink
-	      BoutReal tmp = floor(Te(x,y,z)-infsink_Te, 0.0);
-	      debug_sheath_infsink(x,y,z) = -infsink_amp * (exp(tmp) - 1.0);
-	    }
-	  }
-	}
-
-	if (sheath_infsink){
-          sheath_dpe += debug_sheath_infsink;
-        }
-
-	
-	sheath_dpe.name = "sheath physics";
-	ddt(Pe) += sheath_dpe;
 	TE_Pe_sheath = sheath_dpe;
+	ddt(Pe) += TE_Pe_sheath;
+	
 	break;
-      } // End case 0
-
-	/*
-      case 1 : {
-	TRACE("Parallel sheaths in electron pressure");
-        wall_power = 0.0; // Diagnostic output                                                                                                        
-        sheath_dpe = 0.;
-
-        for (const auto &bndry_par :
-               mesh->getBoundariesPar(BoundaryParType::xout)) {
-          for (const auto &pnt : *bndry_par) {
-            int x = pnt.ind().x();
-            int y = pnt.ind().y();
-            int z = pnt.ind().z();
-	    
-	    BoutReal q = floor((sheath_gamma_e - 1.5) * Te_sheath(x,y,z) * Ne_sheath(x,y,z) * Ve_sheath(x,y,z) *
-                               bndry_par->dir,0.0);
-            // Multiply by cell area to get power                                                                                                     
-            BoutReal flux = q * coord->J(x, y, z) / sqrt(coord->g_22(x, y, z));
-            BoutReal power =
-              flux
-              / (coord->dy(x, y, z) * coord->J(x, y, z));
-	    
-            sheath_dpe(x, y, z) -= (2. / 3) * power;
-
-            if(sheath_infsink){
-              BoutReal tmp = floor(Te(x,y,z)-infsink_Te, 0.0);
-              debug_sheath_infsink(x,y,z) = -infsink_amp * (exp(tmp) - 1.0);
-            }
-	  }
-	}
-	sheath_dpe.name = "sheath physics";
-        ddt(Pe) += sheath_dpe;
-        if (sheath_infsink){
-          ddt(Pe) += debug_sheath_infsink;
-        }
-      } // End case 1
-	*/
+      } 
       } // End switch
     } //End parallel_sheaths
 
@@ -2774,80 +2544,10 @@ int Hermes::rhs(BoutReal t) {
     if (parallel_sheaths){
       switch (par_sheath_model) {
       case 0 :{
-	TRACE("Ion parallel sheaths");
-	sheath_dpi = 0.0;
-	for (const auto &bndry_par :
-	       mesh->getBoundariesPar(BoundaryParType::xout)) {
-	  for (const auto &pnt : *bndry_par) {
-	    int x = pnt.ind().x();
-	    int y = pnt.ind().y();
-	    int z = pnt.ind().z();
-	    // Temperature and density at the sheath entrance                                                                                                                                                                                                                       
-	    BoutReal tisheath =
-              floor(0.5 * (Ti(x, y, z) +
-                           Ti.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
-                    0.0);
-	    BoutReal tesheath =
-              floor(0.5 * (Te(x, y, z) +
-                           Te.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
-                    0.0);
-	    BoutReal nesheath =
-              floor(0.5 * (Ne(x, y, z) +
-                           Ne.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)),
-                    0.0);
-	    BoutReal visheath =
-              0.5 * (Vi(x, y, z) +
-                     Vi.ynext(bndry_par->dir)(x, y + bndry_par->dir, z));
-	    
-	    // Sound speed (normalisexd units)                                                                                                                                                                                                                                      
-	    // BoutReal Cs = bndry_par->dir * sqrt(tesheath + tisheath);                                                                                                                                                                                                            
-
-	    // Heat flux                                                                                                                                                                                                                                                            
-	    BoutReal q = (sheath_gamma_i - 1.5) * tisheath * nesheath * visheath *
-	      bndry_par->dir;
-
-	    // Multiply by cell area to get power                                                                                                                                                                                                                                   
-	    BoutReal flux = q * coord->J(x, y, z) / sqrt(coord->g_22(x, y, z));
-
-	    // Divide by volume of cell, and 2/3 to get pressure                                                                                                                                                                                                                    
-	    BoutReal power =
-	      flux
-	      / (coord->dy(x, y, z) * coord->J(x, y, z));
-	    sheath_dpi(x, y, z) -= (3. / 2) * power;
-	  }
-	}
-	ddt(Pi) += sheath_dpi;
-	break;
-      } // End Case 1
-	/*
-      case 1 :{
-
-	TRACE("Ion parallel sheaths");
-	sheath_dpi = 0.0;
-        for (const auto &bndry_par :
-               mesh->getBoundariesPar(BoundaryParType::xout)) {
-          for (const auto &pnt : *bndry_par) {
-            int x = pnt.ind().x();
-            int y = pnt.ind().y();
-            int z = pnt.ind().z();
-
-	    BoutReal q = (sheath_gamma_i - 1.5) * Ti_sheath(x,y,z) * Ne_sheath(x,y,z) * Vi_sheath(x,y,z) *
-              bndry_par->dir;
- 
-            BoutReal flux = q * coord->J(x, y, z) / sqrt(coord->g_22(x, y, z));
-
-            BoutReal power =
-              flux
-              / (coord->dy(x, y, z) * coord->J(x, y, z));
-            sheath_dpi(x, y, z) -= (3. / 2) * power;
-
-	  } // End for
-	} // End bndry iterator
-
 	ddt(Pi) += sheath_dpi;
 	
-      } // End case 1
-	*/
+	break;
+      } // End Case 1
       } // End Swith 
     } //End parallel_sheaths
 
