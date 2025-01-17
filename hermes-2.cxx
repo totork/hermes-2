@@ -65,15 +65,37 @@ BoutReal limitFree(BoutReal fc, BoutReal fm, BoutReal floorval){
   BoutReal fp = fc + 0.5*(fc-fm);   // the .5 is coming from the fact, that we extralpolate to the boundary between the center cell and the up cell
   return floor(fp,floorval);
 }
+*/
+BoutReal interpolate_sheathneighbour(BoutReal fc, BoutReal finterface){
+  return fc + (finterface-fc);
+}
 
-BoutReal limitFree(BoutReal fc, BoutReal fm){
-  if (fc>fm){
-    return fc;
+
+inline BoutReal limitFree(BoutReal fm, BoutReal fc) {
+  if (fm < fc) {
+    return fc; // Neumann rather than increasing into boundary
   }
-  BoutReal fp = fc + 0.5*(fc-fm);
+  if (fm < 1e-10) {
+    return fc; // Low / no density condition
+  }
+  BoutReal fp = SQ(fc) / fm;
+#if CHECKLEVEL >= 2
+  if (!std::isfinite(fp)) {
+    throw BoutException("SheathBoundaryParallel limitFree: {}, {} -> {}", fm, fc, fp);
+  }
+#endif
+
   return fp;
 }
-*/
+
+inline BoutReal limitFree(const Field3D& f, const BoundaryRegionParIter& pnt) {
+  if (pnt.valid() > 0) {
+    return limitFree(pnt.yprev(f), pnt.ythis(f));
+  }
+  return pnt.ythis(f);
+}
+
+
 
 
 
@@ -973,6 +995,8 @@ int Hermes::init(bool restarting) {
     Bxyz = exp_all(logBxyz);
     SAVE_ONCE(Bxyz);
     ASSERT1(min(Bxyz) > 0.0);
+
+    /*
     fwd_bndry_mask = BoutMask(mesh, false);
     bwd_bndry_mask = BoutMask(mesh, false);
     for (const auto &bndry_par : mesh->getBoundariesPar(BoundaryParType::fwd)) {
@@ -986,9 +1010,13 @@ int Hermes::init(bool restarting) {
       }
     }
 
+    */
+
+    /*
     bout::checkPositive(coord->Bxy, "f", "RGN_NOCORNERS");
     bout::checkPositive(coord->Bxy.yup(), "fyup", "RGN_YPAR_+1");
     bout::checkPositive(coord->Bxy.ydown(), "fdown", "RGN_YPAR_-1");
+    */
     logB = log(Bxyz);
 
     bracket_factor = sqrt(coord->g_22) / (coord->J * Bxyz);
@@ -1389,24 +1417,6 @@ int Hermes::rhs(BoutReal t) {
     floor_all(Te, floor_Te, i);
     // ASSERT0(Te[i] > 1e-10);
 
-    if(use_Te_limiter){
-      const auto iyp = i.yp();
-      const auto iym = i.ym();
-
-      // up field
-      
-      if ( Te.yup()[iyp] > (Te[i]+Te_limiter_value) ){
-	Te.yup()[iyp] = Te[i]+Te_limiter_value;
-      } else if (Te.yup()[iyp] < (Te[i]-Te_limiter_value)){
-	Te.yup()[iyp] = Te[i]-Te_limiter_value;
-      }
-
-      if ( Te.ydown()[iym] > (Te[i]+Te_limiter_value) ){
-	Te.ydown()[iym] = Te[i]+Te_limiter_value;
-      } else if	(Te.ydown()[iym] < (Te[i]-Te_limiter_value)){
-	Te.ydown()[iym] = Te[i]-Te_limiter_value;
-      }
-    }
     
     mul_all(Pe, Te, Ne, i);
 
@@ -1417,23 +1427,6 @@ int Hermes::rhs(BoutReal t) {
     div_all(Ti, Pi, Ne, i);
     floor_all(Ti, floor_Ti, i);
 
-    if(use_Ti_limiter){
-      const auto iyp = i.yp();
-      const auto iym = i.ym();
-      // up field                                                                                                                                                                                          
-
-      if ( Ti.yup()[iyp]> (Ti[i]+Ti_limiter_value) ){
-	Ti.yup()[iyp] =	Ti[i]+Ti_limiter_value;
-      } else if	(Ti.yup()[iyp] < (Ti[i]-Ti_limiter_value)){
-	Ti.yup()[iyp] =	Ti[i]-Ti_limiter_value;
-      }
-
-      if ( Ti.ydown()[iym]> (Ti[i]+Ti_limiter_value) ){
-	Ti.ydown()[iym] = Ti[i]+Ti_limiter_value;
-      } else if (Ti.ydown()[iym] < (Ti[i]-Ti_limiter_value)){
-        Ti.ydown()[iym] = Ti[i]-Ti_limiter_value;
-      }
-    }
 
     
     mul_all(Pi, Ti, Ne, i);
@@ -1515,20 +1508,6 @@ int Hermes::rhs(BoutReal t) {
 
 
 
-  if (check_finite){
-    BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")){
-      ASSERT0(std::isfinite(Pe[i]));
-      const auto iyp = i.yp();
-      const auto iym = i.ym();
-                                                                                                                                                   
-      if(std::isfinite(Pe.yup()[iyp])==false || std::isfinite(Pe.ydown()[iym])==false){
-	throw BoutException("Nonfinite value in electron pressure");
-      }
-      if(std::isfinite(Ne.yup()[iyp])==false || std::isfinite(Ne.ydown()[iym])==false){
-        throw BoutException("Nonfinite value in density");
-      }
-    }
-  }
 
   
   /////////////////////////////////////////////////////////////
@@ -1647,37 +1626,7 @@ int Hermes::rhs(BoutReal t) {
     Ve = add_all(VePsi , Vi);
   }
 
-  if (floor_vel > 0.0){
-    BOUT_FOR(i, Ne.getRegion("RGN_NOY")) {
-      const auto iyp = i.yp();
-      const auto iym = i.ym();
-      if (abs(Ve[i])<floor_vel){
-	Ve[i] = floor_vel;
-      }
-    }
-  }
 
-
-  if(use_Ve_limiter){
-    BOUT_FOR(i,Ne.getRegion("RGN_NOBNDRY")){
-      const auto iyp = i.yp();
-      const auto iym = i.ym();
-
-      if ( (Ve.yup()[iyp]-Ve[i])>Ve_limiter_value ){
-        Ve.yup()[iyp] = Ve[i]+Ve_limiter_value;
-      } else if ( (Ve.yup()[iyp]-Ve[i])<(-Ve_limiter_value) ){
-        Ve.yup()[iyp] = Ve[i]-Ve_limiter_value;
-      }
-
-      if ( (Ve.ydown()[iym]-Ve[i])>Ve_limiter_value ){
-        Ve.ydown()[iym] = Ve[i]+Ve_limiter_value;
-      } else if ( (Ve.ydown()[iym]-Ve[i])<(-Ve_limiter_value) ){
-        Ve.ydown()[iym] = Ve[i]-Ve_limiter_value;
-      }
-
-    }
-  }
-  
   
   Jpar = sub_all(NVi,mul_all(Ne,Ve));
 
@@ -1701,55 +1650,115 @@ int Hermes::rhs(BoutReal t) {
       for (const auto &bndry_par :
            mesh->getBoundariesPar(BoundaryParType::xout)) {
 	for (const auto& pnt : *bndry_par) {
+	  const auto i = pnt.ind();
+	  if (abs(pnt.offset())==2){
+	    TRACE("Sheath offset==2, limitfree values");
+	    pnt.ynext(Ne) = limitFree(pnt.yprev(Ne),pnt.ythis(Ne));
+	    pnt.ynext(Te) = limitFree(pnt.yprev(Ne),pnt.ythis(Te));
+	    pnt.ynext(Pe) = limitFree(pnt.yprev(Ne),pnt.ythis(Pe));
 
-	  auto i = pnt.ind();
-	  
-	  pnt.ynext(Ne) = limitFree( Ne, pnt );
-	  pnt.ynext(Te) = limitFree( Te, pnt );
-	  pnt.ynext(Pe) = limitFree( Pe , pnt );
+	    pnt.ynext(Ti) = limitFree(pnt.yprev(Ne),pnt.ythis(Ti));
+	    pnt.ynext(Pi) = limitFree(pnt.yprev(Ne),pnt.ythis(Pi));
 
-	  pnt.ynext(Ti) = limitFree( Ti , pnt );
-	  pnt.ynext(Pi) = limitFree( Pi , pnt );
+	    BoutReal phisheath = log(sqrt(pnt.ythis(Te) / (pnt.ythis(Te) + pnt.ythis(Ti)))) * pnt.ythis(Te);
 
-	  BoutReal phisheath = log(sqrt(Te[i] / (Te[i] + Ti[i]))) * Te[i];
+	    pnt.ynext(phi) = phisheath;
 
-	  phi[i] = phisheath;
-	  pnt.ynext(phi) = phisheath;
+	    
+	    TRACE("Sheath offset==2, interpolate sheath values");
+	    
+	    const BoutReal nesheath = pnt.interpolate_sheath_o1(Ne);
+	    const BoutReal tesheath = pnt.interpolate_sheath_o1(Te);
+	    const BoutReal tisheath = pnt.interpolate_sheath_o1(Ti);
 
-	  const BoutReal nesheath = pnt.interpolate_sheath_o1(Ne);
-	  const BoutReal tesheath = pnt.interpolate_sheath_o1(Te);
-	  const BoutReal tisheath = pnt.interpolate_sheath_o1(Ti);
+	    const BoutReal vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
+	    const BoutReal visheath = pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath);
 
-	  const BoutReal vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
-	  const BoutReal visheath = pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath);
+	    const BoutReal jsheath = nesheath * (visheath - vesheath);
+	    const BoutReal nvisheath = nesheath * visheath;
 
-	  const BoutReal jsheath = nesheath * (visheath - vesheath);
-	  const BoutReal nvisheath = nesheath * visheath;
-	  
-	  pnt.dirichlet_o2(Vi, visheath);
-	  pnt.dirichlet_o2(Ve, vesheath);
+	    TRACE("Sheath offset==2, set neighbouring cells");
+	    
+	    pnt.ynext(Vi) = interpolate_sheathneighbour(pnt.ythis(Vi), visheath);
+	    pnt.ynext(Ve) = interpolate_sheathneighbour(pnt.ythis(Ve), vesheath);
 
-	  pnt.dirichlet_o2(Jpar, jsheath);
-	  pnt.dirichlet_o2(NVi, nvisheath);
+	    pnt.ynext(Jpar) = interpolate_sheathneighbour(pnt.ythis(Jpar), jsheath);
+	    pnt.ynext(NVi) = interpolate_sheathneighbour(pnt.ythis(NVi), nvisheath);
 
-	  // Vorticity sheath boundary condition
-	  // Neumann
+	    pnt.ynext(Vort) = pnt.ythis(Vort);
 
-	  pnt.ynext(Vort) = Vort[i];
+	  } else if (abs(pnt.offset())==1){
 
-	  // Take into account the flow of energy due to fluid flow
-	  // This is additional energy flux through the sheath
-	  // Note: sign depends on sign of vesheath
-	  
-	  const BoutReal q_e = floor( (sheath_gamma_e - 1.5) * tesheath * nesheath * vesheath * pnt.dir , 0.0);
-	  const BoutReal flux_e = q_e * coord->J[i] / sqrt(coord->g_22[i]);
-	  const BoutReal power_e = flux_e / (coord->dy[i] * coord->J[i]);
-	  sheath_dpe[i] -= (3.0/2.0) * power_e;
+	    TRACE("Sheath offset==1, limitfree values");
+	    pnt.ynext(Ne) = limitFree(pnt.yprev(Ne),pnt.ythis(Ne));
+            pnt.ynext(Te) = limitFree(pnt.yprev(Ne),pnt.ythis(Te));
+            pnt.ynext(Pe) = limitFree(pnt.yprev(Ne),pnt.ythis(Pe));
 
-	  const BoutReal q_i = floor( (sheath_gamma_i - 1.0) * tisheath * nesheath * visheath * pnt.dir , 0.0);
-	  const BoutReal flux_i = q_i * coord->J[i] / sqrt(coord->g_22[i]);
-	  const BoutReal power_i = flux_i / (coord->dy[i] * coord->J[i]);
-	  sheath_dpi[i] -= (3.0/2.0) * power_i;
+            pnt.ynext(Ti) = limitFree(pnt.yprev(Ne),pnt.ythis(Ti));
+            pnt.ynext(Pi) = limitFree(pnt.yprev(Ne),pnt.ythis(Pi));
+
+            BoutReal phisheath = log(sqrt(pnt.ythis(Te) / (pnt.ythis(Te) + pnt.ythis(Ti)))) * pnt.ythis(Te);
+
+            pnt.ynext(phi) = phisheath;
+
+	    TRACE("Sheath offset==1, interpolate sheath values");
+	    
+            const BoutReal nesheath = pnt.interpolate_sheath_o1(Ne);
+            const BoutReal tesheath = pnt.interpolate_sheath_o1(Te);
+            const BoutReal tisheath = pnt.interpolate_sheath_o1(Ti);
+
+            const BoutReal vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
+            const BoutReal visheath = pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath);
+
+            const BoutReal jsheath = nesheath * (visheath - vesheath);
+            const BoutReal nvisheath = nesheath * visheath;
+
+	    TRACE("Sheath offset==1, set neighbouring cells");
+	    
+            pnt.ynext(Vi) = interpolate_sheathneighbour(pnt.ythis(Vi), visheath);
+            pnt.ynext(Ve) = interpolate_sheathneighbour(pnt.ythis(Ve), vesheath);
+
+            pnt.ynext(Jpar) = interpolate_sheathneighbour(pnt.ythis(Jpar), jsheath);
+            pnt.ynext(NVi) = interpolate_sheathneighbour(pnt.ythis(NVi), nvisheath);
+
+	    
+            pnt.ynext(Vort) = pnt.ythis(Vort);
+
+	    TRACE("Sheath offset==1, sheath power calculation");
+
+            const BoutReal q_e = floor( (sheath_gamma_e - 1.5) * tesheath * nesheath * vesheath * pnt.dir , 0.0);                                                                                         
+            const BoutReal flux_e = q_e * coord->J[i] / sqrt(coord->g_22[i]);                                                                                                                             
+            const BoutReal power_e = flux_e / (coord->dy[i] * coord->J[i]);                                                                                                                               
+            sheath_dpe[i] -= (3.0/2.0) * power_e;                                                                                                                                                         
+                                                                                                                                                                                                          
+            const BoutReal q_i = floor( (sheath_gamma_i - 1.0) * tisheath * nesheath * visheath * pnt.dir , 0.0);                                                                                         
+            const BoutReal flux_i = q_i * coord->J[i] / sqrt(coord->g_22[i]);                                                                                                                             
+            const BoutReal power_i = flux_i / (coord->dy[i] * coord->J[i]);                                                                                                                               
+            sheath_dpi[i] -= (3.0/2.0) * power_i;                                                                                                                                                         
+
+	    // Also set the values in the interpolated value after the sheath, here neumann
+
+	    TRACE("Sheath offset==1, set double next fields");
+
+	    const int offset_factor = 1;
+	    
+	    pnt.getAt(Ne,offset_factor)=pnt.ynext(Ne);
+	    pnt.getAt(Te,offset_factor)=pnt.ynext(Te);
+	    pnt.getAt(Pe,offset_factor)=pnt.ynext(Pe);
+	    pnt.getAt(Ti,offset_factor)=pnt.ynext(Ti);
+	    pnt.getAt(Pi,offset_factor)=pnt.ynext(Pi);
+	    
+	    pnt.getAt(phi,offset_factor)=pnt.ynext(phi);
+	    pnt.getAt(Vi,offset_factor)=pnt.ynext(Vi);
+	    pnt.getAt(Ve,offset_factor)=pnt.ynext(Ve);
+	    pnt.getAt(Jpar,offset_factor)=pnt.ynext(Jpar);
+	    pnt.getAt(NVi,offset_factor)=pnt.ynext(NVi);
+	    pnt.getAt(Vort,offset_factor)=pnt.ynext(Vort);
+	    
+            
+	    
+	  } // End interpolate_sheathneighbour
+
 	  
 	} // End for (const auto& pnt : region)
       } // End iter_regions([&](auto& region)
@@ -1764,20 +1773,6 @@ int Hermes::rhs(BoutReal t) {
     }
   }
 
-
-  if (verbose){
-    BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")) {
-      const auto iyp = i.yp();
-      const auto iym = i.ym();
-      Te_yup[i] = Te.yup()[iyp];
-      Te_ydown[i] = Te.ydown()[iym];
-      Ve_yup[i] = Ve.yup()[iyp];
-      Ve_ydown[i] = Ve.ydown()[iym];
-      Vi_yup[i] = Vi.yup()[iyp];
-      Vi_ydown[i] = Vi.ydown()[iym];
-
-    }
-  }
 
   
   //////////////////////////////////////////////////////////////
@@ -1815,7 +1810,7 @@ int Hermes::rhs(BoutReal t) {
     
     gradTe.applyBoundary("neumann");
     mesh->communicate(gradTe);
-    gradTe.applyParallelBoundary("parallel_neumann_o1");
+    gradTe.applyParallelBoundary(parbc);
     
     Field3D q_SH = mul_all(kappa_epar,gradTe);      
     Field3D q_fl = mul_all(kappa_limit_alpha,mul_all(sqrt(mi_me),mul_all(Ne,Te32)));
@@ -1835,14 +1830,6 @@ int Hermes::rhs(BoutReal t) {
     kappa_epar = div_all(kappa_epar,denom);
   }
 
-  if (verbose){
-    BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")) {
-      const auto iyp = i.yp();
-      const auto iym = i.ym();
-      kappa_epar_yup[i] = kappa_epar.yup()[iyp];
-      kappa_epar_ydown[i] = kappa_epar.ydown()[iym];
-    }
-  }
 
   
 
@@ -1875,13 +1862,7 @@ int Hermes::rhs(BoutReal t) {
 
   //nu = resistivity_multiply / (1.96 * tau_e * mi_me);
   nu = div_all(resistivity_multiply,mul_all(1.96,mul_all(tau_e,mi_me)));
-  /*
-  nu.applyBoundary("neumann");
-  mesh->communicate(nu);
-  nu.applyParallelBoundary(parbc);
-  */
-  
-  //Wi = (3. / mi_me) * Ne * (Te - Ti) / tau_e;
+
   Wi = mul_all(div_all(3.0,mi_me),mul_all(Ne,div_all(sub_all(Te,Ti),tau_e)));
 
 
@@ -2340,12 +2321,7 @@ int Hermes::rhs(BoutReal t) {
     if (Pe_conduction){//Row 3
       TRACE("Pe_conduction");
       
-      if (verbose){
-	debug_Pe_conduction_A = Div_par(kappa_epar) * Grad_par(Te);
-	debug_Pe_conduction_B = kappa_epar * Grad2_par2(Te);
-	a = Div_par_K_Grad_par_mod(kappa_epar,Te,false);
-      }
-
+  
       if (!use_new_conduction){
 	TE_Pe_conduction = (2. / 3) * Div_par_K_Grad_par(kappa_epar, Te);
       } else {
