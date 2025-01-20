@@ -81,13 +81,14 @@ private:
   Field3D a;
   Field3D b;
   Field3D d;
-  Field3D debug_visheath,debug_VePsisheath,debug_vesheath,debug_sheathexp;
+  Field3D debug_visheath,debug_VePsisheath,debug_vesheath,debug_sheathexp,debug_tisheath;
   Field3D debug_phisheath;
   Field3D debug_denom,debug_soundspeed;
   Field3D debug_phibndry3d;
   Field3D debug_Pe_conduction_A,debug_Pe_conduction_B;
 
   Field3D Vi_sheath , Ve_sheath , Jpar_sheath , Ne_sheath , Te_sheath , Ti_sheath , Vort_sheath,phi_sheath;
+  Field3D Te_ythis,Te_ynext,Te_yprev;
   bool new_sheaths;
   bool sheath_infsink;
   BoutReal infsink_Te, infsink_amp;
@@ -115,7 +116,8 @@ private:
 
   BoutReal floor_Ne,floor_Te,floor_Ti;
   Field3D Te_yup,Te_ydown;
-  Field3D Ve_yup, Ve_ydown,Vi_yup,Vi_ydown;
+  Field3D Ne_ym2,Ne_ym1,Ne_yp1,Ne_yp2;
+  Field3D Vi_ym2,Vi_ym1,Vi_yp1,Vi_yp2;
   BoutReal floor_vel;
   
   // Switches for evolving variables

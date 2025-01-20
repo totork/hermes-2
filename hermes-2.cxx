@@ -1,6 +1,6 @@
 /*
 
-    Copyright B.Dudson, J.Leddy, University of York, 2016-2019
+0    Copyright B.Dudson, J.Leddy, University of York, 2016-2019
               email: benjamin.dudson@york.ac.uk
 
     This file is part of Hermes-2 (Hot ion version)
@@ -42,7 +42,7 @@
 #include "atomicpp/ImpuritySpecies.hxx"
 #include "atomicpp/Prad.hxx"
 
-std::string parbc{"parallel_neumann_o1"};
+std::string parbc{"parallel_neumann_o2"};
 
 
 template <typename T>
@@ -57,43 +57,21 @@ T max_abs(T first, Args... args) {
 }
 
 
-/*
-BoutReal limitFree(BoutReal fc, BoutReal fm, BoutReal floorval){
+
+BoutReal limitFree(BoutReal fm, BoutReal fc){
   if (fc>fm){
     return fc;
   }
   BoutReal fp = fc + 0.5*(fc-fm);   // the .5 is coming from the fact, that we extralpolate to the boundary between the center cell and the up cell
-  return floor(fp,floorval);
+  return fp;
 }
-*/
+
 BoutReal interpolate_sheathneighbour(BoutReal fc, BoutReal finterface){
   return fc + (finterface-fc);
 }
 
 
-inline BoutReal limitFree(BoutReal fm, BoutReal fc) {
-  if (fm < fc) {
-    return fc; // Neumann rather than increasing into boundary
-  }
-  if (fm < 1e-10) {
-    return fc; // Low / no density condition
-  }
-  BoutReal fp = SQ(fc) / fm;
-#if CHECKLEVEL >= 2
-  if (!std::isfinite(fp)) {
-    throw BoutException("SheathBoundaryParallel limitFree: {}, {} -> {}", fm, fc, fp);
-  }
-#endif
 
-  return fp;
-}
-
-inline BoutReal limitFree(const Field3D& f, const BoundaryRegionParIter& pnt) {
-  if (pnt.valid() > 0) {
-    return limitFree(pnt.yprev(f), pnt.ythis(f));
-  }
-  return pnt.ythis(f);
-}
 
 
 
@@ -175,6 +153,10 @@ void alloc_all(Field3D &f) {
   f.splitParallelSlices();
   f.yup().allocate();
   f.ydown().allocate();
+
+  f.ynext(2).allocate();
+  f.ynext(-2).allocate();
+  
   setRegions(f);
 }
 
@@ -713,7 +695,7 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, ne_bndry_flux, false);
   OPTION(optnumerics, pe_bndry_flux, false);
   OPTION(optnumerics, vort_bndry_flux, false);
-  OPTION(optnumerics, use_new_conduction, true);
+  OPTION(optnumerics, use_new_conduction, false);
   OPTION(optnumerics, use_new_viscosity, false);
   OPTION(optnumerics, use_new_div_par, false);
   
@@ -901,7 +883,8 @@ int Hermes::init(bool restarting) {
     a_nu3d.applyParallelBoundary("parallel_neumann_o1");
   }
 
-  
+
+
 
   
   FieldFactory fact(mesh);
@@ -930,6 +913,8 @@ int Hermes::init(bool restarting) {
   // field normalisations
   Coordinates *coord = mesh->getCoordinates();
   coord->Bxy /= Bnorm;
+
+  
   //CONTRAVARIANT
 
   mul_all_inp(coord->g11, rho_s0 * rho_s0);
@@ -959,6 +944,12 @@ int Hermes::init(bool restarting) {
 
   coord->geometry(); // Calculate other metrics
 
+  Field3D Test551 = coord->J.ynext(1);
+  Field3D Test552 = coord->J.ynext(2);
+  Field3D Test513 = coord->g11 / coord->g13;
+  Field3D Test514 = coord->g11 / coord->J;
+
+  
   _FCIDiv_a_Grad_perp = std::make_unique<FCI::dagp_fv>(*mesh);
   *_FCIDiv_a_Grad_perp *= rho_s0;
 
@@ -974,6 +965,8 @@ int Hermes::init(bool restarting) {
   }
   ASSERT0(fci_transform);
 
+
+  
   if(fci_transform){
     mesh->get(Bxyz, "B",1.0);
     mesh->get(coord->Bxy, "Bxy", 1.0);
@@ -996,6 +989,8 @@ int Hermes::init(bool restarting) {
     SAVE_ONCE(Bxyz);
     ASSERT1(min(Bxyz) > 0.0);
 
+    mesh->communicate(Bxyz,coord->Bxy);
+    
     /*
     fwd_bndry_mask = BoutMask(mesh, false);
     bwd_bndry_mask = BoutMask(mesh, false);
@@ -1018,7 +1013,7 @@ int Hermes::init(bool restarting) {
     bout::checkPositive(coord->Bxy.ydown(), "fdown", "RGN_YPAR_-1");
     */
     logB = log(Bxyz);
-
+    
     bracket_factor = sqrt(coord->g_22) / (coord->J * Bxyz);
 
     SAVE_ONCE(bracket_factor);
@@ -1223,6 +1218,8 @@ int Hermes::init(bool restarting) {
   debug_visheath = 0.0;
   debug_vesheath = 0.0;
   debug_sheathexp = 0.0;
+
+  
   debug_soundspeed = 0.0;
   debug_VePsisheath = 0.0;
   debug_phisheath = 0.0;
@@ -1245,27 +1242,42 @@ int Hermes::init(bool restarting) {
   eta_limit_denom = 0.0;
   Te_yup = 0.0;
   Te_ydown = 0.0;
-  Ve_yup = 0.0;
-  Ve_ydown = 0.0;
-  Vi_yup = 0.0;
-  Vi_ydown = 0.0;
+
+  Te_ythis = 0.0;
+  Te_yprev = 0.0;
+  Te_ynext = 0.0;
+  
   kappa_epar_yup = 0.0;
   kappa_epar_ydown = 0.0;
   debug_Pe_conduction_A = 0.0;
   debug_Pe_conduction_B = 0.0;
   debug_sheath_infsink = 0.0;
   SAVE_REPEAT(Te, Ti);
+  Vi_ym2 = 0.0;
+  Vi_ym1 = 0.0;
+  Vi_yp1 = 0.0;
+  Vi_yp2 = 0.0;
+  Ne_ym2 = 0.0;
+  Ne_ym1 = 0.0;
+  Ne_yp1 = 0.0;
+  Ne_yp2 = 0.0;
   if (verbose) {
+    SAVE_REPEAT(Te_ythis,Te_yprev,Te_ynext);
+    SAVE_REPEAT(Vi_ym2,Vi_ym1,Vi_yp1,Vi_yp2);
+    SAVE_REPEAT(Ne_ym2,Ne_ym1,Ne_yp1,Ne_yp2);
     SAVE_REPEAT(kappa_epar_yup,kappa_epar_ydown);
-    SAVE_REPEAT(Vi_yup,Vi_ydown);
+
     SAVE_REPEAT(eta_limit_denom);
-    SAVE_REPEAT(Te_yup,Te_ydown,Ve_yup , Ve_ydown);
+
     // Save additional fields
     SAVE_REPEAT(debug_soundspeed,debug_phibndry3d);
     SAVE_REPEAT(tau_e, tau_i);
-    SAVE_REPEAT(debug_Pe_conduction_A,debug_Pe_conduction_B);
+
     SAVE_REPEAT(Ne_sheath,Ve_sheath,Vi_sheath,Te_sheath,Ti_sheath,Vort_sheath,phi_sheath);
     SAVE_REPEAT(Jpar_sheath);
+
+    
+
     if(NVi_supsonic_dissipation){
       SAVE_REPEAT(NVi_dampening);
     }
@@ -1364,12 +1376,69 @@ int Hermes::rhs(BoutReal t) {
   // are calculated using field aligned quantities
 
   
-  Ne.applyBoundary("neumann");
-  NVi.applyBoundary("neumann");
-  Pe.applyBoundary("neumann");
-  Vort.applyBoundary("neumann");
-  Pi.applyBoundary("neumann");
-  VePsi.applyBoundary("neumann");
+  Ne.applyBoundary();
+  NVi.applyBoundary();
+  Pe.applyBoundary();
+  Vort.applyBoundary();
+  Pi.applyBoundary();
+  VePsi.applyBoundary();
+
+
+  
+  if (mesh->firstX()) {
+    for (int j = mesh->ystart; j <= mesh->yend; j++) {
+      for (int k = 0; k < mesh->LocalNz; k++) {
+        BoutReal ne_bndry = 0.5 * (Ne(1, j, k) + Ne(2, j, k));
+        if (ne_bndry < 1e-2)
+          ne_bndry = 1e-2;
+        BoutReal pe_bndry = 0.5 * (Pe(1, j, k) + Pe(2, j, k));
+        BoutReal pi_bndry = 0.5 * (Pi(1, j, k) + Pi(2, j, k));
+
+        BoutReal te_bndry = pe_bndry / ne_bndry;
+        BoutReal ti_bndry = pi_bndry / ne_bndry;
+
+	Te(0, j, k) = Te(1, j, k) = 2. * te_bndry - Te(2, j, k);
+        Ti(0, j, k) = Ti(1, j, k) = 2. * ti_bndry - Ti(2, j, k);
+        Vi(0, j, k) = Vi(1, j, k) = Vi(2, j, k);
+
+      }
+    }
+  }
+  if (mesh->lastX()) {
+    int n = mesh->LocalNx;
+    for (int j = mesh->ystart; j <= mesh->yend; j++) {
+      for (int k = 0; k < mesh->LocalNz; k++) {
+        BoutReal ne_bndry = 0.5 * (Ne(n - 2, j, k) + Ne(n - 3, j, k));
+        if (ne_bndry < 1e-2)
+          ne_bndry = 1e-2;
+        BoutReal pe_bndry = 0.5 * (Pe(n - 2, j, k) + Pe(n - 3, j, k));
+        BoutReal pi_bndry = 0.5 * (Pi(n - 2, j, k) + Pi(n - 3, j, k));
+
+        BoutReal te_bndry = pe_bndry / ne_bndry;
+        BoutReal ti_bndry = pi_bndry / ne_bndry;
+
+	BoutReal ne_bndry_val = 2. * ne_bndry - Ne(n - 3, j, k);
+	BoutReal te_bndry_val = 2. * te_bndry - Te(n - 3, j, k);
+	BoutReal ti_bndry_val =	2. * ti_bndry - Ti(n - 3, j, k);
+	
+	
+	Ne(n - 1, j, k) = ne_bndry_val;
+	Ne(n - 2, j, k) = ne_bndry_val;
+
+	Te(n - 1, j, k) = te_bndry_val;
+        Te(n - 2, j, k) = te_bndry_val;
+
+	Ti(n - 1, j, k) = ti_bndry_val;
+        Ti(n - 2, j, k) = ti_bndry_val;
+	
+        Vi(n - 1, j, k) = Vi(n - 2, j, k);
+
+
+      }
+    }
+  }
+
+  
   
   mesh->communicate(EvolvingVars);
 
@@ -1444,6 +1513,8 @@ int Hermes::rhs(BoutReal t) {
   
   // Set radial boundary conditions on Te, Ti, Vi
   //
+
+  
   if (mesh->firstX()) {
     for (int j = mesh->ystart; j <= mesh->yend; j++) {
       for (int k = 0; k < mesh->LocalNz; k++) {
@@ -1456,18 +1527,10 @@ int Hermes::rhs(BoutReal t) {
         BoutReal te_bndry = pe_bndry / ne_bndry;
         BoutReal ti_bndry = pi_bndry / ne_bndry;
 
-        Te(1, j, k) = 2. * te_bndry - Te(2, j, k);
-        Ti(1, j, k) = 2. * ti_bndry - Ti(2, j, k);
+	Te(0, j, k) = Te(1, j, k) = 2. * te_bndry - Te(2, j, k);
+        Ti(0, j, k) = Ti(1, j, k) = 2. * ti_bndry - Ti(2, j, k);
         Vi(0, j, k) = Vi(1, j, k) = Vi(2, j, k);
-	/*
-        if (te_bndry < 0.1 / Tnorm)
-          te_bndry = 0.1 / Tnorm;
-        if (ti_bndry < 0.1 / Tnorm)
-          ti_bndry = 0.1 / Tnorm;
-	*/
 
-        Te(1, j, k) = 2. * te_bndry - Te(2, j, k);
-        Ti(1, j, k) = 2. * ti_bndry - Ti(2, j, k);
       }
     }
   }
@@ -1475,32 +1538,37 @@ int Hermes::rhs(BoutReal t) {
     int n = mesh->LocalNx;
     for (int j = mesh->ystart; j <= mesh->yend; j++) {
       for (int k = 0; k < mesh->LocalNz; k++) {
-        BoutReal ne_bndry = 0.5 * (Ne(n - 1, j, k) + Ne(n - 2, j, k));
+        BoutReal ne_bndry = 0.5 * (Ne(n - 2, j, k) + Ne(n - 3, j, k));
         if (ne_bndry < 1e-2)
           ne_bndry = 1e-2;
-        BoutReal pe_bndry = 0.5 * (Pe(n - 1, j, k) + Pe(n - 2, j, k));
-        BoutReal pi_bndry = 0.5 * (Pi(n - 1, j, k) + Pi(n - 2, j, k));
+        BoutReal pe_bndry = 0.5 * (Pe(n - 2, j, k) + Pe(n - 3, j, k));
+        BoutReal pi_bndry = 0.5 * (Pi(n - 2, j, k) + Pi(n - 3, j, k));
 
         BoutReal te_bndry = pe_bndry / ne_bndry;
         BoutReal ti_bndry = pi_bndry / ne_bndry;
 
-        Te(n - 1, j, k) = 2. * te_bndry - Te(n - 2, j, k);
-        Ti(n - 1, j, k) = 2. * ti_bndry - Ti(n - 2, j, k);
+	BoutReal ne_bndry_val = 2. * ne_bndry - Ne(n - 3, j, k);
+	BoutReal te_bndry_val = 2. * te_bndry - Te(n - 3, j, k);
+	BoutReal ti_bndry_val =	2. * ti_bndry - Ti(n - 3, j, k);
+	
+	
+	Ne(n - 1, j, k) = ne_bndry_val;
+	Ne(n - 2, j, k) = ne_bndry_val;
+
+	Te(n - 1, j, k) = te_bndry_val;
+        Te(n - 2, j, k) = te_bndry_val;
+
+	Ti(n - 1, j, k) = ti_bndry_val;
+        Ti(n - 2, j, k) = ti_bndry_val;
+	
         Vi(n - 1, j, k) = Vi(n - 2, j, k);
 
-	/*
-        if (te_bndry < 0.05)
-          te_bndry = 0.05;
-        if (ti_bndry < 0.05)
-          ti_bndry = 0.05;
-	*/
-	
-        Te(n - 1, j, k) = 2. * te_bndry - Te(n - 2, j, k);
-        Ti(n - 1, j, k) = 2. * ti_bndry - Ti(n - 2, j, k);
+
       }
     }
   }
 
+  
 
   if (!evolve_ti){
     Pi=Pe;
@@ -1638,6 +1706,9 @@ int Hermes::rhs(BoutReal t) {
 
   //////////////////////////////////////////////////////////////
   // Sheath boundary conditions on Y up and Y down
+
+
+  
   
   TRACE("Sheath boundaries");
   if (parallel_sheaths){
@@ -1654,11 +1725,12 @@ int Hermes::rhs(BoutReal t) {
 	  if (abs(pnt.offset())==2){
 	    TRACE("Sheath offset==2, limitfree values");
 	    pnt.ynext(Ne) = limitFree(pnt.yprev(Ne),pnt.ythis(Ne));
-	    pnt.ynext(Te) = limitFree(pnt.yprev(Ne),pnt.ythis(Te));
-	    pnt.ynext(Pe) = limitFree(pnt.yprev(Ne),pnt.ythis(Pe));
+	    pnt.ynext(Pi) = limitFree(pnt.yprev(Pi),pnt.ythis(Pi));
+	    pnt.ynext(Pe) = limitFree(pnt.yprev(Pe),pnt.ythis(Pe));
 
-	    pnt.ynext(Ti) = limitFree(pnt.yprev(Ne),pnt.ythis(Ti));
-	    pnt.ynext(Pi) = limitFree(pnt.yprev(Ne),pnt.ythis(Pi));
+	    
+	    pnt.ynext(Ti) = limitFree(pnt.yprev(Ti),pnt.ythis(Ti));
+	    pnt.ynext(Te) = limitFree(pnt.yprev(Te),pnt.ythis(Te));
 
 	    BoutReal phisheath = log(sqrt(pnt.ythis(Te) / (pnt.ythis(Te) + pnt.ythis(Ti)))) * pnt.ythis(Te);
 
@@ -1671,31 +1743,49 @@ int Hermes::rhs(BoutReal t) {
 	    const BoutReal tesheath = pnt.interpolate_sheath_o1(Te);
 	    const BoutReal tisheath = pnt.interpolate_sheath_o1(Ti);
 
-	    const BoutReal vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
 	    const BoutReal visheath = pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath);
+	    BoutReal vesheath = 0.0;
+	    if (evolve_vepsi){
+	      vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
+	    } else {
+	       vesheath = visheath;
+	    }
 
 	    const BoutReal jsheath = nesheath * (visheath - vesheath);
 	    const BoutReal nvisheath = nesheath * visheath;
 
-	    TRACE("Sheath offset==2, set neighbouring cells");
+	    /*
+	    if (verbose){
+	      debug_visheath[i] = visheath;
+	      debug_vesheath[i] = vesheath;
+	      debug_phisheath[i] = phisheath;
+	      Te_sheath[i] = tesheath;
+	    }
+	    */
 	    
+	    TRACE("Sheath offset==2, set neighbouring cells");
+	    /*
 	    pnt.ynext(Vi) = interpolate_sheathneighbour(pnt.ythis(Vi), visheath);
 	    pnt.ynext(Ve) = interpolate_sheathneighbour(pnt.ythis(Ve), vesheath);
-
 	    pnt.ynext(Jpar) = interpolate_sheathneighbour(pnt.ythis(Jpar), jsheath);
 	    pnt.ynext(NVi) = interpolate_sheathneighbour(pnt.ythis(NVi), nvisheath);
+	    */
 
+	    pnt.ynext(Vi) = visheath;                                                                                                                                                                                              
+	    pnt.ynext(Ve) = vesheath;
+            pnt.ynext(Jpar) = jsheath;
+            pnt.ynext(NVi) = nvisheath;
 	    pnt.ynext(Vort) = pnt.ythis(Vort);
 
 	  } else if (abs(pnt.offset())==1){
 
 	    TRACE("Sheath offset==1, limitfree values");
 	    pnt.ynext(Ne) = limitFree(pnt.yprev(Ne),pnt.ythis(Ne));
-            pnt.ynext(Te) = limitFree(pnt.yprev(Ne),pnt.ythis(Te));
-            pnt.ynext(Pe) = limitFree(pnt.yprev(Ne),pnt.ythis(Pe));
+            pnt.ynext(Te) = limitFree(pnt.yprev(Te),pnt.ythis(Te));
+            pnt.ynext(Pe) = limitFree(pnt.yprev(Pe),pnt.ythis(Pe));
 
-            pnt.ynext(Ti) = limitFree(pnt.yprev(Ne),pnt.ythis(Ti));
-            pnt.ynext(Pi) = limitFree(pnt.yprev(Ne),pnt.ythis(Pi));
+            pnt.ynext(Ti) = limitFree(pnt.yprev(Ti),pnt.ythis(Ti));
+            pnt.ynext(Pi) = limitFree(pnt.yprev(Pi),pnt.ythis(Pi));
 
             BoutReal phisheath = log(sqrt(pnt.ythis(Te) / (pnt.ythis(Te) + pnt.ythis(Ti)))) * pnt.ythis(Te);
 
@@ -1705,22 +1795,50 @@ int Hermes::rhs(BoutReal t) {
 	    
             const BoutReal nesheath = pnt.interpolate_sheath_o1(Ne);
             const BoutReal tesheath = pnt.interpolate_sheath_o1(Te);
+	    //const BoutReal tesheath = 0.5 * (pnt.ynext(Te)+pnt.ythis(Te));
             const BoutReal tisheath = pnt.interpolate_sheath_o1(Ti);
 
-            const BoutReal vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
-            const BoutReal visheath = pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath);
 
+	    
+	    const BoutReal visheath = pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath);
+            BoutReal vesheath = 0.0;
+            if (evolve_vepsi){
+              vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
+            } else {
+               vesheath = visheath;
+            }
+
+
+	    
             const BoutReal jsheath = nesheath * (visheath - vesheath);
             const BoutReal nvisheath = nesheath * visheath;
 
-	    TRACE("Sheath offset==1, set neighbouring cells");
 	    
+	    if (verbose){
+	      Te_ythis[i] = pnt.ythis(Te);
+	      Te_ynext[i] = pnt.ynext(Te);
+	      Te_yprev[i] = pnt.yprev(Te);
+              debug_visheath[i] = visheath;
+              debug_vesheath[i] = vesheath;
+              debug_phisheath[i] = phisheath;
+	      Te_sheath[i] = tesheath;
+            }
+	   
+
+	    
+	    TRACE("Sheath offset==1, set neighbouring cells");
+
+	    /*
             pnt.ynext(Vi) = interpolate_sheathneighbour(pnt.ythis(Vi), visheath);
             pnt.ynext(Ve) = interpolate_sheathneighbour(pnt.ythis(Ve), vesheath);
-
             pnt.ynext(Jpar) = interpolate_sheathneighbour(pnt.ythis(Jpar), jsheath);
             pnt.ynext(NVi) = interpolate_sheathneighbour(pnt.ythis(NVi), nvisheath);
+	    */
 
+	    pnt.ynext(Vi) = visheath;
+            pnt.ynext(Ve) = vesheath;
+            pnt.ynext(Jpar) = jsheath;
+            pnt.ynext(NVi) = nvisheath;
 	    
             pnt.ynext(Vort) = pnt.ythis(Vort);
 
@@ -1741,7 +1859,7 @@ int Hermes::rhs(BoutReal t) {
 	    TRACE("Sheath offset==1, set double next fields");
 
 	    const int offset_factor = 1;
-	    
+	    /*
 	    pnt.getAt(Ne,offset_factor)=pnt.ynext(Ne);
 	    pnt.getAt(Te,offset_factor)=pnt.ynext(Te);
 	    pnt.getAt(Pe,offset_factor)=pnt.ynext(Pe);
@@ -1754,8 +1872,7 @@ int Hermes::rhs(BoutReal t) {
 	    pnt.getAt(Jpar,offset_factor)=pnt.ynext(Jpar);
 	    pnt.getAt(NVi,offset_factor)=pnt.ynext(NVi);
 	    pnt.getAt(Vort,offset_factor)=pnt.ynext(Vort);
-	    
-            
+	    */
 	    
 	  } // End interpolate_sheathneighbour
 
@@ -1773,6 +1890,20 @@ int Hermes::rhs(BoutReal t) {
     }
   }
 
+
+  if (verbose){
+    BOUT_FOR(i, Ne.getRegion("RGN_ALL")) {
+      Vi_ym2[i] = Vi.ynext(-2)[i];
+      Vi_ym1[i] = Vi.ynext(-1)[i];
+      Vi_yp2[i] = Vi.ynext(2)[i];
+      Vi_yp1[i] = Vi.ynext(1)[i];
+
+      Ne_ym2[i] = Ne.ynext(-2)[i];
+      Ne_ym1[i] = Ne.ynext(-1)[i];
+      Ne_yp2[i] = Ne.ynext(2)[i];
+      Ne_yp1[i] = Ne.ynext(1)[i];
+    }
+  }
 
   
   //////////////////////////////////////////////////////////////
@@ -2484,7 +2615,7 @@ int Hermes::rhs(BoutReal t) {
       } else {
 	TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par_mod(kappa_ipar, Ti);
       }
-      ddt(Pi) = TE_Pi_conduction;
+      ddt(Pi) += TE_Pi_conduction;
     } // End Pi_conduction 
 
     
@@ -2583,7 +2714,9 @@ Field3D Hermes::hyperdissipation(const Field3D &a, const Field3D &b) {
 }
 
 Field3D Hermes::numericaldissipation(const Field3D &a, const Field3D &b) {
-  return a * Grad2_par2(b);
+  //return a * Grad2_par2(b);
+  auto thiscoords=b.getCoordinates();
+  return a * D4DY4(b) / (SQ_all(thiscoords->g_22));
 }
 
 Field3D Hermes::term_limiter(const Field3D &a, const BoutReal &val){
