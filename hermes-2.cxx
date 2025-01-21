@@ -141,19 +141,18 @@ Field3D SQ(const Vector3D &v) { return v * v; }
 
 void setRegions(Field3D &f) {
   f.yup().setRegion("RGN_YPAR_+1");
+  f.yup(1).setRegion("RGN_YPAR_+2");
   f.ydown().setRegion("RGN_YPAR_-1");
+  f.ydown(1).setRegion("RGN_YPAR_-2");
 }
 
+// For first order fields
 const Field3D &yup(const Field3D &f) { return f.yup(); }
 BoutReal yup(BoutReal f) { return f; };
 const Field3D &ydown(const Field3D &f) { return f.ydown(); }
 BoutReal ydown(BoutReal f) { return f; };
 const BoutReal yup(BoutReal f, Ind3D i) { return f; };
 const BoutReal ydown(BoutReal f, Ind3D i) { return f; };
-// const BoutReal& yup(const Field3D &f, Ind3D i) { return f.yup()[i.yp()]; }
-// const BoutReal& ydown(const Field3D &f, Ind3D i) { return f.ydown()[i.ym()];
-// } BoutReal& yup(Field3D &f, Ind3D i) { return f.yup()[i.yp()]; } BoutReal&
-// ydown(Field3D &f, Ind3D i) { return f.ydown()[i.ym()]; }
 const BoutReal &yup(const Field3D &f, Ind3D i) { return f.yup()[i]; }
 const BoutReal &ydown(const Field3D &f, Ind3D i) { return f.ydown()[i]; }
 BoutReal &yup(Field3D &f, Ind3D i) { return f.yup()[i]; }
@@ -163,22 +162,42 @@ BoutReal &_get(Field3D &f, Ind3D i) { return f[i]; }
 BoutReal _get(BoutReal f, Ind3D i) { return f; };
 BoutReal copy(BoutReal f) { return f; };
 
+// For second order fields
+
+const Field3D &yup2(const Field3D &f) { return f.yup(1); }
+BoutReal yup2(BoutReal f) { return f; };
+const Field3D &ydown2(const Field3D &f) { return f.ydown(1); }
+BoutReal ydown2(BoutReal f) { return f; };
+const BoutReal yup2(BoutReal f, Ind3D i) { return f; };
+const BoutReal ydown2(BoutReal f, Ind3D i) { return f; };
+const BoutReal &yup2(const Field3D &f, Ind3D i) { return f.yup(1)[i]; }
+const BoutReal &ydown2(const Field3D &f, Ind3D i) { return f.ydown(1)[i]; }
+BoutReal &yup2(Field3D &f, Ind3D i) { return f.yup(1)[i]; }
+BoutReal &ydown2(Field3D &f, Ind3D i) { return f.ydown(1)[i]; }
+
+
+
+
+
 void alloc_all(Field3D &f) {
   f.allocate();
   f.splitParallelSlices();
   f.yup().allocate();
   f.ydown().allocate();
-
-  f.ynext(2).allocate();
-  f.ynext(-2).allocate();
-  
+  f.yup(1).allocate();
+  f.ydown(1).allocate();
   setRegions(f);
 }
+
 
 #define GET_ALL(name)                                                          \
   auto *name##a = &name[Ind3D(0)];                                             \
   auto *name##b = &name.yup()[Ind3D(0)];                                       \
-  auto *name##c = &name.ydown()[Ind3D(0)];
+  auto *name##c = &name.ydown()[Ind3D(0)];                                     \
+  auto *name##d = &name.yup(1)[Ind3D(0)];                                      \
+  auto *name##e = &name.ydown(1)[Ind3D(0)];
+
+
 
 #define DO_ALL(op, name)                                                       \
   template <class A, class B> Field3D name##_all(const A &a, const B &b) {     \
@@ -193,11 +212,16 @@ void alloc_all(Field3D &f) {
     result[i] = op(_get(a, i), _get(b, i));                                    \
     yup(result, i) = op(yup(a, i), yup(b, i));                                 \
     ydown(result, i) = op(ydown(a, i), ydown(b, i));                           \
+    yup2(result, i) = op(yup2(a, i), yup2(b, i));                              \
+    ydown2(result, i) = op(ydown2(a, i), ydown2(b, i));              	       \
+      									       \
   }                                                                            \
   template <class B> void name##_all(Field3D &result, const B &b, Ind3D i) {   \
     result[i] = op(result[i], _get(b, i));                                     \
     yup(result, i) = op(yup(result, i), yup(b, i));                            \
     ydown(result, i) = op(ydown(result, i), ydown(b, i));                      \
+    yup2(result, i) = op(yup2(result, i), yup2(b, i));                         \
+    ydown2(result, i) = op(ydown2(result, i), ydown2(b, i));                   \
   }
 
 DO_ALL(floor, floor)
@@ -225,6 +249,8 @@ DO_ALL(pow, pow)
       resulta[i] = aa[i] op ba[i];                                             \
       resultb[i] = ab[i] op bb[i];                                             \
       resultc[i] = ac[i] op bc[i];                                             \
+      resultd[i] = ad[i] op bd[i];					       \
+      resulte[i] = ae[i] op be[i];                                             \
     }                                                                          \
     setRegions(result);                                                        \
     return result;                                                             \
@@ -240,6 +266,9 @@ DO_ALL(pow, pow)
       resulta[i] = aa[i] op b;                                                 \
       resultb[i] = ab[i] op b;                                                 \
       resultc[i] = ac[i] op b;                                                 \
+      resultd[i] = ad[i] op b;                                                 \
+      resulte[i] = ae[i] op b;                                                 \
+      						                               \
     }                                                                          \
     setRegions(result);                                                        \
     return result;                                                             \
@@ -249,6 +278,8 @@ DO_ALL(pow, pow)
     result[i] = _get(a, i) op _get(b, i);                                      \
     yup(result, i) = yup(a, i) op yup(b, i);                                   \
     ydown(result, i) = ydown(a, i) op ydown(b, i);                             \
+    yup2(result, i) = yup2(a, i) op yup2(b, i);				       \
+    ydown2(result, i) = ydown2(a, i) op ydown2(b, i);                          \
   }
 
 // void div_all(Field3D & result, const Field3D & a, const Field3D & b, Ind3D i)
@@ -280,6 +311,8 @@ DO_ALL(-, sub)
       aa[i] op ba[i];                                                          \
       ab[i] op bb[i];                                                          \
       ac[i] op bc[i];                                                          \
+      ad[i] op bd[i];                                                          \
+      ae[i] op be[i];      					               \
     }                                                                          \
     return a;                                                                  \
   }                                                                            \
@@ -291,6 +324,8 @@ DO_ALL(-, sub)
       aa[i] op b;                                                              \
       ab[i] op b;                                                              \
       ac[i] op b;                                                              \
+      ad[i] op b;                                                              \
+      ae[i] op b;                                                              \
     }                                                                          \
     return a;                                                                  \
   }                                                                            \
@@ -298,6 +333,8 @@ DO_ALL(-, sub)
     a[i] op _get(b, i);                                                        \
     yup(a, i) op yup(b, i);                                                    \
     ydown(a, i) op ydown(b, i);                                                \
+    yup2(a, i) op yup2(b, i);                                                  \
+    ydown2(a, i) op ydown2(b, i);                                              \
   }
 
 // #include "mul_all.cxx"
@@ -312,6 +349,8 @@ DO_ALL(-=, sub)
     result[i] = op(a[i]);                                                      \
     yup(result, i) = op(yup(a, i));                                            \
     ydown(result, i) = op(ydown(a, i));                                        \
+    yup2(result, i) = op(yup2(a, i));                                          \
+    ydown2(result, i) = op(ydown2(a, i));                                      \
   }                                                                            \
   inline Field3D op##_all(const Field3D &a) {                                  \
     Field3D result;                                                            \
@@ -337,6 +376,8 @@ void set_all(Field3D &f, BoutReal val) {
     f[i] = val;
     f.yup()[i] = val;
     f.ydown()[i] = val;
+    f.yup(1)[i] = val;
+    f.ydown(1)[i] = val;
   }
 }
 void zero_all(Field3D &f) { set_all(f, 0); }
@@ -345,6 +386,8 @@ void check_all(Field3D &f) {
   checkData(f);
   checkData(f.yup());
   checkData(f.ydown());
+  checkData(f.yup(1));
+  checkData(f.ydown(1));
 }
 
 void ASSERT_CLOSE_ALL(const Field3D &a, const Field3D &b) {
@@ -352,6 +395,8 @@ void ASSERT_CLOSE_ALL(const Field3D &a, const Field3D &b) {
     ASSERT0(std::abs(a[i] - b[i]) < 1e-10);
     ASSERT0(std::abs(yup(a, i) - yup(b, i)) < 1e-10);
     ASSERT0(std::abs(ydown(a, i) - ydown(b, i)) < 1e-10);
+    ASSERT0(std::abs(yup2(a, i) - yup2(b, i)) < 1e-10);
+    ASSERT0(std::abs(ydown2(a, i) - ydown2(b, i)) < 1e-10);
   }
 }
 
