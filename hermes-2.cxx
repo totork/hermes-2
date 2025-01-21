@@ -1479,25 +1479,36 @@ int Hermes::rhs(BoutReal t) {
         Pi(n - 2, j, k) = Pi(n - 3, j, k) * decay_Pi;
         Pi(n - 1, j, k) = Pi(n - 3, j, k) * decay_Pi * decay_Pi;
 
-	// NVi
-	BoutReal decay_NVi = limitFreeScale(abs(NVi(n - 4, j, k)) , abs(NVi(n - 3, j, k)));
-	NVi(n - 2, j, k) = NVi(n - 3, j, k) * decay_NVi;
-        NVi(n - 1, j, k) = NVi(n - 3, j, k) * decay_NVi * decay_NVi;
+	// Vi
+	BoutReal decay_Vi = limitFreeScale(abs(Vi(n - 4, j, k)) , abs(Vi(n - 3, j, k)));
+	Vi(n - 2, j, k) = Vi(n - 3, j, k) * decay_Vi;
+        Vi(n - 1, j, k) = Vi(n - 3, j, k) * decay_Vi * decay_Vi;
 
+	// Ve                                                                                                                                                                                             
+        BoutReal decay_Ve = limitFreeScale(abs(Ve(n - 4, j, k)) , abs(Ve(n - 3, j, k)));
+        Ve(n - 2, j, k) = Ve(n - 3, j, k) * decay_Ve;
+        Ve(n - 1, j, k) = Ve(n - 3, j, k) * decay_Ve * decay_Ve;
+	
 	// Vort
 	BoutReal decay_Vort = limitFreeScale(abs(Vort(n - 4, j, k)) , abs(Vort(n - 3, j, k)));
         Vort(n - 2, j, k) = Vort(n - 3, j, k) * decay_Vort;
         Vort(n - 1, j, k) = Vort(n - 3, j, k) * decay_Vort * decay_Vort;
 
+
+	
+
+	
 	Ti(n - 1, j, k) = Pi(n - 1, j, k) / Ne(n - 1, j, k);
         Te(n - 1, j, k) = Pe(n - 1, j, k) / Ne(n - 1, j, k);
 	Ti(n - 2, j, k) = Pi(n - 2, j, k) / Ne(n - 2, j, k);
 	Te(n - 2, j, k) = Pe(n - 2, j, k) / Ne(n - 2, j, k);
 	
-	Vi(n - 1, j, k) = NVi(n - 1, j, k) / Ne(n - 1, j, k);
-	Vi(n - 2, j, k) = NVi(n - 2, j, k) / Ne(n - 2, j, k);
+	NVi(n - 1, j, k) = Vi(n - 1, j, k) * Ne(n - 1, j, k);
+	NVi(n - 2, j, k) = Vi(n - 2, j, k) * Ne(n - 2, j, k);
         
-	
+	VePsi(n - 1, j, k) = Ve(n - 1, j, k) - Vi(n - 1, j, k);
+	VePsi(n - 2, j, k) = Ve(n - 2, j, k) - Vi(n - 2, j, k);
+	  
 	
       }
     }
