@@ -1483,7 +1483,11 @@ int Hermes::rhs(BoutReal t) {
 	BoutReal decay_NVi = limitFreeScale(abs(NVi(n - 4, j, k)) , abs(NVi(n - 3, j, k)));
 	NVi(n - 2, j, k) = NVi(n - 3, j, k) * decay_NVi;
         NVi(n - 1, j, k) = NVi(n - 3, j, k) * decay_NVi * decay_NVi;
-	
+
+	// Vort
+	BoutReal decay_Vort = limitFreeScale(abs(Vort(n - 4, j, k)) , abs(Vort(n - 3, j, k)));
+        Vort(n - 2, j, k) = Vort(n - 3, j, k) * decay_Vort;
+        Vort(n - 1, j, k) = Vort(n - 3, j, k) * decay_Vort * decay_Vort;
 
 	Ti(n - 1, j, k) = Pi(n - 1, j, k) / Ne(n - 1, j, k);
         Te(n - 1, j, k) = Pe(n - 1, j, k) / Ne(n - 1, j, k);
