@@ -1677,6 +1677,18 @@ int Hermes::rhs(BoutReal t) {
       phi.applyParallelBoundary(parbc);
       
       phi = sub_all(phi, Pi);
+
+      // Set the potential manually at the last cell to keep interpolation intact
+      
+      if (mesh->lastX()) {
+	int n = mesh->LocalNx;
+	for (int j = mesh->ystart; j <= mesh->yend; j++) {
+	  for (int k = 0; k < mesh->LocalNz; k++) {
+	    phi(n - 1, j, k) = phi(n - 2, j, k);
+	  }
+	}
+      }
+      
       mesh->communicate(phi);
       phi.applyParallelBoundary(parbc);
     } else {
