@@ -58,7 +58,7 @@ T max_abs(T first, Args... args) {
 
 
 BoutReal limitFreeScale(BoutReal fm, BoutReal fc) {
-  if (fm < fc) {
+  if (fm <= fc) {
     return 1; // Neumann rather than increasing into boundary
   }
   if (abs(fm)<1e-7){
@@ -1278,7 +1278,7 @@ int Hermes::init(bool restarting) {
   debug_visheath = 0.0;
   debug_vesheath = 0.0;
   debug_sheathexp = 0.0;
-
+  debug_decay_Ne = 0.0;
   
   debug_soundspeed = 0.0;
   debug_VePsisheath = 0.0;
@@ -1323,6 +1323,7 @@ int Hermes::init(bool restarting) {
   Ne_yp2 = 0.0;
   boundary_direction = 0.0;
   if (verbose) {
+    SAVE_REPEAT(debug_decay_Ne);
     SAVE_ONCE(boundary_direction);
     SAVE_REPEAT(Te_ythis,Te_yprev,Te_ynext);
     SAVE_REPEAT(Vi_ym2,Vi_ym1,Vi_yp1,Vi_yp2);
@@ -1467,6 +1468,10 @@ int Hermes::rhs(BoutReal t) {
 	Ne(n - 2, j, k) = Ne(n - 3, j, k) * decay_Ne;
 	Ne(n - 1, j, k) = Ne(n - 3, j, k) * decay_Ne * decay_Ne;
 
+	if (verbose){
+	  debug_decay_Ne(n-3,j,k) = decay_Ne;
+	}
+	
 	// Pe
 	BoutReal decay_Pe = limitFreeScale(Pe(n - 4, j, k) , Pe(n - 3, j, k));
 	Pe(n - 2, j, k) = Pe(n - 3, j, k) * decay_Pe;
