@@ -1326,9 +1326,6 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(debug_decay_Ne);
     SAVE_ONCE(boundary_direction);
     SAVE_REPEAT(Te_ythis,Te_yprev,Te_ynext);
-    SAVE_REPEAT(Vi_ym2,Vi_ym1,Vi_yp1,Vi_yp2);
-    SAVE_REPEAT(Ne_ym2,Ne_ym1,Ne_yp1,Ne_yp2);
-    SAVE_REPEAT(kappa_epar_yup,kappa_epar_ydown);
 
     SAVE_REPEAT(eta_limit_denom);
 
@@ -1336,7 +1333,7 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(debug_soundspeed,debug_phibndry3d);
     SAVE_REPEAT(tau_e, tau_i);
 
-    SAVE_REPEAT(Ne_sheath,Ve_sheath,Vi_sheath,Te_sheath,Ti_sheath,Vort_sheath,phi_sheath);
+
     SAVE_REPEAT(Jpar_sheath);
 
     
@@ -1775,15 +1772,6 @@ int Hermes::rhs(BoutReal t) {
 
 	    const BoutReal jsheath = nesheath * (visheath - vesheath);
 	    const BoutReal nvisheath = nesheath * visheath;
-
-	    /*
-	    if (verbose){
-	      debug_visheath[i] = visheath;
-	      debug_vesheath[i] = vesheath;
-	      debug_phisheath[i] = phisheath;
-	      Te_sheath[i] = tesheath;
-	    }
-	    */
 	    
 	    TRACE("Sheath offset==2, set neighbouring cells");
 	    
@@ -1905,23 +1893,6 @@ int Hermes::rhs(BoutReal t) {
   }
 
 
-  if (verbose){
-    BOUT_FOR(i, Ne.getRegion("RGN_ALL")) {
-      const auto iyp = i.yp();
-      const auto iym = i.ym();
-      const auto iypp = i.ypp();
-      const auto iymm = i.ymm();
-      Vi_ym2[i] = Vi.ynext(-2)[iymm];
-      Vi_ym1[i] = Vi.ynext(-1)[iym];
-      Vi_yp2[i] = Vi.ynext(2)[iypp];
-      Vi_yp1[i] = Vi.ynext(1)[iyp];
-
-      Ne_ym2[i] = Ne.ynext(-2)[i];
-      Ne_ym1[i] = Ne.ynext(-1)[i];
-      Ne_yp2[i] = Ne.ynext(2)[i];
-      Ne_yp1[i] = Ne.ynext(1)[i];
-    }
-  }
 
   
   //////////////////////////////////////////////////////////////
