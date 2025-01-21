@@ -1460,7 +1460,7 @@ int Hermes::rhs(BoutReal t) {
       for (int k = 0; k < mesh->LocalNz; k++) {
 	// Extrapolate X-boundaries to have an exponential decay into the boundary
 
-	// Extrapolate Ne, Pe and Pi
+	// Extrapolate Ne, Pe, Pi and NVi
 
 	// Ne
 	BoutReal decay_Ne = limitFreeScale(Ne(n - 4, j, k) , Ne(n - 3, j, k));
@@ -1477,14 +1477,21 @@ int Hermes::rhs(BoutReal t) {
         Pi(n - 2, j, k) = Pi(n - 3, j, k) * decay_Pi;
         Pi(n - 1, j, k) = Pi(n - 3, j, k) * decay_Pi * decay_Pi;
 
+	// NVi
+	BoutReal decay_NVi = limitFreeScale(abs(NVi(n - 4, j, k)) , abs(NVi(n - 3, j, k)));
+	NVi(n - 2, j, k) = NVi(n - 3, j, k) * decay_NVi;
+        NVi(n - 1, j, k) = NVi(n - 3, j, k) * decay_NVi * decay_NVi;
+	
 
 	Ti(n - 1, j, k) = Pi(n - 1, j, k) / Ne(n - 1, j, k);
         Te(n - 1, j, k) = Pe(n - 1, j, k) / Ne(n - 1, j, k);
 	Ti(n - 2, j, k) = Pi(n - 2, j, k) / Ne(n - 2, j, k);
 	Te(n - 2, j, k) = Pe(n - 2, j, k) / Ne(n - 2, j, k);
 	
-	NVi(n - 1, j, k) = Ne(n - 1, j, k) * Vi(n - 1, j, k);
-	NVi(n - 2, j, k) = Ne(n - 2, j, k) * Vi(n - 2, j, k);
+	Vi(n - 1, j, k) = NVi(n - 1, j, k) / Ne(n - 1, j, k);
+	Vi(n - 2, j, k) = NVi(n - 2, j, k) / Ne(n - 2, j, k);
+        
+	
 	
       }
     }
