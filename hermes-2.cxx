@@ -2486,7 +2486,7 @@ int Hermes::rhs(BoutReal t) {
       TRACE("Pe anomalous transport");
       //TE_Pe_anomalous = FCIDiv_a_Grad_perp(mul_all(a_d3d, Te), Ne) + (2. / 3) * FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Te);
       TE_Pe_anomalous = (2. / 3) * FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Te);
-      //TE_Pe_anomalous += FCIDiv_a_Grad_perp(mul_all(a_d3d, Te), Ne);
+      TE_Pe_anomalous += FCIDiv_a_Grad_perp(mul_all(a_d3d, Te), Ne);
       ddt(Pe) += TE_Pe_anomalous;
     } // End Pe_anomalous
 
