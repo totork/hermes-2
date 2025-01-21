@@ -113,7 +113,7 @@ private:
   BoutReal scale_ExB;
   Field3D eta_limit_denom;
   BoutReal floor_kappa_epar,floor_kappa_ipar;
-
+  Field3D boundary_direction;
   BoutReal floor_Ne,floor_Te,floor_Ti;
   Field3D Te_yup,Te_ydown;
   Field3D Ne_ym2,Ne_ym1,Ne_yp1,Ne_yp2;

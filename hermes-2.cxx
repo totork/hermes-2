@@ -392,7 +392,7 @@ int Hermes::init(bool restarting) {
   //////////////////////////////////////////////////////////////////////////
 
   // Check which variables should be evolved
-
+  OPTION(opt,output_ddt,false);
   // Electron density
   evolve_ne = optsc["evolve_ne"].doc("Evolve density?").withDefault<bool>(false);
   if (evolve_ne){
@@ -1261,7 +1261,9 @@ int Hermes::init(bool restarting) {
   Ne_ym1 = 0.0;
   Ne_yp1 = 0.0;
   Ne_yp2 = 0.0;
+  boundary_direction = 0.0;
   if (verbose) {
+    SAVE_ONCE(boundary_direction);
     SAVE_REPEAT(Te_ythis,Te_yprev,Te_ynext);
     SAVE_REPEAT(Vi_ym2,Vi_ym1,Vi_yp1,Vi_yp2);
     SAVE_REPEAT(Ne_ym2,Ne_ym1,Ne_yp1,Ne_yp2);
@@ -1351,6 +1353,15 @@ int Hermes::init(bool restarting) {
   alloc_all(Pi);
   alloc_all(Pe);
 
+
+  for (const auto &bndry_par :
+           mesh->getBoundariesPar(BoundaryParType::xout)) {
+	for (const auto& pnt : *bndry_par) {
+          const auto i = pnt.ind();
+	  boundary_direction[i] = pnt.dir;
+	}
+  }
+  
   
   // Here are some sanity checks for the flags
 
@@ -1383,27 +1394,6 @@ int Hermes::rhs(BoutReal t) {
   Pi.applyBoundary();
   VePsi.applyBoundary();
 
-
-  
-  if (mesh->firstX()) {
-    for (int j = mesh->ystart; j <= mesh->yend; j++) {
-      for (int k = 0; k < mesh->LocalNz; k++) {
-        BoutReal ne_bndry = 0.5 * (Ne(1, j, k) + Ne(2, j, k));
-        if (ne_bndry < 1e-2)
-          ne_bndry = 1e-2;
-        BoutReal pe_bndry = 0.5 * (Pe(1, j, k) + Pe(2, j, k));
-        BoutReal pi_bndry = 0.5 * (Pi(1, j, k) + Pi(2, j, k));
-
-        BoutReal te_bndry = pe_bndry / ne_bndry;
-        BoutReal ti_bndry = pi_bndry / ne_bndry;
-
-	Te(0, j, k) = Te(1, j, k) = 2. * te_bndry - Te(2, j, k);
-        Ti(0, j, k) = Ti(1, j, k) = 2. * ti_bndry - Ti(2, j, k);
-        Vi(0, j, k) = Vi(1, j, k) = Vi(2, j, k);
-
-      }
-    }
-  }
   if (mesh->lastX()) {
     int n = mesh->LocalNx;
     for (int j = mesh->ystart; j <= mesh->yend; j++) {
@@ -1421,23 +1411,21 @@ int Hermes::rhs(BoutReal t) {
 	BoutReal te_bndry_val = 2. * te_bndry - Te(n - 3, j, k);
 	BoutReal ti_bndry_val =	2. * ti_bndry - Ti(n - 3, j, k);
 	
-	
-	Ne(n - 1, j, k) = ne_bndry_val;
-	Ne(n - 2, j, k) = ne_bndry_val;
 
-	Te(n - 1, j, k) = te_bndry_val;
-        Te(n - 2, j, k) = te_bndry_val;
-
-	Ti(n - 1, j, k) = ti_bndry_val;
-        Ti(n - 2, j, k) = ti_bndry_val;
+	BoutReal vi_sheath_val = boundary_direction(n-3, j, k) * sqrt((5.0/3.0)*ti_bndry_val + te_bndry_val);
+	BoutReal NVi_sheath_val = 2.0 *vi_sheath_val * ne_bndry_val - NVi(n - 3, j, k);
+	NVi(n - 1, j, k) = NVi_sheath_val;
+	NVi(n - 2, j, k) = NVi_sheath_val;
+	  
 	
-        Vi(n - 1, j, k) = Vi(n - 2, j, k);
 
 
       }
     }
   }
 
+  
+  
   
   
   mesh->communicate(EvolvingVars);
@@ -1458,6 +1446,9 @@ int Hermes::rhs(BoutReal t) {
   }
 
 
+
+
+  
   
   Field3D sound_speed;
   alloc_all(sound_speed);
@@ -1506,15 +1497,10 @@ int Hermes::rhs(BoutReal t) {
   }
 
   sound_speed.applyBoundary("neumann");
-  
-  if(verbose){
-    debug_soundspeed = sound_speed;
-  }
-  
-  // Set radial boundary conditions on Te, Ti, Vi
-  //
 
-  
+
+
+  /*
   if (mesh->firstX()) {
     for (int j = mesh->ystart; j <= mesh->yend; j++) {
       for (int k = 0; k < mesh->LocalNz; k++) {
@@ -1560,13 +1546,37 @@ int Hermes::rhs(BoutReal t) {
 
 	Ti(n - 1, j, k) = ti_bndry_val;
         Ti(n - 2, j, k) = ti_bndry_val;
+
+	if (!parallel_sheaths){
+	  Vi(n - 1, j, k) = Vi(n - 2, j, k);
+	} else {
+	  BoutReal vi_sheath_val = boundary_direction(n-3, j, k) * sqrt((5.0/3.0)*ti_bndry_val + te_bndry_val);
+	  BoutReal NVi_sheath_val = 2.0 *vi_sheath_val * ne_bndry_val - NVi(n - 3, j, k);
+	  NVi(n - 1, j, k) = NVi_sheath_val;
+	  NVi(n - 2, j, k) = NVi_sheath_val;
+	  Vi(n - 2, j, k) = NVi_sheath_val/ne_bndry_val;
+	  Vi(n - 1, j, k) = NVi_sheath_val/ne_bndry_val;
+	  
+	}
 	
-        Vi(n - 1, j, k) = Vi(n - 2, j, k);
 
 
       }
     }
   }
+  */
+
+  
+
+
+  
+  if(verbose){
+    debug_soundspeed = sound_speed;
+  }
+  
+  // Set radial boundary conditions on Te, Ti, Vi
+  //
+
 
   
 
@@ -1893,10 +1903,14 @@ int Hermes::rhs(BoutReal t) {
 
   if (verbose){
     BOUT_FOR(i, Ne.getRegion("RGN_ALL")) {
-      Vi_ym2[i] = Vi.ynext(-2)[i];
-      Vi_ym1[i] = Vi.ynext(-1)[i];
-      Vi_yp2[i] = Vi.ynext(2)[i];
-      Vi_yp1[i] = Vi.ynext(1)[i];
+      const auto iyp = i.yp();
+      const auto iym = i.ym();
+      const auto iypp = i.ypp();
+      const auto iymm = i.ymm();
+      Vi_ym2[i] = Vi.ynext(-2)[iymm];
+      Vi_ym1[i] = Vi.ynext(-1)[iym];
+      Vi_yp2[i] = Vi.ynext(2)[iypp];
+      Vi_yp1[i] = Vi.ynext(1)[iyp];
 
       Ne_ym2[i] = Ne.ynext(-2)[i];
       Ne_ym1[i] = Ne.ynext(-1)[i];
@@ -2716,7 +2730,7 @@ Field3D Hermes::hyperdissipation(const Field3D &a, const Field3D &b) {
 Field3D Hermes::numericaldissipation(const Field3D &a, const Field3D &b) {
   //return a * Grad2_par2(b);
   auto thiscoords=b.getCoordinates();
-  return a * D4DY4(b) / (SQ_all(thiscoords->g_22));
+  return -a * D4DY4(b) / (SQ_all(thiscoords->g_22));
 }
 
 Field3D Hermes::term_limiter(const Field3D &a, const BoutReal &val){
