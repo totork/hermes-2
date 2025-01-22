@@ -1439,6 +1439,24 @@ int Hermes::rhs(BoutReal t) {
   // Note: Parallel slices are not calculated because parallel derivatives
   // are calculated using field aligned quantities
 
+
+
+  
+  BOUT_FOR(i, Ne.getRegion("RGN_ALL")) {
+
+    div_all(Te, Pe, Ne, i);
+    div_all(Vi, NVi, Ne, i);
+    div_all(Ti, Pi, Ne, i);
+
+    floor_all(Ne, floor_Ne, i);
+    floor_all(Te, floor_Te, i);
+    floor_all(Ti, floor_Ti, i);
+
+    mul_all(Pe, Te, Ne, i);
+    mul_all(Pi, Ti, Ne, i);
+    mul_all(NVi, Vi, Ne, i); 
+  }
+  
   
   Ne.applyBoundary();
   NVi.applyBoundary();
@@ -1446,64 +1464,48 @@ int Hermes::rhs(BoutReal t) {
   Vort.applyBoundary();
   Pi.applyBoundary();
   VePsi.applyBoundary();
-
+  
   if (mesh->lastX()) {
     int n = mesh->LocalNx;
     for (int j = mesh->ystart; j <= mesh->yend; j++) {
       for (int k = 0; k < mesh->LocalNz; k++) {
 	// Extrapolate X-boundaries to have an exponential decay into the boundary
-
 	// Extrapolate Ne, Pe, Pi and NVi
-
 	// Ne
 	BoutReal decay_Ne = limitFreeScale(abs(Ne(n - 4, j, k)) , abs(Ne(n - 3, j, k)));
 	Ne(n - 2, j, k) = floor(Ne(n - 3, j, k) * decay_Ne,floor_Ne);
 	Ne(n - 1, j, k) = floor(Ne(n - 3, j, k) * decay_Ne * decay_Ne,floor_Ne);
-
 	if (verbose){
 	  debug_decay_Ne(n-3,j,k) = decay_Ne;
-	}
-	
+	}       
 	// Pe
 	BoutReal decay_Te = limitFreeScale(abs(Te(n - 4, j, k)) , abs(Te(n - 3, j, k)));
 	Te(n - 2, j, k) = floor(Te(n - 3, j, k) * decay_Te,floor_Te);
 	Te(n - 1, j, k) = floor(Te(n - 3, j, k) * decay_Te * decay_Te,floor_Te);
-
 	// Pi
 	BoutReal decay_Ti = limitFreeScale(abs(Ti(n - 4, j, k)) , abs(Ti(n - 3, j, k)));
         Ti(n - 2, j, k) = floor(Ti(n - 3, j, k) * decay_Ti,floor_Ti);
         Ti(n - 1, j, k) = floor(Ti(n - 3, j, k) * decay_Ti * decay_Ti,floor_Ti);
-
 	// Vi
 	BoutReal decay_Vi = limitFreeScale(abs(Vi(n - 4, j, k)) , abs(Vi(n - 3, j, k)));
 	Vi(n - 2, j, k) = Vi(n - 3, j, k) * decay_Vi;
         Vi(n - 1, j, k) = Vi(n - 3, j, k) * decay_Vi * decay_Vi;
-
 	// Ve                                                                                                                                                                                             
         BoutReal decay_Ve = limitFreeScale(abs(Ve(n - 4, j, k)) , abs(Ve(n - 3, j, k)));
         Ve(n - 2, j, k) = Ve(n - 3, j, k) * decay_Ve;
-        Ve(n - 1, j, k) = Ve(n - 3, j, k) * decay_Ve * decay_Ve;
-	
+        Ve(n - 1, j, k) = Ve(n - 3, j, k) * decay_Ve * decay_Ve;	
 	// Vort
 	BoutReal decay_Vort = limitFreeScale(abs(Vort(n - 4, j, k)) , abs(Vort(n - 3, j, k)));
         Vort(n - 2, j, k) = Vort(n - 3, j, k) * decay_Vort;
         Vort(n - 1, j, k) = Vort(n - 3, j, k) * decay_Vort * decay_Vort;
-
-
-
 	Pi(n - 1, j, k) = Ti(n - 1, j, k) * Ne(n - 1, j, k);
 	Pi(n - 2, j, k) = Ti(n - 2, j, k) * Ne(n - 2, j, k);
-
 	Pe(n - 1, j, k) = Te(n - 1, j, k) * Ne(n - 1, j, k);
-	Pe(n - 2, j, k) = Te(n - 2, j, k) * Ne(n - 2, j, k);
-	
+	Pe(n - 2, j, k) = Te(n - 2, j, k) * Ne(n - 2, j, k);	
 	NVi(n - 1, j, k) = Vi(n - 1, j, k) * Ne(n - 1, j, k);
-	NVi(n - 2, j, k) = Vi(n - 2, j, k) * Ne(n - 2, j, k);
-        
+	NVi(n - 2, j, k) = Vi(n - 2, j, k) * Ne(n - 2, j, k);        
 	VePsi(n - 1, j, k) = Ve(n - 1, j, k) - Vi(n - 1, j, k);
-	VePsi(n - 2, j, k) = Ve(n - 2, j, k) - Vi(n - 2, j, k);
-	  
-	
+	VePsi(n - 2, j, k) = Ve(n - 2, j, k) - Vi(n - 2, j, k);	  	
       }
     }
   }
@@ -1537,49 +1539,23 @@ int Hermes::rhs(BoutReal t) {
   Field3D sound_speed;
   alloc_all(sound_speed);
 
-  
-  
   BOUT_FOR(i, Ne.getRegion("RGN_ALL")) {
-    floor_all(Ne, floor_Ne, i);
-
-    if (!evolve_te) {
-      copy_all(Pe, Ne, i); // Fixed electron temperature
-    }
 
     div_all(Te, Pe, Ne, i);
-    // ASSERT0(Te[i] > 1e-10);
-    /// printf("%f\n", Te[i]);
     div_all(Vi, NVi, Ne, i);
-
-    if (floor_vel > 0.0){
-      if (abs(Vi[i])<floor_vel){
-	Vi[i] = floor_vel;
-      }
-    }
-			    
-
-    floor_all(Te, floor_Te, i);
-    // ASSERT0(Te[i] > 1e-10);
-
-    
-    mul_all(Pe, Te, Ne, i);
-
-    if (!evolve_ti) {
-      copy_all(Pi, Ne, i); // Fixed ion temperature
-    }
-
     div_all(Ti, Pi, Ne, i);
+
+    floor_all(Ne, floor_Ne, i);
+    floor_all(Te, floor_Te, i);
     floor_all(Ti, floor_Ti, i);
 
-
-    
+    mul_all(Pe, Te, Ne, i);
     mul_all(Pi, Ti, Ne, i);
-    // div_all(Te, Pe, Ne, i);
-    // ASSERT0(Te[i] > 1e-10);
+    mul_all(NVi, Vi, Ne, i);
 
     sound_speed[i] =  sqrt(Te[i] + Ti[i] * (5. / 3));
   }
-
+  
   sound_speed.applyBoundary("neumann");
 
 
