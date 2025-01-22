@@ -61,14 +61,9 @@ BoutReal limitFreeScale(BoutReal fm, BoutReal fc) {
   if (fm <= fc) {
     return 1; // Neumann rather than increasing into boundary
   }
-  if (abs(fm)<1e-7){
-    fm = 1e-7;
-  }
   BoutReal fp = fc / fm;
-  return fp;
+  return std::max(fp, 0.8);
 }
-
-
 
 
 BoutReal limitFree(BoutReal fm, BoutReal fc){
@@ -1461,23 +1456,23 @@ int Hermes::rhs(BoutReal t) {
 	// Extrapolate Ne, Pe, Pi and NVi
 
 	// Ne
-	BoutReal decay_Ne = limitFreeScale(Ne(n - 4, j, k) , Ne(n - 3, j, k));
-	Ne(n - 2, j, k) = Ne(n - 3, j, k) * decay_Ne;
-	Ne(n - 1, j, k) = Ne(n - 3, j, k) * decay_Ne * decay_Ne;
+	BoutReal decay_Ne = limitFreeScale(abs(Ne(n - 4, j, k)) , abs(Ne(n - 3, j, k)));
+	Ne(n - 2, j, k) = floor(Ne(n - 3, j, k) * decay_Ne,floor_Ne);
+	Ne(n - 1, j, k) = floor(Ne(n - 3, j, k) * decay_Ne * decay_Ne,floor_Ne);
 
 	if (verbose){
 	  debug_decay_Ne(n-3,j,k) = decay_Ne;
 	}
 	
 	// Pe
-	BoutReal decay_Pe = limitFreeScale(Pe(n - 4, j, k) , Pe(n - 3, j, k));
-	Pe(n - 2, j, k) = Pe(n - 3, j, k) * decay_Pe;
-	Pe(n - 1, j, k) = Pe(n - 3, j, k) * decay_Pe * decay_Pe;
+	BoutReal decay_Te = limitFreeScale(abs(Te(n - 4, j, k)) , abs(Te(n - 3, j, k)));
+	Te(n - 2, j, k) = floor(Te(n - 3, j, k) * decay_Te,floor_Te);
+	Te(n - 1, j, k) = floor(Te(n - 3, j, k) * decay_Te * decay_Te,floor_Te);
 
 	// Pi
-	BoutReal decay_Pi = limitFreeScale(Pi(n - 4, j, k) , Pi(n - 3, j, k));
-        Pi(n - 2, j, k) = Pi(n - 3, j, k) * decay_Pi;
-        Pi(n - 1, j, k) = Pi(n - 3, j, k) * decay_Pi * decay_Pi;
+	BoutReal decay_Ti = limitFreeScale(abs(Ti(n - 4, j, k)) , abs(Ti(n - 3, j, k)));
+        Ti(n - 2, j, k) = floor(Ti(n - 3, j, k) * decay_Ti,floor_Ti);
+        Ti(n - 1, j, k) = floor(Ti(n - 3, j, k) * decay_Ti * decay_Ti,floor_Ti);
 
 	// Vi
 	BoutReal decay_Vi = limitFreeScale(abs(Vi(n - 4, j, k)) , abs(Vi(n - 3, j, k)));
@@ -1495,13 +1490,12 @@ int Hermes::rhs(BoutReal t) {
         Vort(n - 1, j, k) = Vort(n - 3, j, k) * decay_Vort * decay_Vort;
 
 
-	
 
-	
-	Ti(n - 1, j, k) = Pi(n - 1, j, k) / Ne(n - 1, j, k);
-        Te(n - 1, j, k) = Pe(n - 1, j, k) / Ne(n - 1, j, k);
-	Ti(n - 2, j, k) = Pi(n - 2, j, k) / Ne(n - 2, j, k);
-	Te(n - 2, j, k) = Pe(n - 2, j, k) / Ne(n - 2, j, k);
+	Pi(n - 1, j, k) = Ti(n - 1, j, k) * Ne(n - 1, j, k);
+	Pi(n - 2, j, k) = Ti(n - 2, j, k) * Ne(n - 2, j, k);
+
+	Pe(n - 1, j, k) = Te(n - 1, j, k) * Ne(n - 1, j, k);
+	Pe(n - 2, j, k) = Te(n - 2, j, k) * Ne(n - 2, j, k);
 	
 	NVi(n - 1, j, k) = Vi(n - 1, j, k) * Ne(n - 1, j, k);
 	NVi(n - 2, j, k) = Vi(n - 2, j, k) * Ne(n - 2, j, k);
@@ -1887,21 +1881,21 @@ int Hermes::rhs(BoutReal t) {
 
 	    TRACE("Sheath offset==1, set double next fields");
 
-	    const int offset_factor = 2;
-	    /*
-	    pnt.getAt<false>(Ne,offset_factor)=pnt.ynext(Ne);
-	    pnt.getAt<false>(Te,offset_factor)=pnt.ynext(Te);
-	    pnt.getAt<false>(Pe,offset_factor)=pnt.ynext(Pe);
-	    pnt.getAt<false>(Ti,offset_factor)=pnt.ynext(Ti);
-	    pnt.getAt<false>(Pi,offset_factor)=pnt.ynext(Pi);
+	    const int offset_factor = 1;
 	    
-	    pnt.getAt<false>(phi,offset_factor)=pnt.ynext(phi);
-	    pnt.getAt<false>(Vi,offset_factor)=pnt.ynext(Vi);
-	    pnt.getAt<false>(Ve,offset_factor)=pnt.ynext(Ve);
-	    pnt.getAt<false>(Jpar,offset_factor)=pnt.ynext(Jpar);
-	    pnt.getAt<false>(NVi,offset_factor)=pnt.ynext(NVi);
-	    pnt.getAt<false>(Vort,offset_factor)=pnt.ynext(Vort);
-	    */
+	    pnt.getAt<false>(Ne, offset_factor) = pnt.ynext(Ne);
+	    pnt.getAt<false>(Te, offset_factor) = pnt.ynext(Te);
+	    pnt.getAt<false>(Pe, offset_factor) = pnt.ynext(Pe);
+	    pnt.getAt<false>(Ti, offset_factor) = pnt.ynext(Ti);
+	    pnt.getAt<false>(Pi, offset_factor) = pnt.ynext(Pi);
+	    
+	    pnt.getAt<false>(phi, offset_factor) = pnt.ynext(phi);
+	    pnt.getAt<false>(Vi, offset_factor) = pnt.ynext(Vi);
+	    pnt.getAt<false>(Ve, offset_factor) = pnt.ynext(Ve);
+	    pnt.getAt<false>(Jpar, offset_factor) = pnt.ynext(Jpar);
+	    pnt.getAt<false>(NVi, offset_factor) = pnt.ynext(NVi);
+	    pnt.getAt<false>(Vort, offset_factor) = pnt.ynext(Vort);
+	    
 	    
 	  } // End interpolate_sheathneighbour
 
