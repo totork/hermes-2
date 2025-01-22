@@ -1407,13 +1407,6 @@ int Hermes::init(bool restarting) {
   alloc_all(Pe);
 
 
-  for (const auto &bndry_par :
-           mesh->getBoundariesPar(BoundaryParType::xout)) {
-	for (const auto& pnt : *bndry_par) {
-          const auto i = pnt.ind();
-	  boundary_direction[i] = pnt.dir;
-	}
-  }
   
   
   // Here are some sanity checks for the flags
@@ -1441,29 +1434,29 @@ int Hermes::rhs(BoutReal t) {
 
 
 
-  
-  BOUT_FOR(i, Ne.getRegion("RGN_ALL")) {
-
-    div_all(Te, Pe, Ne, i);
-    div_all(Vi, NVi, Ne, i);
-    div_all(Ti, Pi, Ne, i);
-
-    floor_all(Ne, floor_Ne, i);
-    floor_all(Te, floor_Te, i);
-    floor_all(Ti, floor_Ti, i);
-
-    mul_all(Pe, Te, Ne, i);
-    mul_all(Pi, Ti, Ne, i);
-    mul_all(NVi, Vi, Ne, i); 
-  }
-  
-  
   Ne.applyBoundary();
   NVi.applyBoundary();
   Pe.applyBoundary();
   Vort.applyBoundary();
   Pi.applyBoundary();
   VePsi.applyBoundary();
+
+  
+  BOUT_FOR(i, Ne.getRegion("RGN_NOY")) {
+
+
+
+    Vi[i] = NVi[i] / Ne[i];
+    Te[i] = floor(Pe[i] / Ne[i],floor_Te);
+    Ti[i] = floor(Pi[i] / Ne[i],floor_Ti);
+    
+    Ne[i] = floor(Ne[i], floor_Ne);
+
+    NVi[i] = Ne[i] * Vi[i];
+    Pe[i] = Ne[i] * Te[i];
+    Pi[i] = Ne[i] * Ti[i];    
+  }
+  
   
   if (mesh->lastX()) {
     int n = mesh->LocalNx;
@@ -1475,9 +1468,11 @@ int Hermes::rhs(BoutReal t) {
 	BoutReal decay_Ne = limitFreeScale(abs(Ne(n - 4, j, k)) , abs(Ne(n - 3, j, k)));
 	Ne(n - 2, j, k) = floor(Ne(n - 3, j, k) * decay_Ne,floor_Ne);
 	Ne(n - 1, j, k) = floor(Ne(n - 3, j, k) * decay_Ne * decay_Ne,floor_Ne);
+	/*
 	if (verbose){
 	  debug_decay_Ne(n-3,j,k) = decay_Ne;
-	}       
+	} 
+	*/      
 	// Pe
 	BoutReal decay_Te = limitFreeScale(abs(Te(n - 4, j, k)) , abs(Te(n - 3, j, k)));
 	Te(n - 2, j, k) = floor(Te(n - 3, j, k) * decay_Te,floor_Te);
