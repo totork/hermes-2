@@ -820,7 +820,7 @@ int Hermes::init(bool restarting) {
           .doc("If plasma is faster than sound speed, go to plasma velocity")
           .withDefault<bool>(true);
   
-
+  OPTION(optsheath, sheath_interpolate, false);
 
   
   
@@ -1733,108 +1733,68 @@ int Hermes::rhs(BoutReal t) {
            mesh->getBoundariesPar(BoundaryParType::xout)) {
 	for (const auto& pnt : *bndry_par) {
 	  const auto i = pnt.ind();
-	  if (abs(pnt.offset())==2){
-	    TRACE("Sheath offset==2, limitfree values");
+	  if (sheath_interpolate){
 	    pnt.ynext(Ne) = floor(limitFree(pnt.yprev(Ne),pnt.ythis(Ne)), floor_Ne);
 	    pnt.ynext(Ti) = floor(limitFree(pnt.yprev(Ti),pnt.ythis(Ti)), floor_Ti);
-            pnt.ynext(Te) = floor(limitFree(pnt.yprev(Te),pnt.ythis(Te)), floor_Te);
-	    
-	    pnt.ynext(Pi) = pnt.ynext(Ne)*pnt.ynext(Ti);
-	    pnt.ynext(Pe) = pnt.ynext(Ne)*pnt.ynext(Te);
+	    pnt.ynext(Te) = floor(limitFree(pnt.yprev(Te),pnt.ythis(Te)), floor_Te);
+	  } else {
+	    pnt.ynext(Ne) = pnt.ythis(Ne);
+            pnt.ynext(Ti) = pnt.ythis(Ti);
+            pnt.ynext(Te) = pnt.ythis(Te);
+	  }
+	  
+	  pnt.ynext(Pi) = pnt.ynext(Ne)*pnt.ynext(Ti);
+	  pnt.ynext(Pe) = pnt.ynext(Ne)*pnt.ynext(Te);
 
-	    
-	    BoutReal phisheath = log(sqrt(pnt.ythis(Te) / (pnt.ythis(Te) + pnt.ythis(Ti)))) * pnt.ythis(Te);
+	  
+	  BoutReal phisheath = log(sqrt(pnt.ythis(Te) / (pnt.ythis(Te) + pnt.ythis(Ti)))) * pnt.ythis(Te);
+	  pnt.ynext(phi) = phisheath;
 
-	    pnt.ynext(phi) = phisheath;
+	  TRACE("Sheath offset==2, interpolate sheath values");
 
-	    
-	    TRACE("Sheath offset==2, interpolate sheath values");
-	    
-	    const BoutReal nesheath = pnt.interpolate_sheath_o1(Ne);
-	    const BoutReal tesheath = pnt.interpolate_sheath_o1(Te);
-	    const BoutReal tisheath = pnt.interpolate_sheath_o1(Ti);
+	  BoutReal nesheath = 0.0;
+	  BoutReal tesheath = 0.0;
+	  BoutReal tisheath = 0.0;
+	  if (sheath_interpolate){
+	    nesheath = pnt.interpolate_sheath_o1(Ne);
+	    tesheath = pnt.interpolate_sheath_o1(Te);
+	    tisheath = pnt.interpolate_sheath_o1(Ti);
+	  } else {
+	    nesheath = pnt.ythis(Ne);
+            tesheath = pnt.ythis(Te);
+            tisheath = pnt.ythis(Ti);
+	  }
+	  
+	  const BoutReal visheath = pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath);
 
-	    const BoutReal visheath = pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath);
-	    BoutReal vesheath = 0.0;
-	    if (evolve_vepsi){
-	      vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
-	    } else {
-	       vesheath = visheath;
-	    }
+	  BoutReal vesheath = 0.0;
+	  if (evolve_vepsi){
+	    vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
+	  } else {
+	    vesheath = visheath;
+	  }
 
-	    const BoutReal jsheath = nesheath * (visheath - vesheath);
-	    const BoutReal nvisheath = nesheath * visheath;
-	    
-	    TRACE("Sheath offset==2, set neighbouring cells");
-	    
+	  const BoutReal jsheath = nesheath * (visheath - vesheath);
+	  const BoutReal nvisheath = nesheath * visheath;
+
+	  if (sheath_interpolate){
 	    pnt.ynext(Vi) = interpolate_sheathneighbour(pnt.ythis(Vi), visheath);
 	    pnt.ynext(Ve) = interpolate_sheathneighbour(pnt.ythis(Ve), vesheath);
 	    pnt.ynext(Jpar) = interpolate_sheathneighbour(pnt.ythis(Jpar), jsheath);
 	    pnt.ynext(NVi) = interpolate_sheathneighbour(pnt.ythis(NVi), nvisheath);
-	    
 	    pnt.ynext(Vort) = pnt.ythis(Vort);
+	  } else {
+	    pnt.ynext(Vi) = visheath;
+	    pnt.ynext(Ve) = vesheath;
+	    pnt.ynext(Jpar) = jsheath;
+	    pnt.ynext(NVi) = nvisheath;
+	    pnt.ynext(Vort) = pnt.ythis(Vort);
+	  }
 
+	  
+	  
+	  if (abs(pnt.offset())==1){	              	   	    
 	    
-	  } else if (abs(pnt.offset())==1){
-
-	    TRACE("Sheath offset==1, limitfree values");
-	    pnt.ynext(Ne) = floor(limitFree(pnt.yprev(Ne),pnt.ythis(Ne)), floor_Ne);
-            pnt.ynext(Ti) = floor(limitFree(pnt.yprev(Ti),pnt.ythis(Ti)), floor_Ti);
-            pnt.ynext(Te) = floor(limitFree(pnt.yprev(Te),pnt.ythis(Te)), floor_Te);
-
-            pnt.ynext(Pi) = pnt.ynext(Ne)*pnt.ynext(Ti);
-            pnt.ynext(Pe) = pnt.ynext(Ne)*pnt.ynext(Te);
-
-
-	    
-            BoutReal phisheath = log(sqrt(pnt.ythis(Te) / (pnt.ythis(Te) + pnt.ythis(Ti)))) * pnt.ythis(Te);
-
-            pnt.ynext(phi) = phisheath;
-
-	    TRACE("Sheath offset==1, interpolate sheath values");
-	    
-            const BoutReal nesheath = pnt.interpolate_sheath_o1(Ne);
-            const BoutReal tesheath = pnt.interpolate_sheath_o1(Te);
-	    //const BoutReal tesheath = 0.5 * (pnt.ynext(Te)+pnt.ythis(Te));
-            const BoutReal tisheath = pnt.interpolate_sheath_o1(Ti);
-
-
-	    
-	    const BoutReal visheath = pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath);
-            BoutReal vesheath = 0.0;
-            if (evolve_vepsi){
-              vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
-            } else {
-               vesheath = visheath;
-            }
-
-
-	    
-            const BoutReal jsheath = nesheath * (visheath - vesheath);
-            const BoutReal nvisheath = nesheath * visheath;
-
-	    
-	    if (verbose){
-	      Te_ythis[i] = pnt.ythis(Te);
-	      Te_ynext[i] = pnt.ynext(Te);
-	      Te_yprev[i] = pnt.yprev(Te);
-              debug_visheath[i] = visheath;
-              debug_vesheath[i] = vesheath;
-              debug_phisheath[i] = phisheath;
-	      Te_sheath[i] = tesheath;
-            }
-	   
-
-	    
-	    TRACE("Sheath offset==1, set neighbouring cells");
-
-	    
-            pnt.ynext(Vi) = interpolate_sheathneighbour(pnt.ythis(Vi), visheath);
-            pnt.ynext(Ve) = interpolate_sheathneighbour(pnt.ythis(Ve), vesheath);
-            pnt.ynext(Jpar) = interpolate_sheathneighbour(pnt.ythis(Jpar), jsheath);
-            pnt.ynext(NVi) = interpolate_sheathneighbour(pnt.ythis(NVi), nvisheath);
-	    	   
-            pnt.ynext(Vort) = pnt.ythis(Vort);
 
 	    TRACE("Sheath offset==1, sheath power calculation");
 
