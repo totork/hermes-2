@@ -404,6 +404,20 @@ const Field3D Div_n_bxGrad_f_B_XPPM(const Field3D &n, const Field3D &f,
 
 
 
+
+const Field3D Div_par_mod(const Field3D& f_in, const Field3D& v_in,
+                          const Field3D& wave_speed_in, bool fixflux) {
+
+  Mesh* mesh = f_in.getMesh();
+  Field3D result{zeroFrom(f_in)};
+  return result;
+}
+
+
+
+
+
+
 // FV method for the curvature vector
 
 const Field3D Div_f_v_no_y(const Field3D& n_in, const Field3D& vx, const Field3D& vz, bool bndry_flux) {

@@ -44,6 +44,7 @@
 
 std::string parbc{"parallel_neumann_o2"};
 
+using bout::globals::mesh;
 
 template <typename T>
 T max_abs(T a, T b) {
@@ -402,6 +403,21 @@ Field3D withBoundary(Field3D &&f, const Field3D &bndry) {
   return f;
 }
 
+
+
+const Field3D new_Delp2(const Field3D& a){
+  
+  auto *coord = mesh->getCoordinates();
+  Field3D tmp = (DDX(coord->J * coord->g11)*DDX(a) + coord->J * coord->g11 * D2DX2(a))/coord->J;
+  tmp += (DDZ(coord->J * coord->g33)*DDZ(a) + coord->J * coord->g33 * D2DZ2(a))/coord->J;
+  tmp += (DDX(coord->J * coord->g13)*DDZ(a) + coord->J * coord->g13 * D2DXDZ(a) *2.0 + DDZ(coord->J * coord->g13)*DDX(a))/coord->J;
+  return tmp;
+}
+
+
+
+
+
 int Hermes::init(bool restarting) {
 
   auto& opt = Options::root();
@@ -758,6 +774,9 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, use_new_conduction, false);
   OPTION(optnumerics, use_new_viscosity, false);
   OPTION(optnumerics, use_new_div_par, false);
+  OPTION(optnumerics, use_Delp2, false);
+
+
   
   OPTION(optsc, boussinesq, false);
   OPTION(optnumerics, check_finite, false);
@@ -1313,10 +1332,10 @@ int Hermes::init(bool restarting) {
   debug_Pe_conduction_B = 0.0;
   debug_sheath_infsink = 0.0;
   SAVE_REPEAT(Te, Ti);
-  Vi_ym2 = 0.0;
-  Vi_ym1 = 0.0;
-  Vi_yp1 = 0.0;
-  Vi_yp2 = 0.0;
+  NVi_ym2 = 0.0;
+  NVi_ym1 = 0.0;
+  NVi_yp1 = 0.0;
+  NVi_yp2 = 0.0;
   Ne_ym2 = 0.0;
   Ne_ym1 = 0.0;
   Ne_yp1 = 0.0;
@@ -1333,7 +1352,9 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(debug_soundspeed,debug_phibndry3d);
     SAVE_REPEAT(tau_e, tau_i);
 
-
+    SAVE_REPEAT(NVi_ym2, NVi_ym1 , NVi_yp1, NVi_yp2);
+    SAVE_REPEAT( Ne_ym2 , Ne_ym1 , Ne_yp1 , Ne_yp2);
+    
     SAVE_REPEAT(Jpar_sheath);
 
     
@@ -1859,6 +1880,19 @@ int Hermes::rhs(BoutReal t) {
 
 
 
+  if (verbose){
+    BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")){
+      const auto iyp = i.yp();
+      const auto iym = i.ym();
+      const auto iypp = i.ypp();
+      const auto iymm = i.ymm();
+      NVi_ym2[i] = NVi.ydown(1)[iymm];
+      NVi_ym1[i] = NVi.ydown()[iym];
+      NVi_yp2[i] = NVi.yup(1)[iypp];
+      NVi_yp1[i] = NVi.yup()[iyp];
+    }
+  }
+
   
   //////////////////////////////////////////////////////////////
   // Plasma quantities calculated.
@@ -2020,7 +2054,11 @@ int Hermes::rhs(BoutReal t) {
     
     if (Ne_anomalous){// Row 4 
       TRACE("Density anomalous");
-      TE_Ne_anomalous = FCIDiv_a_Grad_perp(a_d3d, Ne);
+      if (use_Delp2){
+	TE_Ne_anomalous = a_d3d * new_Delp2(Ne);
+      } else {
+	TE_Ne_anomalous = FCIDiv_a_Grad_perp(a_d3d, Ne);
+      }
       ddt(Ne) += TE_Ne_anomalous;
     }  // End Ne_anomalous
 
@@ -2112,8 +2150,12 @@ int Hermes::rhs(BoutReal t) {
     } //End Vort_polarcurrent
 
     
-    if (Vort_anomalous){//Row 6 
-      TE_Vort_anomalous = FCIDiv_a_Grad_perp(a_nu3d, Vort);
+    if (Vort_anomalous){//Row 6
+      if (use_Delp2){
+	TE_Vort_anomalous = a_nu3d * new_Delp2(Vort);
+      } else {
+	TE_Vort_anomalous = FCIDiv_a_Grad_perp(a_nu3d, Vort);
+      }
       ddt(Vort) += TE_Vort_anomalous;
     } // End Vort_anomalous
 
@@ -2250,7 +2292,11 @@ int Hermes::rhs(BoutReal t) {
 
     if (VePsi_anomalous){
       TRACE("VePsi anomalous");
-      TE_VePsi_anomalous = FCIDiv_a_Grad_perp(a_nu3d, Ve);
+      if (use_Delp2){
+	TE_VePsi_anomalous = a_nu3d * Delp2(Ve);
+      } else {
+	TE_VePsi_anomalous = FCIDiv_a_Grad_perp(a_nu3d, Ve);
+      }
     } // End VePsi_anomalous
 
     
@@ -2319,8 +2365,13 @@ int Hermes::rhs(BoutReal t) {
 
     
     if (NVi_anomalous){//Row 5
-      TE_NVi_anomalous = FCIDiv_a_Grad_perp(mul_all(Vi, a_d3d), Ne);
-      TE_NVi_anomalous += FCIDiv_a_Grad_perp(mul_all(Ne, a_nu3d), Vi);
+
+      if (use_Delp2){
+	TE_NVi_anomalous = a_d3d * Vi * new_Delp2(Ne) + a_nu3d * Ne * new_Delp2(Vi);
+      } else {
+	TE_NVi_anomalous = FCIDiv_a_Grad_perp(mul_all(Vi, a_d3d), Ne);
+	TE_NVi_anomalous += FCIDiv_a_Grad_perp(mul_all(Ne, a_nu3d), Vi);
+      }
       ddt(NVi) += TE_NVi_anomalous;
     }
 
@@ -2450,8 +2501,12 @@ int Hermes::rhs(BoutReal t) {
     if (Pe_anomalous){//Row 6
       TRACE("Pe anomalous transport");
       //TE_Pe_anomalous = FCIDiv_a_Grad_perp(mul_all(a_d3d, Te), Ne) + (2. / 3) * FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Te);
-      TE_Pe_anomalous = (2. / 3) * FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Te);
-      TE_Pe_anomalous += FCIDiv_a_Grad_perp(mul_all(a_d3d, Te), Ne);
+      if (use_Delp2){
+	TE_Pe_anomalous = (2.0/3.0) * (a_chi3d * Ne * new_Delp2(Te) + a_d3d * Te * new_Delp2(Ne));
+      } else {
+	TE_Pe_anomalous = (2. / 3) * FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Te);
+	TE_Pe_anomalous += FCIDiv_a_Grad_perp(mul_all(a_d3d, Te), Ne);
+      }
       ddt(Pe) += TE_Pe_anomalous;
     } // End Pe_anomalous
 
@@ -2591,7 +2646,11 @@ int Hermes::rhs(BoutReal t) {
 
     if (Pi_anomalous){
       TRACE("Ion anomalous transport");
-      TE_Pi_anomalous = FCIDiv_a_Grad_perp(mul_all(a_d3d, Ti), Ne) + (2. / 3) * FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Ti);
+      if (use_Delp2){
+	TE_Pi_anomalous = (2.0/3.0) * (a_chi3d * Ne * new_Delp2(Ti) + a_d3d * Ti * new_Delp2(Ne));
+      } else {
+	TE_Pi_anomalous = FCIDiv_a_Grad_perp(mul_all(a_d3d, Ti), Ne) + (2. / 3) * FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Ti);
+      }
       ddt(Pi) += TE_Pi_anomalous;
     } // End Pi_anomalous
 

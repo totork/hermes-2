@@ -122,7 +122,7 @@ private:
   BoutReal floor_Ne,floor_Te,floor_Ti;
   Field3D Te_yup,Te_ydown;
   Field3D Ne_ym2,Ne_ym1,Ne_yp1,Ne_yp2;
-  Field3D Vi_ym2,Vi_ym1,Vi_yp1,Vi_yp2;
+  Field3D NVi_ym2, NVi_ym1, NVi_yp1, NVi_yp2;
   BoutReal floor_vel;
   
   // Switches for evolving variables
@@ -206,6 +206,7 @@ private:
   bool use_new_conduction;
   bool use_new_div_par;
   bool use_new_viscosity;
+  bool use_Delp2;
   bool use_Te_limiter;
   bool use_Ti_limiter;
   bool use_Ve_limiter;
