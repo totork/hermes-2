@@ -421,6 +421,7 @@ int Hermes::init(bool restarting) {
 
   isMMS = opt["solver"]["mms"].withDefault<bool>(false);
   
+  output.write("Running in MMS mode? {}\n", isMMS);
   
   OPTION(optsc, evolve_plasma, true);
   OPTION(optsc, show_timesteps, false);
@@ -950,22 +951,22 @@ int Hermes::init(bool restarting) {
 
   
   // Get switches from each variable section
-
-  NeSource = optne["source"].doc("Source term in ddt(Ne)").withDefault(Field3D{0.0});
-  NeSource /= Omega_ci;
-  Sn = NeSource;
+  if (!isMMS){
+    NeSource = optne["source"].doc("Source term in ddt(Ne)").withDefault(Field3D{0.0});
+    NeSource /= Omega_ci;
+    Sn = NeSource;
 
   
-  PeSource = optpe["source"].withDefault(Field3D{0.0});
-  PeSource /= Omega_ci;
-  Spe = PeSource;
+    PeSource = optpe["source"].withDefault(Field3D{0.0});
+    PeSource /= Omega_ci;
+    Spe = PeSource;
 
-  PiSource = optpi["source"].withDefault(Field3D{0.0});
-  PiSource /= Omega_ci;
-  Spi = PiSource;
+    PiSource = optpi["source"].withDefault(Field3D{0.0});
+    PiSource /= Omega_ci;
+    Spi = PiSource;
 
-  SAVE_ONCE(Sn, Spe, Spi);
-  
+    SAVE_ONCE(Sn, Spe, Spi);
+  }
 
   /////////////////////////////////////////////////////////
   // Load metric tensor from the mesh, passing length and B
