@@ -57,6 +57,7 @@ private:
 
   BoutReal nesheath_floor; // Density floor used in sheath boundary conditions
 
+  
   // Evolving variables
   Field3D Ne;         // Electron density
   Field3D Pe, Pi;     // Electron and Ion pressures
@@ -91,6 +92,7 @@ private:
   Field3D Vi_sheath , Ve_sheath , Jpar_sheath , Ne_sheath , Te_sheath , Ti_sheath , Vort_sheath,phi_sheath;
   Field3D Te_ythis,Te_ynext,Te_yprev;
   bool new_sheaths;
+  bool sheath_interpolate;
   bool sheath_infsink;
   BoutReal infsink_Te, infsink_amp;
   Field3D debug_sheath_infsink;
@@ -100,6 +102,8 @@ private:
   // Limited variables
   Field3D Telim, Tilim;
 
+  bool isMMS;
+  
   // Collisional terms
   Field3D nu, kappa_epar, kappa_ipar, Dn,eta_epar;
   BoutReal tau_e0, tau_i0;

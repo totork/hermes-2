@@ -418,6 +418,10 @@ int Hermes::init(bool restarting) {
   auto& optnumerics = opt["Numerics"];
   auto& optsheath = opt["Sheath"];
   
+
+  isMMS = opt["solver"]["mms"].withDefault<bool>(false);
+  
+  
   OPTION(optsc, evolve_plasma, true);
   OPTION(optsc, show_timesteps, false);
   if (BoutComm::rank() != 0) {
@@ -447,7 +451,7 @@ int Hermes::init(bool restarting) {
   //////////////////////////////////////////////////////////////////////////
 
   // Check which variables should be evolved
-  OPTION(opt,output_ddt,false);
+  OPTION(optsc,output_ddt,false);
   // Electron density
   evolve_ne = optsc["evolve_ne"].doc("Evolve density?").withDefault<bool>(false);
   if (evolve_ne){
@@ -1791,7 +1795,15 @@ int Hermes::rhs(BoutReal t) {
 	    pnt.ynext(Vort) = pnt.ythis(Vort);
 	  }
 
-	  
+	  if (verbose){
+	    Te_ythis[i] = pnt.ythis(Te);
+	    Te_ynext[i] = pnt.ynext(Te);
+	    Te_yprev[i] = pnt.yprev(Te);
+	    debug_visheath[i] = visheath;
+	    debug_vesheath[i] = vesheath;
+	    debug_phisheath[i] = phisheath;
+	    Te_sheath[i] = tesheath;
+	  }
 	  
 	  if (abs(pnt.offset())==1){	              	   	    
 	    
