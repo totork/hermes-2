@@ -26,7 +26,8 @@ define operators and normalised coordinates
 curvature[f_, x_, y_, z_, t_] = -2*D[f[x,y,z,t],y];
 laplaceperp[f_, x_, y_, z_, t_] = D[f[x,y,z,t],{x,2}] + D[f[x,y,z,t],{z,2}];
 hyperdiffusion[f_, x_, y_, z_, t_] = D[f[x,y,z,t],{x,4}] + D[f[x,y,z,t],{z,4}];
-arakawa[u_, v_, r_, p_, z_, t_] = 
+numericaldiffusion[f_, x_, y_, z_, t_] = D[f[x,y,z,t],{y,4}];
+arakawa[u_, v_, x_, y_, z_, t_] = 
   D[u[x, y, z, t],x]*D[v[x, y, z, t],z] - 
    D[u[x,y,z,t],z]*D[v[x,y,z,t],x];
 xn[x_] =(x-xmin)/(xmax-xmin); 
@@ -72,7 +73,8 @@ SolVe[x_, y_, z_, t_] = SolVePsi[x,y,z,t]+SolVi[x,y,z,t];
 
 SourceNe[x_, y_, z_, t_] = D[SolNe[x,y,z,t],t]\
 	-rhos0*rhos0*SWNeanomalous * Danomalous*laplaceperp[SolNe,x,y,z,t]/(rhos0*rhos0*Omegaci)\
-	+SWNehyper * (rhos0^4)*(hyperD/(rhos0^4 * Omegaci)) * hyperdiffusion[SolNe,x,y,z,t];
+	+SWNehyper * (rhos0^4)*(hyperD/(rhos0^4 * Omegaci)) * hyperdiffusion[SolNe,x,y,z,t]\
+	+SWNenumdiff * (rhos0^4)*(numD/(rhos0^4 * Omegaci)) * numericaldiffusion[SolNe,x,y,z,t];
 SourceNVi[x_, y_, z_, t_] = D[SolNVi[x,y,z,t],t];
 SourcePe[x_, y_, z_, t_] = D[SolPe[x,y,z,t],t];
 SourcePi[x_, y_, z_, t_] = D[SolPi[x,y,z,t],t];
