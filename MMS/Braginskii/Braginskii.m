@@ -27,6 +27,7 @@ curvature[f_, x_, y_, z_, t_] = -2*D[f[x,y,z,t],y];
 laplaceperp[f_, x_, y_, z_, t_] = D[f[x,y,z,t],{x,2}] + D[f[x,y,z,t],{z,2}];
 hyperdiffusion[f_, x_, y_, z_, t_] = D[f[x,y,z,t],{x,4}] + D[f[x,y,z,t],{z,4}];
 numericaldiffusion[f_, x_, y_, z_, t_] = D[f[x,y,z,t],{y,4}];
+gradpar[f_, x_, y_, z_, t_] = D[f[x,y,z,t],{y,1}];
 arakawa[u_, v_, x_, y_, z_, t_] = 
   D[u[x, y, z, t],x]*D[v[x, y, z, t],z] - 
    D[u[x,y,z,t],z]*D[v[x,y,z,t],x];
@@ -71,11 +72,17 @@ SolTi[x_, y_, z_, t_] = SolPi[x,y,z,t]/SolNe[x,y,z,t];
 SolVi[x_, y_, z_, t_] = SolNVi[x,y,z,t]/SolNe[x,y,z,t];
 SolVe[x_, y_, z_, t_] = SolVePsi[x,y,z,t]+SolVi[x,y,z,t];
 
+SolNeVi[x_, y_, z_, t_] = SolNe[x,y,z,t]*SolVi[x,y,z,t];
+SolPepPi[x_, y_, z_, t_] = SolPe[x,y,z,t]+SolPi[x,y,z,t];
 SourceNe[x_, y_, z_, t_] = D[SolNe[x,y,z,t],t]\
 	-rhos0*rhos0*SWNeanomalous * Danomalous*laplaceperp[SolNe,x,y,z,t]/(rhos0*rhos0*Omegaci)\
 	+SWNehyper * (rhos0^4)*(hyperD/(rhos0^4 * Omegaci)) * hyperdiffusion[SolNe,x,y,z,t]\
-	+SWNenumdiff * (rhos0^4)*(numD/(rhos0^4 * Omegaci)) * numericaldiffusion[SolNe,x,y,z,t];
-SourceNVi[x_, y_, z_, t_] = D[SolNVi[x,y,z,t],t];
+	+SWNenumdiff * (rhos0^4)*(numD/(rhos0^4 * Omegaci)) * numericaldiffusion[SolNe,x,y,z,t]\
+	+SWNeparflow * rhos0 * gradpar[SolNeVi,x,y,z,t];
+SourceNVi[x_, y_, z_, t_] = D[SolNVi[x,y,z,t],t]\
+	+SWNViparpressure*rhos0*gradpar[SolPepPi,x,y,z,t]\
+	+SWNVihyper * (rhos0^4)*(hypernu/(rhos0^4 * Omegaci)) * hyperdiffusion[SolNVi,x,y,z,t]\
+	+SWNVinumdiff * (rhos0^4)*(numnu/(rhos0^4 * Omegaci)) * numericaldiffusion[SolNVi,x,y,z,t];
 SourcePe[x_, y_, z_, t_] = D[SolPe[x,y,z,t],t];
 SourcePi[x_, y_, z_, t_] = D[SolPi[x,y,z,t],t];
 SourceVort[x_, y_, z_, t_] = D[SolVort[x,y,z,t],t];
