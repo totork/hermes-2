@@ -2459,17 +2459,16 @@ int Hermes::rhs(BoutReal t) {
     if (Pe_conduction){//Row 3
       TRACE("Pe_conduction");
       
-  
       if (!use_new_conduction){
-	TE_Pe_conduction = (2. / 3) * Div_par_K_Grad_par(kappa_epar, Te);
+	TE_Pe_conduction = (2.0 / 3.0) * Div_par_K_Grad_par(kappa_epar, Te);
       } else {
 	TE_Pe_conduction = (2.0/3.0) * Div_par_K_Grad_par_mod(kappa_epar,Te,false);
       }
-
+      
       if (use_conduction_limiter){
-        TE_Pe_conduction = term_limiter(TE_Pe_conduction, conduction_limiter_value);
+	TE_Pe_conduction = term_limiter(TE_Pe_conduction, conduction_limiter_value);
       }
-
+      
       
       ddt(Pe) += TE_Pe_conduction;
     } // End Pe_conduction

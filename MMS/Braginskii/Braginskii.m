@@ -33,6 +33,10 @@ arakawa[u_, v_, x_, y_, z_, t_] =
    D[u[x,y,z,t],z]*D[v[x,y,z,t],x];
 xn[x_] =(x-xmin)/(xmax-xmin); 
 zn[z_]=(z-zmin)/(zmax-zmin);
+divparkgradpar[k_, f_, x_, y_, z_, t_] := D[k[x,y,z,t]*D[f[x,y,z,t],{y,1}], {y,1}];
+(*divparkgradpar[k_, f_, x_, y_, z_, t_] := k[x,y,z,t]*D[f[x,y,z,t],{y,2}];*)
+(*divparkgradpar[k_, f_, x_, y_, z_, t_] = D[f[x,y,z,t],{y,2}];*)
+
  
 
 
@@ -52,6 +56,10 @@ Omegaci = qe*Bnorm/(AA*Mp);
 rhos0=Cs0/Omegaci;
 mime = AA * Mp / (Me);
 memi = Me/(AA*Mp);
+lambdaei=24.0-Log[Sqrt[Nnorm/(10^6)]/Tnorm];
+taue0 = 1. / (2.91 * (10^-6) * (Nnorm / (10^6)) * lambdaei * (Tnorm^(-1.5)));
+mime
+
 
 
 (*
@@ -74,6 +82,11 @@ SolVe[x_, y_, z_, t_] = SolVePsi[x,y,z,t]+SolVi[x,y,z,t];
 
 SolNeVi[x_, y_, z_, t_] = SolNe[x,y,z,t]*SolVi[x,y,z,t];
 SolPepPi[x_, y_, z_, t_] = SolPe[x,y,z,t]+SolPi[x,y,z,t];
+
+taue[x_, y_, z_, t_] = (taue0 * (Cs0/rhos0) * (SolTe[x,y,z,t]^(1.5)))/SolNe[x,y,z,t];
+kappaepar[x_, y_, z_, t_] = 3.16 * mime * SolTe[x,y,z,t] * SolNe[x,y,z,t] * taue[x,y,z,t];
+
+
 SourceNe[x_, y_, z_, t_] = D[SolNe[x,y,z,t],t]\
 	-rhos0*rhos0*SWNeanomalous * Danomalous*laplaceperp[SolNe,x,y,z,t]/(rhos0*rhos0*Omegaci)\
 	+SWNehyper * (rhos0^4)*(hyperD/(rhos0^4 * Omegaci)) * hyperdiffusion[SolNe,x,y,z,t]\
@@ -83,7 +96,8 @@ SourceNVi[x_, y_, z_, t_] = D[SolNVi[x,y,z,t],t]\
 	+SWNViparpressure*rhos0*gradpar[SolPepPi,x,y,z,t]\
 	+SWNVihyper * (rhos0^4)*(hypernu/(rhos0^4 * Omegaci)) * hyperdiffusion[SolNVi,x,y,z,t]\
 	+SWNVinumdiff * (rhos0^4)*(numnu/(rhos0^4 * Omegaci)) * numericaldiffusion[SolNVi,x,y,z,t];
-SourcePe[x_, y_, z_, t_] = D[SolPe[x,y,z,t],t];
+SourcePe[x_, y_, z_, t_] = D[SolPe[x,y,z,t],t]\
+	- SWPeconduction*(2.0/3.0)*divparkgradpar[kappaepar,SolTe,x,y,z,t]*(rhos0^2);
 SourcePi[x_, y_, z_, t_] = D[SolPi[x,y,z,t],t];
 SourceVort[x_, y_, z_, t_] = D[SolVort[x,y,z,t],t];
 SourceVePsi[x_, y_, z_, t_] = D[SolVePsi[x,y,z,t],t];
