@@ -39,9 +39,9 @@ divparkgradpar[k_, f_, x_, y_, z_, t_] = D[k[x,y,z,t]*D[f[x,y,z,t],{y,1}], {y,1}
 (*divparkgradpar[k_, f_, x_, y_, z_, t_] = D[f[x,y,z,t],{y,2}];*)
 divperp[f_, x_, y_, z_, t_] = D[f[x,y,z,t],{x,1}] + D[f[x,y,z,t],{z,1}];
 gradperp[f_, x_, y_, z_, t_] = D[f[x,y,z,t],{x,1}] + D[f[x,y,z,t],{z,1}];
-divagradperp[k_, f_, x_, y_, z_, t_] = divperp[k[x,y,z,t] * gradperp[f,x,y,z,t],x,y,z,t];
 
- 
+
+ divagradperp[k_, f_, x_, y_, z_, t_] = D[k[x,y,z,t]*D[f[x,y,z,t],x],x]+D[k[x,y,z,t]*D[f[x,y,z,t],z],z];
 
 
 (*
@@ -106,8 +106,9 @@ PitauidivB[x_, y_, z_, t_] = SolPi[x,y,z,t]*taui[x,y,z,t]/B[x,y,z];
 B12Vi[x_, y_, z_, t_] = SqrtB[x,y,z] * SolVi[x,y,z,t];
 SolViDanomalous[x_, y_, z_, t_] = SolVi[x,y,z,t]*Danomalous;
 SolNenuanomalous[x_, y_, z_, t_] = SolNe[x,y,z,t] * nuanomalous;
-DanomalousVigradperpNe[x_, y_, z_, t_] = Danomalous * SolVi[x,y,z,t] * gradperp[SolNe,x,y,z,t];
-nuanomalousNegradperpVi[x_, y_, z_, t_] = nuanomalous * SolNe[x,y,z,t] *gradperp[SolVi,x,y,z,t];
+DanomalousVi[x_, y_, z_, t_] = Danomalous * SolVi[x,y,z,t];
+nuanomalousNe[x_, y_, z_, t_] = nuanomalous * SolNe[x,y,z,t];
+
 (*divagradperp[SolViDanomalous,SolNe,x,y,z,t]*)
 
 
@@ -122,7 +123,7 @@ SourceNVi[x_, y_, z_, t_] = D[SolNVi[x,y,z,t],t]\
 	+SWNVinumdiff * (rhos0^4)*(numnu/(rhos0^4 * Omegaci)) * numericaldiffusion[SolNVi,x,y,z,t]\
 	-SWNViparviscos * (rhos0^2) * 1.28 * SqrtB[x,y,z] * divparkgradpar[PitauidivB,B12Vi,x,y,z,t]\
 	+SWNViparflow * rhos0 * divpar[SolNViVi,x,y,z,t]\
-	-SWNVianomalous * (divperp[DanomalousVigradperpNe,x,y,z,t] + divperp[nuanomalousNegradperpVi,x,y,z,t])*(rhos0^2)/(rhos0*rhos0*Omegaci);
+	-SWNVianomalous * (divagradperp[DanomalousVi,SolNe,x,y,z,t] + divagradperp[nuanomalousNe,SolVi,x,y,z,t])*(rhos0^2)/(rhos0*rhos0*Omegaci);
 SourcePe[x_, y_, z_, t_] = D[SolPe[x,y,z,t],t]\
 	- SWPeconduction*(2.0/3.0)*divparkgradpar[kappaepar,SolTe,x,y,z,t]*(rhos0^2)\
 	+SWPenumdiff * (rhos0^4)*(numchi/(rhos0^4 * Omegaci)) * numericaldiffusion[SolPe,x,y,z,t]\
