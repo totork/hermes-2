@@ -34,9 +34,12 @@ arakawa[u_, v_, x_, y_, z_, t_] =
    D[u[x,y,z,t],z]*D[v[x,y,z,t],x];
 xn[x_] =(x-xmin)/(xmax-xmin); 
 zn[z_]=(z-zmin)/(zmax-zmin);
-divparkgradpar[k_, f_, x_, y_, z_, t_] := D[k[x,y,z,t]*D[f[x,y,z,t],{y,1}], {y,1}];
+divparkgradpar[k_, f_, x_, y_, z_, t_] = D[k[x,y,z,t]*D[f[x,y,z,t],{y,1}], {y,1}];
 (*divparkgradpar[k_, f_, x_, y_, z_, t_] := k[x,y,z,t]*D[f[x,y,z,t],{y,2}];*)
 (*divparkgradpar[k_, f_, x_, y_, z_, t_] = D[f[x,y,z,t],{y,2}];*)
+divperp[f_, x_, y_, z_, t_] = D[f[x,y,z,t],{x,1}] + D[f[x,y,z,t],{z,1}];
+gradperp[f_, x_, y_, z_, t_] = D[f[x,y,z,t],{x,1}] + D[f[x,y,z,t],{z,1}];
+divagradperp[k_, f_, x_, y_, z_, t_] = divperp[k[x,y,z,t] * gradperp[f,x,y,z,t],x,y,z,t];
 
  
 
@@ -63,6 +66,8 @@ taue0 = 1. / (2.91 * (10^-6) * (Nnorm / (10^6)) * lambdaei * (Tnorm^(-1.5)));
 lambdaii = 23.0-Log[Sqrt[2.0*Nnorm/(10^6)]/(Tnorm^1.5)];
 taui0 = Sqrt[AA]/(4.78 * 10^-8 * (Nnorm/(10^6)) * lambdaii * (Tnorm^(-1.5)));
 
+B[x_, y_, z_] := 1.0;
+SqrtB[x_,y_,z_] := Sqrt[B[x,y,z]];
 
 
 (*
@@ -87,13 +92,23 @@ SolJpar[x_, y_, z_, t_] = SolNVi[x,y,z,t]-SolNe[x,y,z,t]*SolVe[x,y,z,t];
 SolNeVi[x_, y_, z_, t_] = SolNe[x,y,z,t]*SolVi[x,y,z,t];
 SolPepPi[x_, y_, z_, t_] = SolPe[x,y,z,t]+SolPi[x,y,z,t];
 SolPeVe[x_, y_, z_, t_] = SolPe[x,y,z,t]*SolVe[x,y,z,t];
+SolPiVi[x_, y_, z_, t_] = SolPi[x,y,z,t]*SolVi[x,y,z,t];
 SolTeJpar[x_, y_, z_, t_] = SolTe[x,y,z,t]*SolJpar[x,y,z,t];
+SolNViVi[x_, y_, z_, t_] = SolNVi[x,y,z,t] * SolVi[x,y,z,t];
 
 taue[x_, y_, z_, t_] = (taue0 * (Cs0/rhos0) * (SolTe[x,y,z,t]^(1.5)))/SolNe[x,y,z,t];
 taui[x_, y_, z_, t_] = (taui0 * (Cs0/rhos0) * (SolTi[x,y,z,t]^(1.5)))/SolNe[x,y,z,t];
 
 kappaepar[x_, y_, z_, t_] = 3.16 * mime * SolTe[x,y,z,t] * SolNe[x,y,z,t] * taue[x,y,z,t];
 kappaipar[x_, y_, z_, t_] = 3.9 * SolTi[x,y,z,t] * SolNe[x,y,z,t] * taui[x,y,z,t];
+
+PitauidivB[x_, y_, z_, t_] = SolPi[x,y,z,t]*taui[x,y,z,t]/B[x,y,z];
+B12Vi[x_, y_, z_, t_] = SqrtB[x,y,z] * SolVi[x,y,z,t];
+SolViDanomalous[x_, y_, z_, t_] = SolVi[x,y,z,t]*Danomalous;
+SolNenuanomalous[x_, y_, z_, t_] = SolNe[x,y,z,t] * nuanomalous;
+DanomalousVigradperpNe[x_, y_, z_, t_] = Danomalous * SolVi[x,y,z,t] * gradperp[SolNe,x,y,z,t];
+nuanomalousNegradperpVi[x_, y_, z_, t_] = nuanomalous * SolNe[x,y,z,t] *gradperp[SolVi,x,y,z,t];
+(*divagradperp[SolViDanomalous,SolNe,x,y,z,t]*)
 
 
 SourceNe[x_, y_, z_, t_] = D[SolNe[x,y,z,t],t]\
@@ -104,7 +119,10 @@ SourceNe[x_, y_, z_, t_] = D[SolNe[x,y,z,t],t]\
 SourceNVi[x_, y_, z_, t_] = D[SolNVi[x,y,z,t],t]\
 	+SWNViparpressure*rhos0*gradpar[SolPepPi,x,y,z,t]\
 	+SWNVihyper * (rhos0^4)*(hypernu/(rhos0^4 * Omegaci)) * hyperdiffusion[SolNVi,x,y,z,t]\
-	+SWNVinumdiff * (rhos0^4)*(numnu/(rhos0^4 * Omegaci)) * numericaldiffusion[SolNVi,x,y,z,t];
+	+SWNVinumdiff * (rhos0^4)*(numnu/(rhos0^4 * Omegaci)) * numericaldiffusion[SolNVi,x,y,z,t]\
+	-SWNViparviscos * (rhos0^2) * 1.28 * SqrtB[x,y,z] * divparkgradpar[PitauidivB,B12Vi,x,y,z,t]\
+	+SWNViparflow * rhos0 * divpar[SolNViVi,x,y,z,t]\
+	-SWNVianomalous * (divperp[DanomalousVigradperpNe,x,y,z,t] + divperp[nuanomalousNegradperpVi,x,y,z,t])*(rhos0^2)/(rhos0*rhos0*Omegaci);
 SourcePe[x_, y_, z_, t_] = D[SolPe[x,y,z,t],t]\
 	- SWPeconduction*(2.0/3.0)*divparkgradpar[kappaepar,SolTe,x,y,z,t]*(rhos0^2)\
 	+SWPenumdiff * (rhos0^4)*(numchi/(rhos0^4 * Omegaci)) * numericaldiffusion[SolPe,x,y,z,t]\
@@ -113,7 +131,10 @@ SourcePe[x_, y_, z_, t_] = D[SolPe[x,y,z,t],t]\
 	-SWPethermalcurrent * rhos0 * (0.71*2.0/3.0) * divpar[SolTeJpar,x,y,z,t]\
 	+SWPethermalforce * rhos0 * (0.71*2.0/3.0) * SolJpar[x,y,z,t]*gradpar[SolTe,x,y,z,t];
 SourcePi[x_, y_, z_, t_] = D[SolPi[x,y,z,t],t]\
-	- SWPiconduction * (2.0/3.0) * divparkgradpar[kappaipar,SolTi,x,y,z,t] * (rhos0^2);
+	- SWPiconduction * (2.0/3.0) * divparkgradpar[kappaipar,SolTi,x,y,z,t] * (rhos0^2)\
+	+SWPiparflow * rhos0*(divpar[SolPiVi,x,y,z,t] + (2.0/3.0)*SolPi[x,y,z,t]*divpar[SolVi,x,y,z,t])\
+	+SWPinumdiff * (rhos0^4)*(numchi/(rhos0^4 * Omegaci)) * numericaldiffusion[SolPi,x,y,z,t]\
+	+SWPihyper * (rhos0^4)*(hyperchi/(rhos0^4 * Omegaci)) * hyperdiffusion[SolPi,x,y,z,t];
 SourceVort[x_, y_, z_, t_] = D[SolVort[x,y,z,t],t];
 SourceVePsi[x_, y_, z_, t_] = D[SolVePsi[x,y,z,t],t];
 
