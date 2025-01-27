@@ -416,6 +416,61 @@ const Field3D Div_par_mod(const Field3D& f_in, const Field3D& v_in,
 
 
 
+Field3D Div_a_Grad_perp_mod(const Field3D& a, const Field3D& f){
+  Mesh* mesh = a.getMesh();
+  Field3D result{zeroFrom(f)};
+  Coordinates* coord = f.getCoordinates();
+
+  for (const auto& ind : f.getRegion("RGN_NOBNDRY")) {
+    auto kp = ind.zp();
+    auto km = ind.zm();
+
+    // Calculate flux at right side of cell (x-direction)
+
+    BoutReal c = 0.5 * (a[ind] + a[ind.xp()]);
+    BoutReal J = 0.5 * (coord->J[ind] + coord->J[ind.xp()]);
+    BoutReal g_11 = 0.5 * (coord->g_11[ind] + coord->g_11[ind.xp()]);
+    BoutReal gradient = 2.0 * (f[ind.xp()] - f[ind]) / (coord->dx[ind] + coord->dx[ind.xp()]);
+    BoutReal flux = c * J * gradient / g_11;
+    result[ind] += flux / (coord->dx[ind] * coord->J[ind]);
+
+    // Calculate the flux at the left side of the cell
+
+    c = 0.5 * (a[ind] + a[ind.xm()]);
+    J = 0.5 * (coord->J[ind] + coord->J[ind.xm()]);
+    g_11 = 0.5	* (coord->g_11[ind] + coord->g_11[ind.xm()]);
+    gradient = 2.0 * (f[ind] - f[ind.xm()]) / (coord->dx[ind] + coord->dx[ind.xm()]);
+    flux = c *	J * gradient / g_11;
+    result[ind] -= flux	/ (coord->dx[ind] * coord->J[ind]);
+
+    // Calculate the flux at the top cell face
+
+    c = 0.5 * (a[ind] + a[ind.zp()]);
+    J = 0.5 * (coord->J[ind] + coord->J[ind.zp()]);
+    BoutReal g_33 = 0.5	* (coord->g_33[ind] + coord->g_33[ind.zp()]);
+    gradient =	2.0 * (f[ind.zp()] - f[ind]) / (coord->dz[ind] + coord->dz[ind.zp()]);
+    flux = c *	J * gradient / g_33;
+    result[ind] += flux	/ (coord->dz[ind] * coord->J[ind]);
+
+    // Calculate the flux at the bottom cell face
+
+    c = 0.5 * (a[ind] + a[ind.zm()]);
+    J = 0.5 * (coord->J[ind] + coord->J[ind.zm()]);
+    g_33 = 0.5 * (coord->g_33[ind] + coord->g_33[ind.zm()]);
+    gradient = 2.0 * (f[ind] - f[ind.zm()]) / (coord->dz[ind] + coord->dz[ind.zm()]);
+    flux = c *  J * gradient / g_33;
+    result[ind] -= flux / (coord->dz[ind] * coord->J[ind]);
+    
+  } // End Foor loop
+
+  return result;
+  
+}
+
+
+
+
+
 
 
 // FV method for the curvature vector

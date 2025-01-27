@@ -205,6 +205,7 @@ private:
   bool use_Div_parP_n;
   bool use_new_conduction;
   bool use_new_div_par;
+  bool use_new_divagradperp;
   bool use_new_viscosity;
   bool use_Delp2;
   bool use_Te_limiter;

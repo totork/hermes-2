@@ -774,6 +774,7 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, use_new_conduction, false);
   OPTION(optnumerics, use_new_viscosity, false);
   OPTION(optnumerics, use_new_div_par, false);
+  OPTION(optnumerics, use_new_divagradperp, false);
   OPTION(optnumerics, use_Delp2, false);
 
 
@@ -2371,8 +2372,13 @@ int Hermes::rhs(BoutReal t) {
 	//TE_NVi_anomalous = a_d3d * Vi * new_Delp2(Ne) + a_nu3d * Ne * new_Delp2(Vi);
 	TE_NVi_anomalous = a_nu3d * Ne * new_Delp2(Vi);
       } else {
-	TE_NVi_anomalous = FCIDiv_a_Grad_perp(mul_all(Vi, a_d3d), Ne);
-	TE_NVi_anomalous += FCIDiv_a_Grad_perp(mul_all(Ne, a_nu3d), Vi);
+	if (!use_new_divagradperp){
+	  TE_NVi_anomalous = FCIDiv_a_Grad_perp(mul_all(Vi, a_d3d), Ne);
+	  TE_NVi_anomalous += FCIDiv_a_Grad_perp(mul_all(Ne, a_nu3d), Vi);
+	} else {
+	  TE_NVi_anomalous = Div_a_Grad_perp_mod(mul_all(Vi,a_d3d), Ne);
+	  TE_NVi_anomalous += Div_a_Grad_perp_mod(mul_all(Ne, a_nu3d), Vi);
+	}
       }
       ddt(NVi) += TE_NVi_anomalous;
     }

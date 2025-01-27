@@ -77,6 +77,8 @@ const Field3D D4DZ4_Index(const Field3D &f);
 // Div ( k * Grad(f) )
 const Field2D Laplace_FV(const Field2D &k, const Field2D &f);
 
+Field3D Div_a_Grad_perp_mod(const Field3D& a, const Field3D& b);
+
 namespace FCI {
 Field3D Div_a_Grad_perp(const Field3D &a, const Field3D &f);
 
