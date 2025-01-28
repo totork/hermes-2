@@ -108,7 +108,9 @@ SolViDanomalous[x_, y_, z_, t_] = SolVi[x,y,z,t]*Danomalous;
 SolNenuanomalous[x_, y_, z_, t_] = SolNe[x,y,z,t] * nuanomalous;
 DanomalousVi[x_, y_, z_, t_] = Danomalous * SolVi[x,y,z,t];
 nuanomalousNe[x_, y_, z_, t_] = nuanomalous * SolNe[x,y,z,t];
-
+DanomalousTe[x_, y_, z_, t_] = Danomalous * SolTe[x,y,z,t];
+chianomalousNe[x_, y_, z_, t_] = chianomalous * SolNe[x,y,z,t];
+DanomalousTi[x_, y_, z_, t_] = Danomalous * SolTi[x,y,z,t];
 (*divagradperp[SolViDanomalous,SolNe,x,y,z,t]*)
 
 
@@ -130,12 +132,14 @@ SourcePe[x_, y_, z_, t_] = D[SolPe[x,y,z,t],t]\
 	+SWPehyper * (rhos0^4)*(hyperchi/(rhos0^4 * Omegaci)) * hyperdiffusion[SolPe,x,y,z,t]\
 	+SWPeparflow * rhos0*(divpar[SolPeVe,x,y,z,t] + (2.0/3.0)*SolPe[x,y,z,t]*divpar[SolVe,x,y,z,t])\
 	-SWPethermalcurrent * rhos0 * (0.71*2.0/3.0) * divpar[SolTeJpar,x,y,z,t]\
-	+SWPethermalforce * rhos0 * (0.71*2.0/3.0) * SolJpar[x,y,z,t]*gradpar[SolTe,x,y,z,t];
+	+SWPethermalforce * rhos0 * (0.71*2.0/3.0) * SolJpar[x,y,z,t]*gradpar[SolTe,x,y,z,t]\
+	-SWPeanomalous * (2.0/3.0) * (divagradperp[DanomalousTe,SolNe,x,y,z,t] + divagradperp[chianomalousNe,SolTe,x,y,z,t])*(rhos0^2)/(rhos0*rhos0*Omegaci);
 SourcePi[x_, y_, z_, t_] = D[SolPi[x,y,z,t],t]\
 	- SWPiconduction * (2.0/3.0) * divparkgradpar[kappaipar,SolTi,x,y,z,t] * (rhos0^2)\
 	+SWPiparflow * rhos0*(divpar[SolPiVi,x,y,z,t] + (2.0/3.0)*SolPi[x,y,z,t]*divpar[SolVi,x,y,z,t])\
 	+SWPinumdiff * (rhos0^4)*(numchi/(rhos0^4 * Omegaci)) * numericaldiffusion[SolPi,x,y,z,t]\
-	+SWPihyper * (rhos0^4)*(hyperchi/(rhos0^4 * Omegaci)) * hyperdiffusion[SolPi,x,y,z,t];
+	+SWPihyper * (rhos0^4)*(hyperchi/(rhos0^4 * Omegaci)) * hyperdiffusion[SolPi,x,y,z,t]\
+	-SWPianomalous * (2.0/3.0) * (divagradperp[DanomalousTi,SolNe,x,y,z,t] + divagradperp[chianomalousNe,SolTi,x,y,z,t])*(rhos0^2)/(rhos0*rhos0*Omegaci);
 SourceVort[x_, y_, z_, t_] = D[SolVort[x,y,z,t],t];
 SourceVePsi[x_, y_, z_, t_] = D[SolVePsi[x,y,z,t],t];
 
