@@ -42,6 +42,7 @@ gradperp[f_, x_, y_, z_, t_] = D[f[x,y,z,t],{x,1}] + D[f[x,y,z,t],{z,1}];
 
 
  divagradperp[k_, f_, x_, y_, z_, t_] = D[k[x,y,z,t]*D[f[x,y,z,t],x],x]+D[k[x,y,z,t]*D[f[x,y,z,t],z],z];
+ divabvec[a_, b_, x_, y_, z_, t_] = D[a[x,y,z,t]*b[x,y,z][[1]],x] + D[a[x,y,z,t]*b[x,y,z][[3]],z];
 
 
 (*
@@ -66,8 +67,14 @@ taue0 = 1. / (2.91 * (10^-6) * (Nnorm / (10^6)) * lambdaei * (Tnorm^(-1.5)));
 lambdaii = 23.0-Log[Sqrt[2.0*Nnorm/(10^6)]/(Tnorm^1.5)];
 taui0 = Sqrt[AA]/(4.78 * 10^-8 * (Nnorm/(10^6)) * lambdaii * (Tnorm^(-1.5)));
 
-B[x_, y_, z_] := 1.0;
-SqrtB[x_,y_,z_] := Sqrt[B[x,y,z]];
+B[x_, y_, z_, t_] = 1.5-x;
+Bvec[x_, y_, z_] = {0.0, 1.5-x,0.0};
+SqrtB[x_,y_,z_, t_] = Sqrt[B[x,y,z,t]];
+curlBvec[x_, y_, z_] = Curl[Bvec[x,y,z]/Norm[Bvec[x,y,z]], {x,y,z}];
+logB[x_, y_, z_,t_] = Log[B[x,y,z,t]];
+curvature[f_, x_, y_, z_, t_] = -2.0*arakawa[B,f,x,y,z,t]/(B[x,y,z,t]^2);
+(*Das minuszeichenb kommt durch in brendans paper nicht vor, in gleichung A8 fehlt das*)
+
 
 
 (*
@@ -79,7 +86,7 @@ Switches and quantities for the density time evolution
 SolNe[x_, y_, z_, t_] = OffsetNe + ampNe*Sin[2.0*Pi*kxNe*xn[x]]*Sin[kyNe*y - phyNe]*Sin[2.0*Pi*kzNe*zn[z]-phzNe]*Sin[2.0*Pi*omegaNe*t - phtNe];
 SolNVi[x_, y_, z_, t_] = ampNVi*Sin[2.0*Pi*kxNVi*xn[x]]*Sin[kyNVi*y - phyNVi]*Sin[2.0*Pi*kzNVi*zn[z]-phzNVi]*Sin[2.0*Pi*omegaNVi*t - phtNVi];
 SolPe[x_, y_, z_, t_] = OffsetPe + ampPe*Sin[2.0*Pi*kxPe*xn[x]]*Sin[kyPe*y - phyPe]*Sin[2.0*Pi*kzPe*zn[z]-phzPe]*Sin[2.0*Pi*omegaPe*t - phtPe];
-SolPi[x_, y_, z_, t_] = OffsetPi + ampPe*Sin[2.0*Pi*kxPi*xn[x]]*Sin[kyPi*y - phyPi]*Sin[2.0*Pi*kzPi*zn[z]-phzPi]*Sin[2.0*Pi*omegaPi*t - phtPi];
+SolPi[x_, y_, z_, t_] = OffsetPi + ampPi*Sin[2.0*Pi*kxPi*xn[x]]*Sin[kyPi*y - phyPi]*Sin[2.0*Pi*kzPi*zn[z]-phzPi]*Sin[2.0*Pi*omegaPi*t - phtPi];
 SolVort[x_, y_, z_, t_] = ampVort*Sin[2.0*Pi*kxVort*xn[x]]*Sin[kyVort*y - phyVort]*Sin[2.0*Pi*kzVort*zn[z]-phzVort]*Sin[2.0*Pi*omegaVort*t - phtVort];
 SolVePsi[x_, y_, z_, t_] = ampVePsi*Sin[2.0*Pi*kxVePsi*xn[x]]*Sin[kyVePsi*y - phyVePsi]*Sin[2.0*Pi*kzVePsi*zn[z]-phzVePsi]*Sin[2.0*Pi*omegaVePsi*t - phtVePsi];
 
@@ -112,13 +119,18 @@ DanomalousTe[x_, y_, z_, t_] = Danomalous * SolTe[x,y,z,t];
 chianomalousNe[x_, y_, z_, t_] = chianomalous * SolNe[x,y,z,t];
 DanomalousTi[x_, y_, z_, t_] = Danomalous * SolTi[x,y,z,t];
 (*divagradperp[SolViDanomalous,SolNe,x,y,z,t]*)
+Vmage[x_, y_, z_, t_] = -SolTe[x,y,z,t]*curlBvec[x,y,z];
+
+
 
 
 SourceNe[x_, y_, z_, t_] = D[SolNe[x,y,z,t],t]\
 	-rhos0*rhos0*SWNeanomalous * Danomalous*laplaceperp[SolNe,x,y,z,t]/(rhos0*rhos0*Omegaci)\
 	+SWNehyper * (rhos0^4)*(hyperD/(rhos0^4 * Omegaci)) * hyperdiffusion[SolNe,x,y,z,t]\
 	+SWNenumdiff * (rhos0^4)*(numD/(rhos0^4 * Omegaci)) * numericaldiffusion[SolNe,x,y,z,t]\
-	+SWNeparflow * rhos0 * gradpar[SolNeVi,x,y,z,t];
+	+SWNeparflow * rhos0 * gradpar[SolNeVi,x,y,z,t]\
+	(*+SWNemag * (rhos0^2) * divabvec[SolNe,Vmage,x,y,z,t]*)\
+	-SWNemag * (rhos0^2) * curvature[SolPe,x,y,z,t];
 SourceNVi[x_, y_, z_, t_] = D[SolNVi[x,y,z,t],t]\
 	+SWNViparpressure*rhos0*gradpar[SolPepPi,x,y,z,t]\
 	+SWNVihyper * (rhos0^4)*(hypernu/(rhos0^4 * Omegaci)) * hyperdiffusion[SolNVi,x,y,z,t]\

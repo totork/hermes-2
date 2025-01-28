@@ -1058,8 +1058,8 @@ int Hermes::init(bool restarting) {
 
     auto logBxy = log(coord->Bxy);
     auto logBxyz = log(Bxyz);
-    logBxy.applyBoundary("neumann");
-    logBxyz.applyBoundary("neumann");
+    //logBxy.applyBoundary("neumann");
+    //logBxyz.applyBoundary("neumann");
     mesh->communicate(logBxy, logBxyz);
     logBxy.applyParallelBoundary(parbc);
     logBxyz.applyParallelBoundary(parbc);
@@ -1093,8 +1093,11 @@ int Hermes::init(bool restarting) {
     bout::checkPositive(coord->Bxy.ydown(), "fdown", "RGN_YPAR_-1");
     */
     logB = log(Bxyz);
-    
-    bracket_factor = sqrt(coord->g_22) / (coord->J * Bxyz);
+    if (use_bracket){
+      bracket_factor = sqrt(coord->g_22) / (coord->J * Bxyz);
+    } else {
+      bracket_factor = sqrt(coord->g_22) / (coord->J);
+    }
 
     SAVE_ONCE(bracket_factor);
   }else{
@@ -1230,11 +1233,11 @@ int Hermes::init(bool restarting) {
       bxcvx /= Bnorm;
       bxcvy /= Bnorm;
       bxcvz /= Bnorm;
-      /*
+      
       bxcvx *= rho_s0;
       bxcvy *= rho_s0;
       bxcvz *= rho_s0;
-      */
+      
       
       bxcv = 0.0;
       bxcv.covariant = false;
@@ -2708,10 +2711,12 @@ int Hermes::rhs(BoutReal t) {
 
 
 Field3D Hermes::fci_curvature(const Field3D &f, const bool &bool_bracket) {
+
+  // https://www.researchgate.net/publication/328232339_Fluid_simulations_of_plasma_filaments_in_stellarator_geometries_with_BSTING/fulltext/5bdb9d1f92851c6b27a05c8d/Fluid-simulations-of-plasma-filaments-in-stellarator-geometries-with-BSTING.pdf?origin=publication_detail&_tp=eyJjb250ZXh0Ijp7ImZpcnN0UGFnZSI6InByb2ZpbGUiLCJwYWdlIjoicHVibGljYXRpb25Eb3dubG9hZCIsInByZXZpb3VzUGFnZSI6InB1YmxpY2F0aW9uIn19&__cf_chl_tk=__S6xcaYX0LWlh6va5wXxbj0V2x0tPYdBSdKra5LH7Y-1738103131-1.0.1.1-8J2yUk2.guVnqHdn9g7DGjaE5ZbavJsPLJRj._iqTBY
   // Field3D result = mul_all(bracket(logB, f, BRACKET_ARAKAWA), bracket_factor);
   // mesh->communicate(result);
   if (bool_bracket){
-    return 2 * bracket(logB, f, BRACKET_ARAKAWA) * bracket_factor;
+    return 2.0 * bracket(logB, f, BRACKET_ARAKAWA) * bracket_factor; // = 
   } else {
     //throw;
     // nabla (f nabla x (b/B)) = (dx,dy,dy)*(f*(bxcvx,bxcvy,bxcvz))
