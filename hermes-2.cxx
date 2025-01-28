@@ -2511,8 +2511,7 @@ int Hermes::rhs(BoutReal t) {
       if (use_Delp2){
 	TE_Pe_anomalous = (2.0/3.0) * (a_chi3d * Ne * new_Delp2(Te) + a_d3d * Te * new_Delp2(Ne));
       } else {
-	TE_Pe_anomalous = (2. / 3) * FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Te);
-	TE_Pe_anomalous += FCIDiv_a_Grad_perp(mul_all(a_d3d, Te), Ne);
+	TE_Pe_anomalous = (2.0 / 3.0) * (FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Te) + FCIDiv_a_Grad_perp(mul_all(a_d3d, Te), Ne));
       }
       ddt(Pe) += TE_Pe_anomalous;
     } // End Pe_anomalous
@@ -2656,7 +2655,7 @@ int Hermes::rhs(BoutReal t) {
       if (use_Delp2){
 	TE_Pi_anomalous = (2.0/3.0) * (a_chi3d * Ne * new_Delp2(Ti) + a_d3d * Ti * new_Delp2(Ne));
       } else {
-	TE_Pi_anomalous = FCIDiv_a_Grad_perp(mul_all(a_d3d, Ti), Ne) + (2. / 3) * FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Ti);
+	TE_Pi_anomalous = (2.0/3.0) * (FCIDiv_a_Grad_perp(mul_all(a_d3d, Ti), Ne) + FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Ti));
       }
       ddt(Pi) += TE_Pi_anomalous;
     } // End Pi_anomalous
