@@ -113,6 +113,7 @@ taui[x_, y_, z_, t_] = (taui0 * (Cs0/rhos0) * (SolTi[x,y,z,t]^(1.5)))/SolNe[x,y,
 
 kappaepar[x_, y_, z_, t_] = 3.16 * mime * SolTe[x,y,z,t] * SolNe[x,y,z,t] * taue[x,y,z,t];
 kappaipar[x_, y_, z_, t_] = 3.9 * SolTi[x,y,z,t] * SolNe[x,y,z,t] * taui[x,y,z,t];
+nu[x_, y_, z_, t_] = resistivitymultiply / (1.96 * taue[x,y,z,t]*mime);
 
 PitauidivB[x_, y_, z_, t_] = SolPi[x,y,z,t]*taui[x,y,z,t]/B[x,y,z];
 B12Vi[x_, y_, z_, t_] = SqrtB[x,y,z] * SolVi[x,y,z,t];
@@ -162,7 +163,9 @@ SourcePi[x_, y_, z_, t_] = D[SolPi[x,y,z,t],t]\
 SourceVort[x_, y_, z_, t_] = D[SolVort[x,y,z,t],t];
 SourceVePsi[x_, y_, z_, t_] = D[SolVePsi[x,y,z,t],t]\
 	+SWVePsiparpressure * mime * rhos0 * gradpar[SolPe,x,y,z,t]/SolNe[x,y,z,t]\
-	+SWVePsinumdiff * (rhos0^4)*(numnu/(rhos0^4 * Omegaci)) * numericaldiffusion[SolVe,x,y,z,t];
+	+SWVePsinumdiff * (rhos0^4)*(numnu/(rhos0^4 * Omegaci)) * numericaldiffusion[SolVe,x,y,z,t]\
+	+SWVePsipartemp *rhos0 * 0.71 * mime* gradpar[SolTe,x,y,z,t]\
+	-SWVePsiparcurrent * mime* nu[x,y,z,t]*(SolVi[x,y,z,t]-SolVe[x,y,z,t]);
 
 Print["Finished MMS Terms"]
 
