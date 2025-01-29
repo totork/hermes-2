@@ -74,6 +74,7 @@ SqrtB[x_,y_,z_, t_] = Sqrt[B[x,y,z,t]];
 curlBvec[x_, y_, z_] = Curl[Bvec[x,y,z]/Norm[Bvec[x,y,z]], {x,y,z}];
 logB[x_, y_, z_,t_] = Log[B[x,y,z,t]];
 curvature[f_, x_, y_, z_, t_] = -2.0*arakawa[B,f,x,y,z,t]/(B[x,y,z,t]^2);
+ExBoperator[f_, x_, y_, z_, t_] = -arakawa[SolPhi,f,x,y,z,t]/B[x,y,z,t];
 (*Das minuszeichenb kommt durch in brendans paper nicht vor, in gleichung A8 fehlt das*)
 
 
@@ -103,16 +104,19 @@ SolJpar[x_, y_, z_, t_] = SolNVi[x,y,z,t]-SolNe[x,y,z,t]*SolVe[x,y,z,t];
 SolNeVi[x_, y_, z_, t_] = SolNe[x,y,z,t]*SolVi[x,y,z,t];
 SolPepPi[x_, y_, z_, t_] = SolPe[x,y,z,t]+SolPi[x,y,z,t];
 SolPeVe[x_, y_, z_, t_] = SolPe[x,y,z,t]*SolVe[x,y,z,t];
+SolPeTe[x_, y_, z_, t_] = SolPe[x,y,z,t]*SolTe[x,y,z,t];
 SolPiVi[x_, y_, z_, t_] = SolPi[x,y,z,t]*SolVi[x,y,z,t];
 SolPiTi[x_, y_, z_, t_] = SolPi[x,y,z,t] * SolTi[x,y,z,t];
 SolTeJpar[x_, y_, z_, t_] = SolTe[x,y,z,t]*SolJpar[x,y,z,t];
 SolNViVi[x_, y_, z_, t_] = SolNVi[x,y,z,t] * SolVi[x,y,z,t];
 SolNViTi[x_, y_, z_, t_] = SolNVi[x,y,z,t] * SolTi[x,y,z,t];
+SolVimVe[x_, y_, z_, t_] = SolVi[x,y,z,t] - SolVe[x,y,z,t];
 taue[x_, y_, z_, t_] = (taue0 * (Cs0/rhos0) * (SolTe[x,y,z,t]^(1.5)))/SolNe[x,y,z,t];
 taui[x_, y_, z_, t_] = (taui0 * (Cs0/rhos0) * (SolTi[x,y,z,t]^(1.5)))/SolNe[x,y,z,t];
 
 kappaepar[x_, y_, z_, t_] = 3.16 * mime * SolTe[x,y,z,t] * SolNe[x,y,z,t] * taue[x,y,z,t];
 kappaipar[x_, y_, z_, t_] = 3.9 * SolTi[x,y,z,t] * SolNe[x,y,z,t] * taui[x,y,z,t];
+etaepar[x_, y_, z_, t_] = 0.733 * mime * SolNe[x,y,z,t] * SolTe[x,y,z,t] * taue[x,y,z,t];
 nu[x_, y_, z_, t_] = resistivitymultiply / (1.96 * taue[x,y,z,t]*mime);
 
 PitauidivB[x_, y_, z_, t_] = SolPi[x,y,z,t]*taui[x,y,z,t]/B[x,y,z];
@@ -136,7 +140,8 @@ SourceNe[x_, y_, z_, t_] = D[SolNe[x,y,z,t],t]\
 	+SWNenumdiff * (rhos0^4)*(numD/(rhos0^4 * Omegaci)) * numericaldiffusion[SolNe,x,y,z,t]\
 	+SWNeparflow * rhos0 * gradpar[SolNeVi,x,y,z,t]\
 	(*+SWNemag * (rhos0^2) * divabvec[SolNe,Vmage,x,y,z,t]*)\
-	-SWNemag * (rhos0^2) * curvature[SolPe,x,y,z,t];
+	-SWNemag * (rhos0^2) * curvature[SolPe,x,y,z,t]\
+	-SWNeExB * (rhos0^2) * arakawa[SolPhi,SolNe,x,y,z,t]/B[x,y,z,t];
 SourceNVi[x_, y_, z_, t_] = D[SolNVi[x,y,z,t],t]\
 	+SWNViparpressure*rhos0*gradpar[SolPepPi,x,y,z,t]\
 	+SWNVihyper * (rhos0^4)*(hypernu/(rhos0^4 * Omegaci)) * hyperdiffusion[SolNVi,x,y,z,t]\
@@ -144,7 +149,8 @@ SourceNVi[x_, y_, z_, t_] = D[SolNVi[x,y,z,t],t]\
 	-SWNViparviscos * (rhos0^2) * 1.28 * SqrtB[x,y,z] * divparkgradpar[PitauidivB,B12Vi,x,y,z,t]\
 	+SWNViparflow * rhos0 * divpar[SolNViVi,x,y,z,t]\
 	-SWNVianomalous * (divagradperp[DanomalousVi,SolNe,x,y,z,t] + divagradperp[nuanomalousNe,SolVi,x,y,z,t])*(rhos0^2)/(rhos0*rhos0*Omegaci)\
-	+SWNVimag * (rhos0^2) * curvature[SolNViTi,x,y,z,t];
+	+SWNVimag * (rhos0^2) * curvature[SolNViTi,x,y,z,t]\
+	+SWNViExB * (rhos0^2) * ExBoperator[SolNVi,x,y,z,t];
 SourcePe[x_, y_, z_, t_] = D[SolPe[x,y,z,t],t]\
 	- SWPeconduction*(2.0/3.0)*divparkgradpar[kappaepar,SolTe,x,y,z,t]*(rhos0^2)\
 	+SWPenumdiff * (rhos0^4)*(numchi/(rhos0^4 * Omegaci)) * numericaldiffusion[SolPe,x,y,z,t]\
@@ -152,20 +158,27 @@ SourcePe[x_, y_, z_, t_] = D[SolPe[x,y,z,t],t]\
 	+SWPeparflow * rhos0*(divpar[SolPeVe,x,y,z,t] + (2.0/3.0)*SolPe[x,y,z,t]*divpar[SolVe,x,y,z,t])\
 	-SWPethermalcurrent * rhos0 * (0.71*2.0/3.0) * divpar[SolTeJpar,x,y,z,t]\
 	+SWPethermalforce * rhos0 * (0.71*2.0/3.0) * SolJpar[x,y,z,t]*gradpar[SolTe,x,y,z,t]\
-	-SWPeanomalous * (2.0/3.0) * (divagradperp[DanomalousTe,SolNe,x,y,z,t] + divagradperp[chianomalousNe,SolTe,x,y,z,t])*(rhos0^2)/(rhos0*rhos0*Omegaci);
+	-SWPeanomalous * (2.0/3.0) * (divagradperp[DanomalousTe,SolNe,x,y,z,t] + divagradperp[chianomalousNe,SolTe,x,y,z,t])*(rhos0^2)/(rhos0*rhos0*Omegaci)\
+	+SWPeExB * (rhos0^2) * ExBoperator[SolPe,x,y,z,t]\
+	+SWPemag * (rhos0^2) * ((-5.0/3.0)*curvature[SolPeTe,x,y,z,t] + (2.0/3.0)*SolPe[x,y,z,t]*curvature[SolPhi,x,y,z,t]);
 SourcePi[x_, y_, z_, t_] = D[SolPi[x,y,z,t],t]\
 	- SWPiconduction * (2.0/3.0) * divparkgradpar[kappaipar,SolTi,x,y,z,t] * (rhos0^2)\
 	+SWPiparflow * rhos0*(divpar[SolPiVi,x,y,z,t] + (2.0/3.0)*SolPi[x,y,z,t]*divpar[SolVi,x,y,z,t])\
 	+SWPinumdiff * (rhos0^4)*(numchi/(rhos0^4 * Omegaci)) * numericaldiffusion[SolPi,x,y,z,t]\
 	+SWPihyper * (rhos0^4)*(hyperchi/(rhos0^4 * Omegaci)) * hyperdiffusion[SolPi,x,y,z,t]\
 	-SWPianomalous * (2.0/3.0) * (divagradperp[DanomalousTi,SolNe,x,y,z,t] + divagradperp[chianomalousNe,SolTi,x,y,z,t])*(rhos0^2)/(rhos0*rhos0*Omegaci)\
-	+SWPimag * (rhos0^2) * (5.0/3.0) * curvature[SolPiTi,x,y,z,t];
+	+SWPimag * (rhos0^2) * (5.0/3.0) * curvature[SolPiTi,x,y,z,t]\
+	+SWPiExB * (rhos0^2) * (ExBoperator[SolPi,x,y,z,t]+(2.0/3.0)*SolPi[x,y,z,t]*curvature[SolPhi,x,y,z,t]);
 SourceVort[x_, y_, z_, t_] = D[SolVort[x,y,z,t],t];
 SourceVePsi[x_, y_, z_, t_] = D[SolVePsi[x,y,z,t],t]\
 	+SWVePsiparpressure * mime * rhos0 * gradpar[SolPe,x,y,z,t]/SolNe[x,y,z,t]\
 	+SWVePsinumdiff * (rhos0^4)*(numnu/(rhos0^4 * Omegaci)) * numericaldiffusion[SolVe,x,y,z,t]\
 	+SWVePsipartemp *rhos0 * 0.71 * mime* gradpar[SolTe,x,y,z,t]\
-	-SWVePsiparcurrent * mime* nu[x,y,z,t]*(SolVi[x,y,z,t]-SolVe[x,y,z,t]);
+	-SWVePsiparcurrent * mime* nu[x,y,z,t]*(SolVi[x,y,z,t]-SolVe[x,y,z,t])\
+	-SWVePsiparflow * rhos0 * SolVi[x,y,z,t] * divpar[SolVimVe,x,y,z,t]\
+	-SWVePsiparallelvisc*divparkgradpar[etaepar,SolVe,x,y,z,t]*(rhos0^2)\
+	-SWVePsianomalous * divagradperp[nuanomalous,SolVe,x,y,z,t]*(rhos0^2)/(rhos0*rhos0*Omegaci)\
+	+SWVePsihyper * (rhos0^4)*(hypernu/(rhos0^4 * Omegaci)) * hyperdiffusion[SolVe,x,y,z,t];
 
 Print["Finished MMS Terms"]
 
