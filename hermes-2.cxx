@@ -1962,7 +1962,7 @@ int Hermes::rhs(BoutReal t) {
   
   // Electron parallel viscosity
   if (!use_new_viscosity){
-    eta_epar = mul_all(0.973, mul_all(mi_me,mul_all(tau_e,Te)));
+    eta_epar = mul_all(0.7333, mul_all(mi_me,mul_all(tau_e,Pe)));
   } else {
     eta_epar = mul_all(div_all(4.0,3.0),mul_all(0.73,mul_all(Pe,tau_e)));
   }
