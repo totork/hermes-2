@@ -68,6 +68,7 @@ lambdaii = 23.0-Log[Sqrt[2.0*Nnorm/(10^6)]/(Tnorm^1.5)];
 taui0 = Sqrt[AA]/(4.78 * 10^-8 * (Nnorm/(10^6)) * lambdaii * (Tnorm^(-1.5)));
 
 B[x_, y_, z_, t_] = 1.5-x;
+invB2[x_, y_, z_, t_] = 1.0/(B[x,y,z,t]^2);
 Bvec[x_, y_, z_] = {0.0, 1.5-x,0.0};
 SqrtB[x_,y_,z_, t_] = Sqrt[B[x,y,z,t]];
 curlBvec[x_, y_, z_] = Curl[Bvec[x,y,z]/Norm[Bvec[x,y,z]], {x,y,z}];
@@ -87,8 +88,11 @@ SolNe[x_, y_, z_, t_] = OffsetNe + ampNe*Sin[2.0*Pi*kxNe*xn[x]]*Sin[kyNe*y - phy
 SolNVi[x_, y_, z_, t_] = ampNVi*Sin[2.0*Pi*kxNVi*xn[x]]*Sin[kyNVi*y - phyNVi]*Sin[2.0*Pi*kzNVi*zn[z]-phzNVi]*Sin[2.0*Pi*omegaNVi*t - phtNVi];
 SolPe[x_, y_, z_, t_] = OffsetPe + ampPe*Sin[2.0*Pi*kxPe*xn[x]]*Sin[kyPe*y - phyPe]*Sin[2.0*Pi*kzPe*zn[z]-phzPe]*Sin[2.0*Pi*omegaPe*t - phtPe];
 SolPi[x_, y_, z_, t_] = OffsetPi + ampPi*Sin[2.0*Pi*kxPi*xn[x]]*Sin[kyPi*y - phyPi]*Sin[2.0*Pi*kzPi*zn[z]-phzPi]*Sin[2.0*Pi*omegaPi*t - phtPi];
-SolVort[x_, y_, z_, t_] = ampVort*Sin[2.0*Pi*kxVort*xn[x]]*Sin[kyVort*y - phyVort]*Sin[2.0*Pi*kzVort*zn[z]-phzVort]*Sin[2.0*Pi*omegaVort*t - phtVort];
+SolPhi[x_, y_, z_, t_] = ampPhi*Sin[2.0*Pi*kxPhi*xn[x]]*Sin[kyPhi*y - phyPhi]*Sin[2.0*Pi*kzPhi*zn[z]-phzPhi]*Sin[2.0*Pi*omegaPhi*t - phtPhi];
 SolVePsi[x_, y_, z_, t_] = ampVePsi*Sin[2.0*Pi*kxVePsi*xn[x]]*Sin[kyVePsi*y - phyVePsi]*Sin[2.0*Pi*kzVePsi*zn[z]-phzVePsi]*Sin[2.0*Pi*omegaVePsi*t - phtVePsi];
+SolPipPhi[x_, y_, z_, t_] = SolPi[x,y,z,t]+SolPhi[x,y,z,t];
+SolVort[x_, y_, z_, t_] = divagradperp[invB2,SolPipPhi,x,y,z,t]*(rhos0^2);
+
 
 SolTe[x_, y_, z_, t_] = SolPe[x,y,z,t]/SolNe[x,y,z,t];
 SolTi[x_, y_, z_, t_] = SolPi[x,y,z,t]/SolNe[x,y,z,t];
@@ -100,9 +104,10 @@ SolNeVi[x_, y_, z_, t_] = SolNe[x,y,z,t]*SolVi[x,y,z,t];
 SolPepPi[x_, y_, z_, t_] = SolPe[x,y,z,t]+SolPi[x,y,z,t];
 SolPeVe[x_, y_, z_, t_] = SolPe[x,y,z,t]*SolVe[x,y,z,t];
 SolPiVi[x_, y_, z_, t_] = SolPi[x,y,z,t]*SolVi[x,y,z,t];
+SolPiTi[x_, y_, z_, t_] = SolPi[x,y,z,t] * SolTi[x,y,z,t];
 SolTeJpar[x_, y_, z_, t_] = SolTe[x,y,z,t]*SolJpar[x,y,z,t];
 SolNViVi[x_, y_, z_, t_] = SolNVi[x,y,z,t] * SolVi[x,y,z,t];
-
+SolNViTi[x_, y_, z_, t_] = SolNVi[x,y,z,t] * SolTi[x,y,z,t];
 taue[x_, y_, z_, t_] = (taue0 * (Cs0/rhos0) * (SolTe[x,y,z,t]^(1.5)))/SolNe[x,y,z,t];
 taui[x_, y_, z_, t_] = (taui0 * (Cs0/rhos0) * (SolTi[x,y,z,t]^(1.5)))/SolNe[x,y,z,t];
 
@@ -137,7 +142,8 @@ SourceNVi[x_, y_, z_, t_] = D[SolNVi[x,y,z,t],t]\
 	+SWNVinumdiff * (rhos0^4)*(numnu/(rhos0^4 * Omegaci)) * numericaldiffusion[SolNVi,x,y,z,t]\
 	-SWNViparviscos * (rhos0^2) * 1.28 * SqrtB[x,y,z] * divparkgradpar[PitauidivB,B12Vi,x,y,z,t]\
 	+SWNViparflow * rhos0 * divpar[SolNViVi,x,y,z,t]\
-	-SWNVianomalous * (divagradperp[DanomalousVi,SolNe,x,y,z,t] + divagradperp[nuanomalousNe,SolVi,x,y,z,t])*(rhos0^2)/(rhos0*rhos0*Omegaci);
+	-SWNVianomalous * (divagradperp[DanomalousVi,SolNe,x,y,z,t] + divagradperp[nuanomalousNe,SolVi,x,y,z,t])*(rhos0^2)/(rhos0*rhos0*Omegaci)\
+	+SWNVimag * (rhos0^2) * curvature[SolNViTi,x,y,z,t];
 SourcePe[x_, y_, z_, t_] = D[SolPe[x,y,z,t],t]\
 	- SWPeconduction*(2.0/3.0)*divparkgradpar[kappaepar,SolTe,x,y,z,t]*(rhos0^2)\
 	+SWPenumdiff * (rhos0^4)*(numchi/(rhos0^4 * Omegaci)) * numericaldiffusion[SolPe,x,y,z,t]\
@@ -151,9 +157,12 @@ SourcePi[x_, y_, z_, t_] = D[SolPi[x,y,z,t],t]\
 	+SWPiparflow * rhos0*(divpar[SolPiVi,x,y,z,t] + (2.0/3.0)*SolPi[x,y,z,t]*divpar[SolVi,x,y,z,t])\
 	+SWPinumdiff * (rhos0^4)*(numchi/(rhos0^4 * Omegaci)) * numericaldiffusion[SolPi,x,y,z,t]\
 	+SWPihyper * (rhos0^4)*(hyperchi/(rhos0^4 * Omegaci)) * hyperdiffusion[SolPi,x,y,z,t]\
-	-SWPianomalous * (2.0/3.0) * (divagradperp[DanomalousTi,SolNe,x,y,z,t] + divagradperp[chianomalousNe,SolTi,x,y,z,t])*(rhos0^2)/(rhos0*rhos0*Omegaci);
+	-SWPianomalous * (2.0/3.0) * (divagradperp[DanomalousTi,SolNe,x,y,z,t] + divagradperp[chianomalousNe,SolTi,x,y,z,t])*(rhos0^2)/(rhos0*rhos0*Omegaci)\
+	+SWPimag * (rhos0^2) * (5.0/3.0) * curvature[SolPiTi,x,y,z,t];
 SourceVort[x_, y_, z_, t_] = D[SolVort[x,y,z,t],t];
-SourceVePsi[x_, y_, z_, t_] = D[SolVePsi[x,y,z,t],t];
+SourceVePsi[x_, y_, z_, t_] = D[SolVePsi[x,y,z,t],t]\
+	+SWVePsiparpressure * mime * rhos0 * gradpar[SolPe,x,y,z,t]/SolNe[x,y,z,t]\
+	+SWVePsinumdiff * (rhos0^4)*(numnu/(rhos0^4 * Omegaci)) * numericaldiffusion[SolVe,x,y,z,t];
 
 Print["Finished MMS Terms"]
 
