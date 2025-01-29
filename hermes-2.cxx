@@ -1631,25 +1631,45 @@ int Hermes::rhs(BoutReal t) {
   
 
     if (boussinesq) {
-    
-      if (mesh->firstX()) {
-	for (int j = mesh->ystart; j <= mesh->yend; j++) {
-	  for (int k = 0; k < mesh->LocalNz; k++) {
-	    phi_boundary3d(mesh->xstart - 1, j, k) = 0.5 * ( 3.0*(Te(mesh->xstart - 1, j, k) + Te(mesh->xstart, j, k)) + Pi(mesh->xstart - 1, j, k) + Pi(mesh->xstart, j, k));
+      if (!isMMS){
+	if (mesh->firstX()) {
+	  for (int j = mesh->ystart; j <= mesh->yend; j++) {
+	    for (int k = 0; k < mesh->LocalNz; k++) {
+	      phi_boundary3d(mesh->xstart - 1, j, k) = 0.5 * ( 3.0*(Te(mesh->xstart - 1, j, k) + Te(mesh->xstart, j, k)) + Pi(mesh->xstart - 1, j, k) + Pi(mesh->xstart, j, k));
+	    }
 	  }
 	}
-      }
     
     
-      if (mesh->lastX()) {
-	for (int j = mesh->ystart; j <= mesh->yend; j++) {
-	  for (int k = 0; k < mesh->LocalNz; k++) {
-	    phi_boundary3d(mesh->xend + 1, j, k) = 0.5 * ( 3.0*( Te(mesh->xend + 1, j, k) + Te(mesh->xend, j, k) ) + Pi(mesh->xend + 1, j, k) + Pi(mesh->xend, j, k) );
-	    
+	if (mesh->lastX()) {
+	  for (int j = mesh->ystart; j <= mesh->yend; j++) {
+	    for (int k = 0; k < mesh->LocalNz; k++) {
+	      phi_boundary3d(mesh->xend + 1, j, k) = 0.5 * ( 3.0*( Te(mesh->xend + 1, j, k) + Te(mesh->xend, j, k) ) + Pi(mesh->xend + 1, j, k) + Pi(mesh->xend, j, k) );	    
+	    }
 	  }
 	}
+      } else if (isMMS){
+
+	if (mesh->firstX()) {
+          for (int j = mesh->ystart; j <= mesh->yend; j++) {
+            for (int k = 0; k < mesh->LocalNz; k++) {
+              phi_boundary3d(mesh->xstart - 1, j, k) = 0.5 * ( Pi(mesh->xstart - 1, j, k) + Pi(mesh->xstart, j, k));
+            }
+          }
+        }	
+
+
+        if (mesh->lastX()) {
+          for (int j = mesh->ystart; j <= mesh->yend; j++) {
+            for (int k = 0; k < mesh->LocalNz; k++) {
+              phi_boundary3d(mesh->xend + 1, j, k) = 0.5 * ( Pi(mesh->xend + 1, j, k) + Pi(mesh->xend, j, k) );
+            }
+          }
+        }
+
+	
+
       }
-      
       ////////////////////////////////////////////
       // Boussinesq, non-split
       // Solve all components using X-Z solver
