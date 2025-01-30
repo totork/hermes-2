@@ -1441,7 +1441,7 @@ int Hermes::init(bool restarting) {
   
   // Here are some sanity checks for the flags
 
-  if (evolve_vort && !calc_potential){
+  if (evolve_vort && !calc_potential && !isMMS){
     throw BoutException("Evolving vorticity but not the potential");
   }
 
@@ -2079,8 +2079,9 @@ int Hermes::rhs(BoutReal t) {
     
     if (Ne_anomalous){// Row 4 
       TRACE("Density anomalous");
-      if (use_Delp2){
-	TE_Ne_anomalous = a_d3d * new_Delp2(Ne);
+      if (use_new_divagradperp){
+	TE_Ne_anomalous = Div_a_Grad_perp_mod(a_d3d, Ne);
+
       } else {
 	TE_Ne_anomalous = FCIDiv_a_Grad_perp(a_d3d, Ne);
       }
@@ -2531,8 +2532,9 @@ int Hermes::rhs(BoutReal t) {
     if (Pe_anomalous){//Row 6
       TRACE("Pe anomalous transport");
       //TE_Pe_anomalous = FCIDiv_a_Grad_perp(mul_all(a_d3d, Te), Ne) + (2. / 3) * FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Te);
-      if (use_Delp2){
-	TE_Pe_anomalous = (2.0/3.0) * (a_chi3d * Ne * new_Delp2(Te) + a_d3d * Te * new_Delp2(Ne));
+      if (use_new_divagradperp){
+	TE_Pe_anomalous = (2.0/3.0)*(Div_a_Grad_perp_mod(mul_all(Te,a_d3d), Ne) + Div_a_Grad_perp_mod(mul_all(Ne, a_chi3d), Te));
+	
       } else {
 	TE_Pe_anomalous = (2.0 / 3.0) * (FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Te) + FCIDiv_a_Grad_perp(mul_all(a_d3d, Te), Ne));
       }
@@ -2675,8 +2677,9 @@ int Hermes::rhs(BoutReal t) {
 
     if (Pi_anomalous){
       TRACE("Ion anomalous transport");
-      if (use_Delp2){
-	TE_Pi_anomalous = (2.0/3.0) * (a_chi3d * Ne * new_Delp2(Ti) + a_d3d * Ti * new_Delp2(Ne));
+      if (use_new_divagradperp){
+	TE_Pi_anomalous = (2.0/3.0) * (Div_a_Grad_perp_mod(mul_all(Ti,a_d3d), Ne) + Div_a_Grad_perp_mod(mul_all(Ne, a_chi3d), Ti));
+
       } else {
 	TE_Pi_anomalous = (2.0/3.0) * (FCIDiv_a_Grad_perp(mul_all(a_d3d, Ti), Ne) + FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Ti));
       }
