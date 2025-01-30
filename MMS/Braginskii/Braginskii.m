@@ -146,7 +146,7 @@ SourceNe[x_, y_, z_, t_] = D[SolNe[x,y,z,t],t]\
 	-SWNeExB * (rhos0^2) * arakawa[SolPhi,SolNe,x,y,z,t]/B[x,y,z,t];
 SourceNVi[x_, y_, z_, t_] = D[SolNVi[x,y,z,t],t]\
 	+SWNViparpressure*rhos0*gradpar[SolPepPi,x,y,z,t]\
-	+SWNVihyper * (rhos0^4)*(hypernu/(rhos0^4 * Omegaci)) * hyperdiffusion[SolNVi,x,y,z,t]\
+	+SWNVihyper * (rhos0^4)*(hypernu/(rhos0^4 * Omegaci)) * hyperdiffusion[SolVi,x,y,z,t]\
 	+SWNVinumdiff * (rhos0^4)*(numnu/(rhos0^4 * Omegaci)) * numericaldiffusion[SolNVi,x,y,z,t]\
 	-SWNViparviscos * (rhos0^2) * 1.28 * SqrtB[x,y,z] * divparkgradpar[PitauidivB,B12Vi,x,y,z,t]\
 	+SWNViparflow * rhos0 * divpar[SolNViVi,x,y,z,t]\
@@ -175,7 +175,9 @@ SourceVort[x_, y_, z_, t_] = D[SolVort[x,y,z,t],t]\
 	-SWVortmag * (rhos0^2) * curvature[SolPepPi,x,y,z,t]\
 	+SWVortExB * (rhos0^2) * ExBoperator[SolVort,x,y,z,t]\
 	-SWVortanomalous * (rhos0^2) * divagradperp[nuanomalous3D,SolVort,x,y,z,t]/(rhos0*rhos0*Omegaci)\
-	-SWVortparcurrent * (rhos0) * divpar[SolJpar,x,y,z,t];
+	-SWVortparcurrent * (rhos0) * divpar[SolJpar,x,y,z,t]\
+	+SWVorthyper * (rhos0^4) * (hypernu/(rhos0^4 * Omegaci)) * hyperdiffusion[SolVort,x,y,z,t]\
+	+SWVortnumdiff * (rhos0^4) * (numnu/(rhos0^4 * Omegaci)) * numericaldiffusion[SolVort,x,y,z,t];
 SourceVePsi[x_, y_, z_, t_] = D[SolVePsi[x,y,z,t],t]\
 	+SWVePsiparpressure * mime * rhos0 * gradpar[SolPe,x,y,z,t]/SolNe[x,y,z,t]\
 	+SWVePsinumdiff * (rhos0^4)*(numnu/(rhos0^4 * Omegaci)) * numericaldiffusion[SolVe,x,y,z,t]\

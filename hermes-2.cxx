@@ -2410,7 +2410,7 @@ int Hermes::rhs(BoutReal t) {
 
     if (NVi_hyper){
       TRACE("Ion momentum hyperdiffusion");
-      TE_NVi_hyper = hyperdissipation(hyper_nu,NVi);
+      TE_NVi_hyper = hyperdissipation(hyper_nu,Vi);
       ddt(NVi) += TE_NVi_hyper;
     } // End NVi_hyper
 
