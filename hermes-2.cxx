@@ -2178,7 +2178,7 @@ int Hermes::rhs(BoutReal t) {
     
     if (Vort_anomalous){//Row 6
       if (use_Delp2){
-	TE_Vort_anomalous = a_nu3d * new_Delp2(Vort);
+	TE_Vort_anomalous = Div_a_Grad_perp_mod(a_nu3d,Vort);
       } else {
 	TE_Vort_anomalous = FCIDiv_a_Grad_perp(a_nu3d, Vort);
       }
