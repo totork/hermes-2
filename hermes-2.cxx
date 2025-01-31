@@ -1284,7 +1284,7 @@ int Hermes::init(bool restarting) {
 
   restart.addOnce(phi, "phi");
   
-  aparSolver = LaplaceXZ::create(mesh,&opt["aparSolver"],CELL_CENTRE);
+  aparSolver = Laplacian::create(&opt["aparSolver"]);
   
   Ve.setBoundary("Ve");
   nu.setBoundary("nu");
@@ -1437,7 +1437,16 @@ int Hermes::init(bool restarting) {
   alloc_all(Pe);
 
 
-  
+
+  if (isMMS){
+    xl = opt["xl"].withDefault(Field3D{0.0});
+    yl = opt["yl"].withDefault(Field3D{0.0});
+    zl = opt["zl"].withDefault(Field3D{0.0});
+
+    SAVE_ONCE(xl,yl,zl);
+
+  }
+
   
   // Here are some sanity checks for the flags
 
@@ -1729,19 +1738,19 @@ int Hermes::rhs(BoutReal t) {
   
   if (electromagnetic) {
     if (FiniteElMass) {
-      // Solve Helmholtz equation for psi
-      auto tmp = -Ne*0.5*mi_me*beta_e;
+
       
-      aparSolver->setCoefs(1.0,tmp);
-      
-      psi = aparSolver->solve(-Ne*VePsi,psi);
+      aparSolver->setCoefD(-0.5*(Bnorm*rho_s0 * beta_e)/Ne);
+      aparSolver->setCoefA(0.5*beta_e*mi_me);
+      psi = aparSolver->solve(VePsi,psi);
       mesh->communicate(psi);
       
       psi.applyParallelBoundary(parbc);
       
       Ve = VePsi - 0.5 * beta_e * mi_me * psi + Vi;
-	
-      Ve.applyBoundary("neumann");
+      if (!isMMS){
+	Ve.applyBoundary("neumann");
+      }
       mesh->communicate(Ve);
       Ve.applyParallelBoundary(parbc);
       
@@ -2720,6 +2729,9 @@ int Hermes::rhs(BoutReal t) {
   } // End evolve_ti
 
 
+
+
+  
   return 0;
 } // rhs
 
