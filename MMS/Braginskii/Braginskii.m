@@ -107,7 +107,8 @@ If[SWelectromagnetic==1.0,
 	SolVePsi[x_, y_, z_, t_] = ampVePsi*Sin[2.0*Pi*kxVePsi*xn[x]]*Sin[kyVePsi*y - phyVePsi]*Sin[2.0*Pi*kzVePsi*zn[z]-phzVePsi]*Sin[2.0*Pi*omegaVePsi*t - phtVePsi];]
 *)
 SolVePsi[x_, y_, z_, t_] = If[SWelectromagnetic==1,
-							-Bnorm*betae*rhos0/(2.0*SolNe[x,y,z,t])*laplaceperp[SolPsi,x,y,z,t]*(rhos0^2)+0.5*betae*SolPsi[x,y,z,t]*mime,							
+							-(rhos0^2)/(SolNe[x,y,z,t])*laplaceperp[SolPsi,x,y,z,t]+0.5*betae*SolPsi[x,y,z,t]*mime,
+							(*-Bnorm*betae*rhos0/(2.0*SolNe[x,y,z,t])*laplaceperp[SolPsi,x,y,z,t]*(rhos0^2),*)														
 							ampVePsi*Sin[2.0*Pi*kxVePsi*xn[x]]*Sin[kyVePsi*y - phyVePsi]*Sin[2.0*Pi*kzVePsi*zn[z]-phzVePsi]*Sin[2.0*Pi*omegaVePsi*t - phtVePsi]];
 SolVe[x_, y_, z_, t_] = SolVePsi[x,y,z,t] - SWelectromagnetic*0.5*betae*mime*SolPsi[x,y,z,t] + SolVi[x,y,z,t];
 SolJpar[x_, y_, z_, t_] = SolNVi[x,y,z,t]-SolNe[x,y,z,t]*SolVe[x,y,z,t];
