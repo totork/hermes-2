@@ -2190,7 +2190,7 @@ int Hermes::rhs(BoutReal t) {
       if (!use_new_divagradperp){
         TE_Vort_anomalous = Div_a_Grad_perp_curv(a_nu3d, Vort);
       } else {
-        TE_Vort_anomalous = Div_a_Grad_perp_mod(a_nu3d), Vort);
+        TE_Vort_anomalous = Div_a_Grad_perp_mod(a_nu3d, Vort);
       }
       ddt(Vort) += TE_Vort_anomalous;
     }
@@ -2332,7 +2332,7 @@ int Hermes::rhs(BoutReal t) {
       if (!use_new_divagradperp){
 	TE_VePsi_anomalous = Div_a_Grad_perp_curv(a_nu3d, Ve);
       } else {
-	TE_VePsi_anomalous = Div_a_Grad_perp_mod(a_nu3d), Ve);
+	TE_VePsi_anomalous = Div_a_Grad_perp_mod(a_nu3d, Ve);
       }
       ddt(VePsi) += TE_VePsi_anomalous;
     }
