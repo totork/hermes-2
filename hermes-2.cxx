@@ -2091,9 +2091,8 @@ int Hermes::rhs(BoutReal t) {
       TRACE("Density anomalous");
       if (use_new_divagradperp){
 	TE_Ne_anomalous = Div_a_Grad_perp_mod(a_d3d, Ne);
-
       } else {
-	TE_Ne_anomalous = FCIDiv_a_Grad_perp(a_d3d, Ne);
+	TE_Ne_anomalous = Div_a_Grad_perp_curv(a_d3d, Ne);
       }
       ddt(Ne) += TE_Ne_anomalous;
     }  // End Ne_anomalous
@@ -2184,18 +2183,21 @@ int Hermes::rhs(BoutReal t) {
       }  //End boussinesq
 
     } //End Vort_polarcurrent
-
     
-    if (Vort_anomalous){//Row 6
-      if (use_Delp2){
-	TE_Vort_anomalous = Div_a_Grad_perp_mod(a_nu3d,Vort);
+
+    if (Vort_anomalous){
+      TRACE("Vort anomalous");
+      if (!use_new_divagradperp){
+        TE_Vort_anomalous = Div_a_Grad_perp_curv(a_nu3d, Vort);
       } else {
-	TE_Vort_anomalous = FCIDiv_a_Grad_perp(a_nu3d, Vort);
+        TE_Vort_anomalous = Div_a_Grad_perp_mod(a_nu3d), Vort);
       }
       ddt(Vort) += TE_Vort_anomalous;
-    } // End Vort_anomalous
+    }
 
 
+
+    
     if (Vort_hyper){
       TRACE("Vorticity hyperdiffusion");
       TE_Vort_hyper = hyperdissipation(hyper_nu,Vort);
@@ -2325,17 +2327,17 @@ int Hermes::rhs(BoutReal t) {
       ddt(VePsi) += TE_VePsi_supsonicdampening;      
     } // End VePsi_supsonicdampening
 
-
     if (VePsi_anomalous){
       TRACE("VePsi anomalous");
-      if (use_Delp2){
-	TE_VePsi_anomalous = a_nu3d * Delp2(Ve);
+      if (!use_new_divagradperp){
+	TE_VePsi_anomalous = Div_a_Grad_perp_curv(a_nu3d, Ve);
       } else {
-	TE_VePsi_anomalous = FCIDiv_a_Grad_perp(a_nu3d, Ve);
+	TE_VePsi_anomalous = Div_a_Grad_perp_mod(a_nu3d), Ve);
       }
-    } // End VePsi_anomalous
+      ddt(VePsi) += TE_VePsi_anomalous;
+    }
 
-    
+        
   } //End evolve_vepsi
 
   
@@ -2407,8 +2409,8 @@ int Hermes::rhs(BoutReal t) {
 	TE_NVi_anomalous = a_nu3d * Ne * new_Delp2(Vi);
       } else {
 	if (!use_new_divagradperp){
-	  TE_NVi_anomalous = FCIDiv_a_Grad_perp(mul_all(Vi, a_d3d), Ne);
-	  TE_NVi_anomalous += FCIDiv_a_Grad_perp(mul_all(Ne, a_nu3d), Vi);
+	  TE_NVi_anomalous = Div_a_Grad_perp_curv(mul_all(Vi, a_d3d), Ne);
+	  TE_NVi_anomalous += Div_a_Grad_perp_curv(mul_all(Ne, a_nu3d), Vi);
 	} else {
 	  TE_NVi_anomalous = Div_a_Grad_perp_mod(mul_all(Vi,a_d3d), Ne);
 	  TE_NVi_anomalous += Div_a_Grad_perp_mod(mul_all(Ne, a_nu3d), Vi);
@@ -2546,7 +2548,7 @@ int Hermes::rhs(BoutReal t) {
 	TE_Pe_anomalous = (2.0/3.0)*(Div_a_Grad_perp_mod(mul_all(Te,a_d3d), Ne) + Div_a_Grad_perp_mod(mul_all(Ne, a_chi3d), Te));
 	
       } else {
-	TE_Pe_anomalous = (2.0 / 3.0) * (FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Te) + FCIDiv_a_Grad_perp(mul_all(a_d3d, Te), Ne));
+	TE_Pe_anomalous = (2.0 / 3.0) * (Div_a_Grad_perp_curv(mul_all(Te,a_d3d), Ne) + Div_a_Grad_perp_curv(mul_all(Ne, a_chi3d), Te));
       }
       ddt(Pe) += TE_Pe_anomalous;
     } // End Pe_anomalous
@@ -2691,7 +2693,7 @@ int Hermes::rhs(BoutReal t) {
 	TE_Pi_anomalous = (2.0/3.0) * (Div_a_Grad_perp_mod(mul_all(Ti,a_d3d), Ne) + Div_a_Grad_perp_mod(mul_all(Ne, a_chi3d), Ti));
 
       } else {
-	TE_Pi_anomalous = (2.0/3.0) * (FCIDiv_a_Grad_perp(mul_all(a_d3d, Ti), Ne) + FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Ti));
+	TE_Pi_anomalous = (2.0/3.0) * (Div_a_Grad_perp_curv(mul_all(Ti,a_d3d), Ne) + Div_a_Grad_perp_curv(mul_all(Ne, a_chi3d), Ti));
       }
       ddt(Pi) += TE_Pi_anomalous;
     } // End Pi_anomalous
