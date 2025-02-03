@@ -38,6 +38,22 @@ void Fromm(Stencil1D &n) {
   n.R = n.c + 0.25 * (n.p - n.m);
 }
 
+
+
+
+
+Field3D Div_a_Grad_perp_mod(const Field3D& b, const Field3D& a){
+  auto *coord = mesh->getCoordinates();
+  Field3D tmp = (DDX(coord->J * coord->g11*b)*DDX(a) + coord->J * coord->g11 * b * D2DX2(a))/coord->J;
+  tmp += (DDZ(coord->J * coord->g33 * b)*DDZ(a) + coord->J * coord->g33 * b * D2DZ2(a))/coord->J;
+  tmp += (DDX(coord->J * coord->g13 * b)*DDZ(a) + coord->J * coord->g13 * b * D2DXDZ(a) * 2.0 + DDZ(coord->J * coord->g13 * b)*DDX(a))/coord->J;
+  return tmp;
+
+}
+
+
+
+
 /// The minmod function returns the value with the minimum magnitude
 /// If the inputs have different signs then returns zero
 BoutReal minmod(BoutReal a, BoutReal b) {
@@ -293,6 +309,7 @@ private:
     Field3D Ne;	
   Field3D theta,rho_n,rho;
   BoutReal diffusion,dpar;
+  Field3D diffusion3D;
   Field3D Ne_source,Ne_solution,xl,yl,zl;
   Field3D debug_diffusion, debug_pardiffusion;
 protected:
@@ -336,6 +353,10 @@ protected:
     debug_diffusion = 0.0;
     debug_pardiffusion = 0.0;
     SAVE_REPEAT(debug_diffusion,debug_pardiffusion);
+
+    diffusion3D = 0.0;
+    diffusion3D = 0.001 + 0.001*xl;
+    SAVE_ONCE(diffusion3D);
     
     return 0;
   }
@@ -343,7 +364,11 @@ protected:
   int rhs(BoutReal t) override {
     //2*cos(0.5 - yl)*sin(0. - 0.1*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl)
     //Ne_solution = 2*cos(0.5 - yl)*sin(0. - 0.1*t)*sin(31.41592653589794*(-0.4 + xl))*sin(0.1 - 4*zl);
-    Ne_solution = 0.4*cos(0.5 - 1.*yl)*sin(0. - 0.1*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl);
+    Ne_solution = 0.4*cos(0.5 - 1.*yl)*sin(0. - 0.001*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl);
+    Ne_source = 0. - 0.0062831853071795875*cos(15.70796326794897*(-0.4 + xl))*cos(0.5 - 1.*yl)*sin(0. - 0.001*t)*sin(0.1 - 4*zl) - (6.283185307179587*(0.001 + 0.001*xl)*cos(15.70796326794897*(-0.4 + xl))*cos(0.5 - 1.*yl)*sin(0. - 0.001*t)*sin(0.1 - 4*zl))/xl - 0.0004*cos(0. - 0.001*t)*cos(0.5 - 1.*yl)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl) + 98.69604401089363*(0.001 + 0.001*xl)*cos(0.5 - 1.*yl)*sin(0. - 0.001*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl) - (1.*(0. - 6.4*(0.001 + 0.001*xl)*cos(0.5 - 1.*yl)*sin(0. - 0.001*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl)))/power(xl,2);
+
+
+    /*
     if ((diffusion <= 0.0) && (dpar <= 0.0)){
       
       Ne_source = -0.4*cos(0.5 - 1.*yl)*cos(0. - 0.1*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl)/10.0;
@@ -356,7 +381,7 @@ protected:
       BoutException("No source");
       
     }
-    
+    */
     Ne.applyBoundary();
       
     if (mesh->firstX()) {
@@ -395,7 +420,8 @@ protected:
     ddt(Ne) += Ne_source;
     
     if (diffusion>0.0){
-      debug_diffusion = diffusion*new_Delp2(Ne);
+      //debug_diffusion = diffusion*new_Delp2(Ne);
+      debug_diffusion = Div_a_Grad_perp_mod(diffusion3D, Ne);
       ddt(Ne) += debug_diffusion;
     }
 

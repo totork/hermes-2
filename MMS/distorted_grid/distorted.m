@@ -34,7 +34,10 @@ d2dy2[f_, r_, p_, z_, t_] = D[ddy[f, r, p, z, t], r]*Sin[p] +  D[ddy[f, r, p, z,
 LaplacePerpMmsSol[f_,r_, p_, z_, t_] =  d2dx2[f, r, p, z, t] + d2dy2[f, r, p, z, t];
 
 LaplacePerp[f_,r_,p_,z_,t_] = D[f[r,p,z,t],{r,2}] + D[f[r,p,z,t],r]/r + 1.0/(r*r)*D[f[r,p,z,t],{p,2}];
-
+divagradperp[a_, f_, r_, p_, z_, t_] = D[a[r,p,z,t],r]*D[f[r,p,z,t],r] + a[r,p,z,t]*D[f[r,p,z,t],{r,2}]+1.0/(r)*a[r,p,z,t]*D[f[r,p,z,t],r]\
+									+1.0/(r^2)*(D[a[r,p,z,t],p]*D[f[r,p,z,t],p] + a[r,p,z,t]*D[f[r,p,z,t],{p,2}]);
+									
+									
 d2dpar2[f_, x_, z_, y_, t_] = Dpar * ((D[D[f[x, z, y, t], y], y] + 2/q[x]*D[D[f[x, z, y, t], y], z] + 
      1/q[x]^2*D[D[f[x, z, y, t], z], z])/absb[x]^2);
   
@@ -55,8 +58,9 @@ MmsUpar[x_, z_, y_, t_]=1;
 
 
 pflux[x_, z_, y_, t_]=MmsDens[x, z, y, t];
-(*Smms[x_, z_, y_, t_]=D[MmsDens[x,z,y,t],t]-d2dpar2[MmsDens,x,z,y,t]-Laplaceperpe[MmsDens,x,z,y,t];*)
-Smms[x_, z_, y_, t_]=D[MmsDens[x,z,y,t],t]-Dperp * LaplacePerp[MmsDens,x,z,y,t]-d2dpar2[MmsDens,x,z,y,t];
+
+(*Smms[x_, z_, y_, t_]=D[MmsDens[x,z,y,t],t]-Dperp * LaplacePerp[MmsDens,x,z,y,t]-d2dpar2[MmsDens,x,z,y,t];*)
+Smms[x_, z_, y_, t_]=D[MmsDens[x,z,y,t],t]-divagradperp[Dperp,MmsDens,x,z,y,t]-d2dpar2[MmsDens,x,z,y,t];
 
 
 Print["Finished MMS Terms"];
