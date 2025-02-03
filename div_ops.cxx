@@ -462,10 +462,19 @@ Field3D Div_a_Grad_perp_mod(const Field3D& a, const Field3D& f){
     result[ind] -= flux / (coord->dz[ind] * coord->J[ind]);
     
   } // End Foor loop
-
-  return result;
-  
+  return result;  
 }
+
+
+Field3D Div_a_Grad_perp_curv(const Field3D& b, const Field3D& a){
+  auto *coord = mesh->getCoordinates();
+  Field3D tmp = (DDX(coord->J * coord->g11*b)*DDX(a) + coord->J * coord->g11 * b * D2DX2(a))/coord->J;
+  tmp += (DDZ(coord->J * coord->g33 * b)*DDZ(a) + coord->J * coord->g33 * b * D2DZ2(a))/coord->J;
+  tmp += (DDX(coord->J * coord->g13 * b)*DDZ(a) + coord->J * coord->g13 * b * D2DXDZ(a) * 2.0 + DDZ(coord->J * coord->g13 * b)*DDX(a))/coord->J;
+  return tmp; 
+}
+
+
 
 
 
