@@ -1740,9 +1740,10 @@ int Hermes::rhs(BoutReal t) {
     if (FiniteElMass) {
 
       
-      aparSolver->setCoefD(-0.5*(Bnorm*rho_s0 * beta_e)/Ne);
-      aparSolver->setCoefA(0.5*beta_e*mi_me);
-      psi = aparSolver->solve(VePsi,psi);
+      //aparSolver->setCoefD(-0.5*(Bnorm*rho_s0 * beta_e)/Ne);
+      aparSolver->setCoefD(1.0);
+      aparSolver->setCoefA(-Ne*0.5*beta_e*mi_me);
+      psi = aparSolver->solve(-VePsi*Ne,psi);
       mesh->communicate(psi);
       
       psi.applyParallelBoundary(parbc);

@@ -67,9 +67,14 @@ private:
 
   Field3D Pe_yup, Pe_ydown,kappa_epar_yup,kappa_epar_ydown;
   
+  Field3D xl,yl,zl;
   
   FieldGroup EvolvingVars;
 
+
+  Field3D solution_psi;
+
+  
   // Auxilliary variables
   Field3D Te;         // Electron temperature
   Field3D Ti;         // Ion temperature
@@ -329,7 +334,7 @@ private:
   bool split_n0_psi;   // Split the n=0 component of Apar (psi)?
   //Laplacian *aparSolver;
   // LaplaceXZ *aparSolver;
-  std::unique_ptr<LaplaceXZ> aparSolver{nullptr};
+  std::unique_ptr<Laplacian> aparSolver{nullptr};
 
   // std::unique_ptr<LaplaceXY> aparXY{nullptr};
   LaplaceXY *aparXY;    // Solves n=0 component
