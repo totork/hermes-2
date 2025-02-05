@@ -335,7 +335,7 @@ private:
   //Laplacian *aparSolver;
   // LaplaceXZ *aparSolver;
   std::unique_ptr<Laplacian> aparSolver{nullptr};
-
+  //  std::unique_ptr<LaplaceXZ> aparSolver{nullptr};
   // std::unique_ptr<LaplaceXY> aparXY{nullptr};
   LaplaceXY *aparXY;    // Solves n=0 component
   Field2D psi2D;        // Axisymmetric Psi
@@ -353,8 +353,7 @@ private:
   
   bool newXZsolver; 
   std::unique_ptr<Laplacian> phiSolver{nullptr}; // Old Laplacian in X-Z
-  std::unique_ptr<LaplaceXZ> newSolver{nullptr}; // New Laplacian in X-Z
-
+ 
 
   bool relaxation;
   Field3D phi_1;

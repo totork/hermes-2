@@ -1262,17 +1262,13 @@ int Hermes::init(bool restarting) {
   optsc["newXZsolver"].setConditionallyUsed();
 
   OPTION(optsc, newXZsolver, false);
-  if (newXZsolver) {
-    // Test new LaplaceXZ solver                                                                                                                  
-    newSolver = LaplaceXZ::create(bout::globals::mesh);
-    // Set coefficients for Boussinesq solve                                                                                                      
-    newSolver->setCoefs(1. / SQ(coord->Bxy), Field3D(0.0));
-  } else {
+  
     // Use older Laplacian solver                                                                                                                 
-    phiSolver = Laplacian::create(&opt["phiSolver"]);
-    // Set coefficients for Boussinesq solve                                                                                                      
-    phiSolver->setCoefC(1./ SQ(coord->Bxy));
-  }
+
+  phiSolver = Laplacian::create(&opt["phiSolver"]);
+  phiSolver->setCoefC(1./ SQ(coord->Bxy));
+
+  
   phi = 0.0;
   Ve = 0.0;
   Vi = 0.0;
@@ -1283,8 +1279,9 @@ int Hermes::init(bool restarting) {
   phi.setBoundary("phi"); // For y boundaries                                                                                                     
 
   restart.addOnce(phi, "phi");
-  
-  aparSolver = Laplacian::create(&opt["aparSolver"]);
+  if (electromagnetic){
+    aparSolver = Laplacian::create(&opt["aparSolver"]);
+  }
   
   Ve.setBoundary("Ve");
   nu.setBoundary("nu");
@@ -1683,17 +1680,12 @@ int Hermes::rhs(BoutReal t) {
       // Boussinesq, non-split
       // Solve all components using X-Z solver
       
-      if (newXZsolver) {
-	// Use the new LaplaceXZ solver
-	// newSolver->setCoefs(1./SQ(coord->Bxy), 0.0); // Set when initialised
-	phi = newSolver->solve(Vort, phi + Pi);
-      } else {
+      
 	// Use older Laplacian solver
 	// phiSolver->setCoefC(1./SQ(coord->Bxy)); // Set when initialised
-	mesh->communicate(phi_boundary3d);
-	phi = phiSolver->solve(mul_all(Vort , mul_all(coord->Bxy, coord->Bxy)), phi_boundary3d);//_boundary3d);
-	//phi = phiSolver->solve(Vort, phi);
-      }
+      mesh->communicate(phi_boundary3d);
+      phi = phiSolver->solve(mul_all(Vort , mul_all(coord->Bxy, coord->Bxy)), phi_boundary3d);//_boundary3d);
+	
       
       // Hot ion term in vorticity
       debug_phibndry3d = phi_boundary3d;
@@ -1739,10 +1731,10 @@ int Hermes::rhs(BoutReal t) {
   if (electromagnetic) {
     if (FiniteElMass) {
 
-      
-      //aparSolver->setCoefD(-0.5*(Bnorm*rho_s0 * beta_e)/Ne);
+      // With laplacian
       aparSolver->setCoefD(1.0);
       aparSolver->setCoefA(-Ne*0.5*beta_e*mi_me);
+
       psi = aparSolver->solve(-VePsi*Ne,psi);
       mesh->communicate(psi);
       
@@ -2093,6 +2085,7 @@ int Hermes::rhs(BoutReal t) {
 	TE_Ne_anomalous = Div_a_Grad_perp_mod(a_d3d, Ne);
       } else {
 	TE_Ne_anomalous = Div_a_Grad_perp_curv(a_d3d, Ne);
+	//TE_Ne_anomalous = a_d3d * new_Delp2(Ne); 
       }
       ddt(Ne) += TE_Ne_anomalous;
     }  // End Ne_anomalous
