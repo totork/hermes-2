@@ -389,7 +389,8 @@ protected:
 	for (int k = 0; k < mesh->LocalNz; k++) {
 	  BoutReal bndryval = 0.5*(Ne_solution(1,j,k)+Ne(2,j,k));
 	  Ne(1,j,k) = 2.0*bndryval - Ne(2,j,k);
-	  
+	  BoutReal nextval = 0.5*(Ne_solution(0,j,k)+Ne(1,j,k));
+	  Ne(0,j,k) = 2.0*nextval - Ne(1,j,k);
 	  //Ne(0,j,k) = Ne_solution(0,j,k);
 	  //Ne(1,j,k) =	Ne_solution(1,j,k);
 	}
@@ -401,9 +402,10 @@ protected:
       int n = mesh->LocalNx;
       for (int j = mesh->ystart; j <= mesh->yend; j++) {
 	  for (int k = 0; k < mesh->LocalNz; k++) {
-	    BoutReal bndryval = 0.5*(Ne_solution(n-2,j,k)+Ne(n-3,j,k));
-	    
+	    BoutReal bndryval = 0.5*(Ne_solution(n-2,j,k)+Ne(n-3,j,k));	
 	    Ne(n-2,j,k) = 2.0*bndryval - Ne(n-3,j,k);
+	    BoutReal nextval = 0.5*(Ne_solution(n-1,j,k)+Ne(n-2,j,k));
+	    Ne(n-1,j,k) = 2.0*nextval - Ne(n-2,j,k);
 	    
 	    //Ne(n-1,j,k) = Ne_solution(n-1,j,k);
 	    //Ne(n-2,j,k) = Ne_solution(n-2,j,k)
