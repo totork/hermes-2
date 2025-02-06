@@ -78,7 +78,7 @@ BoutReal limitFree(BoutReal fm, BoutReal fc){
 
 
 BoutReal interpolate_sheathneighbour(BoutReal fc, BoutReal finterface){
-  return fc + (finterface-fc);
+  return finterface + (finterface-fc);
 }
 
 
@@ -1280,7 +1280,7 @@ int Hermes::init(bool restarting) {
 
   restart.addOnce(phi, "phi");
   if (electromagnetic){
-    aparSolver = Laplacian::create(&opt["aparSolver"]);
+    aparSolver = LaplaceXZ::create(mesh,&opt["aparSolver"],CELL_CENTER);
   }
   
   Ve.setBoundary("Ve");
@@ -1527,9 +1527,9 @@ int Hermes::rhs(BoutReal t) {
 	  Ve(n - 2, j, k) = Ve(n - 3, j, k) * decay_Ve;
 	  Ve(n - 1, j, k) = Ve(n - 3, j, k) * decay_Ve * decay_Ve;	
 	  // Vort
-	  BoutReal decay_Vort = limitFreeScale(abs(Vort(n - 4, j, k)) , abs(Vort(n - 3, j, k)));
-	  Vort(n - 2, j, k) = Vort(n - 3, j, k) * decay_Vort;
-	  Vort(n - 1, j, k) = Vort(n - 3, j, k) * decay_Vort * decay_Vort;
+	  //BoutReal decay_Vort = limitFreeScale(abs(Vort(n - 4, j, k)) , abs(Vort(n - 3, j, k)));
+	  //Vort(n - 2, j, k) = Vort(n - 3, j, k) * decay_Vort;
+	  //Vort(n - 1, j, k) = Vort(n - 3, j, k) * decay_Vort * decay_Vort;
 	  Pi(n - 1, j, k) = Ti(n - 1, j, k) * Ne(n - 1, j, k);
 	  Pi(n - 2, j, k) = Ti(n - 2, j, k) * Ne(n - 2, j, k);
 	  Pe(n - 1, j, k) = Te(n - 1, j, k) * Ne(n - 1, j, k);
@@ -1731,11 +1731,14 @@ int Hermes::rhs(BoutReal t) {
   if (electromagnetic) {
     if (FiniteElMass) {
 
+      Field3D ones = 1.0;
+      Field3D tmp = -Ne*0.5*beta_e*mi_me;
       // With laplacian
-      aparSolver->setCoefD(1.0);
-      aparSolver->setCoefA(-Ne*0.5*beta_e*mi_me);
-
-      psi = aparSolver->solve(-VePsi*Ne,psi);
+      //aparSolver->setCoefD(1.0);
+      //aparSolver->setCoefA(-Ne*0.5*beta_e*mi_me);
+      aparSolver->setCoefs(ones,tmp);
+      //psi = aparSolver->solve(-VePsi,psi);
+      psi = aparSolver->solve(-VePsi*Ne,ones);
       mesh->communicate(psi);
       
       psi.applyParallelBoundary(parbc);
@@ -1787,9 +1790,15 @@ int Hermes::rhs(BoutReal t) {
 	for (const auto& pnt : *bndry_par) {
 	  const auto i = pnt.ind();
 	  if (sheath_interpolate){
-	    pnt.ynext(Ne) = floor(limitFree(pnt.yprev(Ne),pnt.ythis(Ne)), floor_Ne);
-	    pnt.ynext(Ti) = floor(limitFree(pnt.yprev(Ti),pnt.ythis(Ti)), floor_Ti);
-	    pnt.ynext(Te) = floor(limitFree(pnt.yprev(Te),pnt.ythis(Te)), floor_Te);
+	    BoutReal decay_Ne = limitFreeScale(pnt.yprev(Ne),pnt.ythis(Ne));
+	    pnt.ynext(Ne) = floor(pnt.ythis(Ne)*decay_Ne, floor_Ne);
+
+	    BoutReal decay_Te = limitFreeScale(pnt.yprev(Te),pnt.ythis(Te));
+            pnt.ynext(Te) = floor(pnt.ythis(Te)*decay_Te, floor_Te);
+
+	    BoutReal decay_Ti = limitFreeScale(pnt.yprev(Ti),pnt.ythis(Ti));
+            pnt.ynext(Ti) = floor(pnt.ythis(Ti)*decay_Ti, floor_Ti);
+	    
 	  } else {
 	    pnt.ynext(Ne) = pnt.ythis(Ne);
             pnt.ynext(Ti) = pnt.ythis(Ti);
@@ -1800,9 +1809,6 @@ int Hermes::rhs(BoutReal t) {
 	  pnt.ynext(Pe) = pnt.ynext(Ne)*pnt.ynext(Te);
 
 	  
-	  BoutReal phisheath = log(sqrt(pnt.ythis(Te) / (pnt.ythis(Te) + pnt.ythis(Ti)))) * pnt.ythis(Te);
-	  pnt.ynext(phi) = phisheath;
-
 	  TRACE("Sheath offset==2, interpolate sheath values");
 
 	  BoutReal nesheath = 0.0;
@@ -1817,6 +1823,10 @@ int Hermes::rhs(BoutReal t) {
             tesheath = pnt.ythis(Te);
             tisheath = pnt.ythis(Ti);
 	  }
+
+	  BoutReal phisheath = log(sqrt(tesheath / (tesheath + tisheath))) * tesheath;
+          pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
+	  
 	  
 	  const BoutReal visheath = pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath);
 
@@ -1874,20 +1884,34 @@ int Hermes::rhs(BoutReal t) {
 	    TRACE("Sheath offset==1, set double next fields");
 
 	    const int offset_factor = 1;
+	    if(sheath_interpolate){
+	      pnt.ynext(Ne) = floor(pnt.ythis(Ne)*decay_Ne, floor_Ne);
+
+	      pnt.getAt<false>(Ne, offset_factor) = floor(pnt.ythis(Ne)*decay_Ne*decay_Ne, floor_Ne);
+	      pnt.getAt<false>(Te, offset_factor) = floor(pnt.ythis(Te)*decay_Te*decay_Te, floor_Te);
+	      pnt.getAt<false>(Ti, offset_factor) = floor(pnt.ythis(Ti)*decay_Ti*decay_Ti, floor_Ti);
+	      pnt.getAt<false>(Pe, offset_factor) = pnt.getAt<false>(Ne, offset_factor) * pnt.getAt<false>(Te, offset_factor);
+	      pnt.getAt<false>(Pi, offset_factor) = pnt.getAt<false>(Ne, offset_factor) * pnt.getAt<false>(Ti, offset_factor);
+
+	      pnt.getAt<false>(phi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(phi),pnt.ynext(phi));
+	      pnt.getAt<false>(Vi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Vi),pnt.ynext(Vi));
+	      pnt.getAt<false>(Jpar, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Jpar),pnt.ynext(Jpar));
+	      pnt.getAt<false>(NVi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(NVi),pnt.ynext(NVi));
+	      pnt.getAt<false>(Vort, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Vort),pnt.ynext(Vort));
+	    } else {       	    
+	      pnt.getAt<false>(Ne, offset_factor) = pnt.ynext(Ne);
+	      pnt.getAt<false>(Te, offset_factor) = pnt.ynext(Te);
+	      pnt.getAt<false>(Pe, offset_factor) = pnt.ynext(Pe);
+	      pnt.getAt<false>(Ti, offset_factor) = pnt.ynext(Ti);
+	      pnt.getAt<false>(Pi, offset_factor) = pnt.ynext(Pi);
 	    
-	    pnt.getAt<false>(Ne, offset_factor) = pnt.ynext(Ne);
-	    pnt.getAt<false>(Te, offset_factor) = pnt.ynext(Te);
-	    pnt.getAt<false>(Pe, offset_factor) = pnt.ynext(Pe);
-	    pnt.getAt<false>(Ti, offset_factor) = pnt.ynext(Ti);
-	    pnt.getAt<false>(Pi, offset_factor) = pnt.ynext(Pi);
-	    
-	    pnt.getAt<false>(phi, offset_factor) = pnt.ynext(phi);
-	    pnt.getAt<false>(Vi, offset_factor) = pnt.ynext(Vi);
-	    pnt.getAt<false>(Ve, offset_factor) = pnt.ynext(Ve);
-	    pnt.getAt<false>(Jpar, offset_factor) = pnt.ynext(Jpar);
-	    pnt.getAt<false>(NVi, offset_factor) = pnt.ynext(NVi);
-	    pnt.getAt<false>(Vort, offset_factor) = pnt.ynext(Vort);
-	    
+	      pnt.getAt<false>(phi, offset_factor) = pnt.ynext(phi);
+	      pnt.getAt<false>(Vi, offset_factor) = pnt.ynext(Vi);
+	      pnt.getAt<false>(Ve, offset_factor) = pnt.ynext(Ve);
+	      pnt.getAt<false>(Jpar, offset_factor) = pnt.ynext(Jpar);
+	      pnt.getAt<false>(NVi, offset_factor) = pnt.ynext(NVi);
+	      pnt.getAt<false>(Vort, offset_factor) = pnt.ynext(Vort);
+	    }
 	    
 	  } // End interpolate_sheathneighbour
 
