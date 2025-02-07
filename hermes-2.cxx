@@ -1351,6 +1351,10 @@ int Hermes::init(bool restarting) {
   Ne_ym1 = 0.0;
   Ne_yp1 = 0.0;
   Ne_yp2 = 0.0;
+  Te_ym2 = 0.0;
+  Te_ym1 = 0.0;
+  Te_yp1 = 0.0;
+  Te_yp2 = 0.0;
   boundary_direction = 0.0;
   if (verbose) {
     SAVE_REPEAT(debug_decay_Ne);
@@ -1364,7 +1368,7 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(tau_e, tau_i);
 
     SAVE_REPEAT(NVi_ym2, NVi_ym1 , NVi_yp1, NVi_yp2);
-    SAVE_REPEAT( Ne_ym2 , Ne_ym1 , Ne_yp1 , Ne_yp2);
+    SAVE_REPEAT( Ne_ym2 , Ne_ym1 , Ne_yp1 , Ne_yp2, Te_ym2 , Te_ym1 , Te_yp1 , Te_yp2);
     
     SAVE_REPEAT(Jpar_sheath);
 
@@ -1963,6 +1967,10 @@ int Hermes::rhs(BoutReal t) {
       NVi_ym1[i] = NVi.ydown()[iym];
       NVi_yp2[i] = NVi.yup(1)[iypp];
       NVi_yp1[i] = NVi.yup()[iyp];
+      Te_ym2[i] = Te.ydown(1)[iymm];
+      Te_ym1[i] = Te.ydown()[iym];
+      Te_yp2[i] = Te.yup(1)[iypp];
+      Te_yp1[i] = Te.yup()[iyp];
     }
   }
 
