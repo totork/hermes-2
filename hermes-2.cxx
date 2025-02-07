@@ -81,6 +81,13 @@ BoutReal interpolate_sheathneighbour(BoutReal fc, BoutReal finterface){
   return finterface + (finterface-fc);
 }
 
+BoutReal rampfactor(BoutReal thistime, BoutReal timecut){
+  if (thistime>timecut){
+    return 1.0;
+  } else {
+    return (thistime/timecut);
+  }
+}
 
 
 
@@ -841,6 +848,9 @@ int Hermes::init(bool restarting) {
   OPTION(optsheath, parallel_sheaths, false); // Apply parallel sheath conditions?
   OPTION(optsheath, par_sheath_model, 0);
   OPTION(optsheath, par_sheath_ve, true);
+  OPTION(optsheath, sheath_ramp, false);
+  OPTION(optsheath, sheath_ramp_time, 1e6);
+  SAVE_REPEAT(sheath_ramp_factor);
   sheath_allow_supersonic = optsheath["sheath_allow_supersonic"]
           .doc("If plasma is faster than sound speed, go to plasma velocity")
           .withDefault<bool>(true);
@@ -1782,6 +1792,7 @@ int Hermes::rhs(BoutReal t) {
     switch (par_sheath_model) {
     case 0 :{
 
+      sheath_ramp_factor = rampfactor(t,sheath_ramp_time);
       sheath_dpe = 0.0;
       sheath_dpi = 0.0;
 
@@ -1789,14 +1800,13 @@ int Hermes::rhs(BoutReal t) {
            mesh->getBoundariesPar(BoundaryParType::xout)) {
 	for (const auto& pnt : *bndry_par) {
 	  const auto i = pnt.ind();
+
+	  BoutReal decay_Ne = limitFreeScale(pnt.yprev(Ne),pnt.ythis(Ne));
+	  BoutReal decay_Te = limitFreeScale(pnt.yprev(Te),pnt.ythis(Te));
+	  BoutReal decay_Ti = limitFreeScale(pnt.yprev(Ti),pnt.ythis(Ti));
 	  if (sheath_interpolate){
-	    BoutReal decay_Ne = limitFreeScale(pnt.yprev(Ne),pnt.ythis(Ne));
 	    pnt.ynext(Ne) = floor(pnt.ythis(Ne)*decay_Ne, floor_Ne);
-
-	    BoutReal decay_Te = limitFreeScale(pnt.yprev(Te),pnt.ythis(Te));
             pnt.ynext(Te) = floor(pnt.ythis(Te)*decay_Te, floor_Te);
-
-	    BoutReal decay_Ti = limitFreeScale(pnt.yprev(Ti),pnt.ythis(Ti));
             pnt.ynext(Ti) = floor(pnt.ythis(Ti)*decay_Ti, floor_Ti);
 	    
 	  } else {
@@ -1826,13 +1836,23 @@ int Hermes::rhs(BoutReal t) {
 
 	  BoutReal phisheath = log(sqrt(tesheath / (tesheath + tisheath))) * tesheath;
           pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
-	  
-	  
-	  const BoutReal visheath = pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath);
+
+	  BoutReal visheath = 0.0;
+	  if (!sheath_ramp){
+	    visheath = pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath);
+	  } else {
+	    visheath = sheath_ramp_factor * (pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath));
+	  }
+
 
 	  BoutReal vesheath = 0.0;
 	  if (evolve_vepsi){
-	    vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
+	    if (!sheath_ramp){
+	      vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
+	    } else {
+	      vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath))); 
+	    }
+	    
 	  } else {
 	    vesheath = visheath;
 	  }
@@ -1870,14 +1890,16 @@ int Hermes::rhs(BoutReal t) {
 	    TRACE("Sheath offset==1, sheath power calculation");
 
             const BoutReal q_e = floor( (sheath_gamma_e - 1.5) * tesheath * nesheath * vesheath * pnt.dir , 0.0);                                                                                         
-            const BoutReal flux_e = q_e * coord->J[i] / sqrt(coord->g_22[i]);                                                                                                                             
-            const BoutReal power_e = flux_e / (coord->dy[i] * coord->J[i]);                                                                                                                               
+            const BoutReal flux_e = q_e * coord->J[i] / sqrt(coord->g_22[i]);
+	    BoutReal power_e = 0.0;
+	    power_e = flux_e / (coord->dy[i] * coord->J[i]);
             sheath_dpe[i] -= (3.0/2.0) * power_e;                                                                                                                                                         
                                                                                                                                                                                                           
             const BoutReal q_i = floor( (sheath_gamma_i - 1.0) * tisheath * nesheath * visheath * pnt.dir , 0.0);                                                                                         
-            const BoutReal flux_i = q_i * coord->J[i] / sqrt(coord->g_22[i]);                                                                                                                             
-            const BoutReal power_i = flux_i / (coord->dy[i] * coord->J[i]);                                                                                                                               
-            sheath_dpi[i] -= (3.0/2.0) * power_i;                                                                                                                                                         
+            const BoutReal flux_i = q_i * coord->J[i] / sqrt(coord->g_22[i]);
+	    BoutReal power_i = 0.0;
+	    power_i = flux_i / (coord->dy[i] * coord->J[i]);
+	    sheath_dpi[i] -= (3.0/2.0) * power_i;                                                                                                                                                         
 
 	    // Also set the values in the interpolated value after the sheath, here neumann
 

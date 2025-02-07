@@ -290,6 +290,8 @@ private:
   bool ramp_mesh;   // Use Ne,Pe in the grid file for starting ramp target
   BoutReal ramp_timescale; // Length of time for the initial ramp
   Field3D NeTarget, PeTarget, PiTarget; // For adaptive sources
+  bool sheath_ramp;
+  BoutReal sheath_ramp_time,sheath_ramp_factor;
   
   bool adapt_source; // Use a PI controller to feedback profiles
   bool core_sources; // Sources only in the core
