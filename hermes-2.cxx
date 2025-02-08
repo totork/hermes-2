@@ -732,7 +732,8 @@ int Hermes::init(bool restarting) {
   }
 
   OPTION(optneutrals,Recycling_coef, 0.95);
-  
+  OPTION(optneutrals, floor_Nn, 1e-5);
+  OPTION(optneutrals, floor_Tn, 0.1/20.0);
 
 
   
@@ -1502,6 +1503,11 @@ int Hermes::rhs(BoutReal t) {
   Pi.applyBoundary(t);
   VePsi.applyBoundary(t);
 
+  if (evolve_neutrals){
+    Nn.applyBoundary(t);
+    NnVn.applyBoundary(t);
+    Pn.applyBoundary(t);
+  }
   
   BOUT_FOR(i, Ne.getRegion("RGN_NOY")) {
 
@@ -1515,7 +1521,17 @@ int Hermes::rhs(BoutReal t) {
 
     NVi[i] = Ne[i] * Vi[i];
     Pe[i] = Ne[i] * Te[i];
-    Pi[i] = Ne[i] * Ti[i];    
+    Pi[i] = Ne[i] * Ti[i];
+
+
+    if (evolve_neutrals){
+      Vn[i] = NnVn[i] / Nn[i];
+      Tn[i] = floor(Pn[i] / Nn[i], floor_Tn);
+      Nn[i] = floor(Nn[i], floor_Nn);
+      
+      NnVn[i] = Nn[i] * Vn[i];
+      Pn[i] = Nn[i] * Tn[i];
+    }
   }
   
   if (isMMS==false){
@@ -1588,6 +1604,11 @@ int Hermes::rhs(BoutReal t) {
     VePsi.applyParallelBoundary(parbc);
   }
 
+  if (evolve_neutrals){
+    Nn.applyParallelBoundary(parbc);
+    NnVn.applyParallelBoundary(parbc);
+    Pn.applyParallelBoundary(parbc);
+  }
 
 
 
@@ -1609,6 +1630,19 @@ int Hermes::rhs(BoutReal t) {
     mul_all(Pe, Te, Ne, i);
     mul_all(Pi, Ti, Ne, i);
     mul_all(NVi, Vi, Ne, i);
+
+    if(evolve_neutrals){
+      div_all(Tn, Pn, Nn, i);
+      div_all(Vn, NnVn, Nn, i);
+      
+      floor_all(Nn, floor_Nn, i);
+      floor_all(Tn, floor_Tn, i);
+
+      mul_all(Pn, Tn, Nn, i);
+      mul_all(NnVn, Vn, Nn, i);
+      
+    }
+    
 
     sound_speed[i] =  sqrt(Te[i] + Ti[i] * (5. / 3));
   }

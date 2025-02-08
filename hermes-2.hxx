@@ -282,7 +282,7 @@ private:
   Field3D Tn;
   Field3D Vn;
 
-
+  BoutReal floor_Nn,floor_Tn;
   BoutReal anomalous_Dn;
   BoutReal Recycling_coef;
   Field3D Recycling_flux;
