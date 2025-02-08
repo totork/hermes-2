@@ -463,6 +463,24 @@ const Field3D Div_par_mod(const Field3D& f, const Field3D& v, const Field3D& fas
 
 
 
+const Field3D Grad_par_mod(const Field3D& f){
+  Mesh* mesh = f.getMesh();
+  Field3D result{zeroFrom(f)};
+  Coordinates* coord = f.getCoordinates();
+  for (const auto& ind : f.getRegion("RGN_NOBNDRY")) {
+    const auto iyp = ind.yp();
+    const auto iypp = ind.ypp();
+    const auto iym = ind.ym();
+    const auto iymm = ind.ymm();
+    BoutReal fi = minmod(2.0*(f.yup()[iyp] - f[ind]) , 2.0*(f[ind] - f.ydown()[iym]), 0.5*(f.yup()[iyp] - f.ydown()[iym]) );
+    result[ind] += fi/(coord->dy[ind]*sqrt(coord->g_22[ind]));
+  }  
+  return result;
+}
+
+
+
+
 Field3D Div_a_Grad_perp_mod(const Field3D& a, const Field3D& f){
   Mesh* mesh = a.getMesh();
   Field3D result{zeroFrom(f)};

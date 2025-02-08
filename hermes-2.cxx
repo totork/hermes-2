@@ -63,7 +63,7 @@ BoutReal limitFreeScale(BoutReal fm, BoutReal fc) {
     return 1; // Neumann rather than increasing into boundary
   }
   BoutReal fp = fc / fm;
-  return std::max(fp, 0.8);
+  return std::max(fp, 0.98);
 }
 
 
@@ -547,6 +547,23 @@ int Hermes::init(bool restarting) {
     zero_all(Vort);
   }
 
+
+  // Neutrals
+
+  evolve_neutrals = optsc["evolve_neutrals"].doc("Evolve neutrals?").withDefault<bool>(false);
+  if (evolve_neutrals) {
+    SOLVE_FOR(Nn);
+    SOLVE_FOR(NnVn);
+    SOLVE_FOR(Pn);
+    EvolvingVars.add(Nn,NnVn,Pn);
+    if (output_ddt) {
+      SAVE_REPEAT(ddt(Nn),ddt(NnVn),ddt(Pn));
+    }
+  } else {
+    zero_all(Nn);
+    zero_all(NnVn);
+    zero_all(Pn);
+  }
   
   
   //////////////////////////////////////////////////////////////////////////
@@ -781,6 +798,7 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, use_new_conduction, false);
   OPTION(optnumerics, use_new_viscosity, false);
   OPTION(optnumerics, use_new_div_par, false);
+  OPTION(optnumerics, use_new_grad_par, false);
   OPTION(optnumerics, use_new_divagradperp, false);
   OPTION(optnumerics, use_Delp2, false);
 
@@ -1838,9 +1856,15 @@ int Hermes::rhs(BoutReal t) {
 	  BoutReal tesheath = 0.0;
 	  BoutReal tisheath = 0.0;
 	  if (sheath_interpolate){
-	    nesheath = pnt.interpolate_sheath_o1(Ne);
-	    tesheath = pnt.interpolate_sheath_o1(Te);
-	    tisheath = pnt.interpolate_sheath_o1(Ti);
+	    //nesheath = pnt.interpolate_sheath_o1(Ne);
+	    //tesheath = pnt.interpolate_sheath_o1(Te);
+	    //tisheath = pnt.interpolate_sheath_o1(Ti);
+
+	    // the sqrt maintains the exponential decay into the sheath, but at the middle point 
+	    nesheath = floor(pnt.ythis(Ne)*sqrt(decay_Ne), floor_Ne);
+	    tesheath = floor(pnt.ythis(Te)*sqrt(decay_Te), floor_Te);
+	    tisheath = floor(pnt.ythis(Ti)*sqrt(decay_Ti), floor_Ti);
+	    
 	  } else {
 	    nesheath = pnt.ythis(Ne);
             tesheath = pnt.ythis(Te);
@@ -2317,19 +2341,31 @@ int Hermes::rhs(BoutReal t) {
     TRACE("Ohm's law");
     
     if (VePsi_parefield){//Row 1 Term 1
-      TE_VePsi_parefield = mi_me * Grad_par(phi);
+      if (!use_new_grad_par){
+	TE_VePsi_parefield = mi_me * Grad_par(phi);
+      } else {
+	TE_VePsi_parefield = mi_me * Grad_par_mod(phi);
+      }
       ddt(VePsi) += TE_VePsi_parefield;
     } //End VePsi_parefield
 
     
     if (VePsi_parpressure){//Row 1 Term 2
-      TE_VePsi_parpressure = -mi_me * Grad_par(Pe) / Ne;
+      if (!use_new_grad_par){
+	TE_VePsi_parpressure = -mi_me * Grad_par(Pe) / Ne;
+      } else {
+	TE_VePsi_parpressure = -mi_me * Grad_par_mod(Pe) / Ne;
+      }
       ddt(VePsi) += TE_VePsi_parpressure;
     } //End VePsi_parpressure
 
 
     if (VePsi_partemp){//Row 1 Term 3
-      TE_VePsi_partemp = -mi_me * 0.71 * Grad_par(Te);
+      if (!use_new_grad_par){
+	TE_VePsi_partemp = -mi_me * 0.71 * Grad_par(Te);
+      } else {
+	TE_VePsi_partemp = -mi_me * 0.71 * Grad_par_mod(Te);
+      }
       ddt(VePsi) += TE_VePsi_partemp;
     } //End VePsi_partemp
 
@@ -2472,7 +2508,11 @@ int Hermes::rhs(BoutReal t) {
     
     if (NVi_parpressure){//Row 2
       Field3D peppi = add_all(Pe, Pi);
-      TE_NVi_parpressure = -Grad_parP(peppi);
+      if(!use_new_grad_par){
+	TE_NVi_parpressure = -Grad_par(peppi);
+      } else {
+	TE_NVi_parpressure = -Grad_par_mod(peppi);
+      }
       ddt(NVi) += TE_NVi_parpressure;
     } // End NVi_parpressure
 
@@ -2620,7 +2660,11 @@ int Hermes::rhs(BoutReal t) {
 
 
     if (Pe_thermalforce){//Row 4 Term 2
-      TE_Pe_thermalforce = -(2. / 3) * 0.71 * Jpar * Grad_parP(Te);
+      if(!use_new_grad_par){
+	TE_Pe_thermalforce = -(2. / 3) * 0.71 * Jpar * Grad_par(Te);
+      } else {
+	TE_Pe_thermalforce = -(2. / 3) * 0.71 * Jpar * Grad_par_mod(Te);
+      }
       ddt(Pe) += TE_Pe_thermalforce;
     } // End Pe_thermalforce
 
@@ -2759,7 +2803,11 @@ int Hermes::rhs(BoutReal t) {
 
     if (Pi_diamagenergyexchange){//Row 3 Term 1 and Term 2
       TRACE("Pi energy exchange with diamag flows");
-      TE_Pi_diamagenergyexchange = -(2. / 3) * Jpar * Grad_parP(Pi);
+      if (!use_new_grad_par){
+	TE_Pi_diamagenergyexchange = -(2. / 3) * Jpar * Grad_par(Pi);
+      } else {
+	TE_Pi_diamagenergyexchange = -(2. / 3) * Jpar * Grad_par_mod(Pi);
+      }
       TE_Pi_diamagenergyexchange += Pi * fci_curvature(add_all(Pi , Pe),use_bracket);
       ddt(Pi) += TE_Pi_diamagenergyexchange;
     } // End Pi_diamagenergyexchange
