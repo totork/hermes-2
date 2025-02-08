@@ -279,17 +279,27 @@ private:
   Field3D Nn;
   Field3D NnVn;
   Field3D Pn;
-  
+  Field3D Tn;
+  Field3D Vn;
+
+
+  BoutReal anomalous_Dn;
+  BoutReal Recycling_coef;
   Field3D Recycling_flux;
 
+  bool TE_Nn;
   bool Nn_parflow, Nn_perpflow, Nn_sources;
   Field3D TE_Nn_parflow, TE_Nn_perpflow, TE_Nn_sources;
 
+
+  bool TE_NnVn;
   bool NnVn_parflow, NnVn_perpflow, NnVn_pargradient, NnVn_pardiffusion, NnVn_friction;
   Field3D TE_NnVn_parflow, TE_NnVn_perpflow, TE_NnVn_pargradient, TE_NnVn_pardiffusion, TE_NnVn_friction;
 
-  bool Pn_parflow, Pn_perpflow, Pn_parcompression, Pn_pardiffusion, Pn_sources;
-  Field3D TE_Pn_parflow, TE_Pn_perpflow, TE_Pn_parcompression, TE_Pn_pardiffusion, TE_Pn_sources;
+
+  bool TE_Pn;
+  bool Pn_parflow, Pn_perpflow, Pn_parcompression, Pn_perpdiffusion, Pn_sources;
+  Field3D TE_Pn_parflow, TE_Pn_perpflow, TE_Pn_parcompression, TE_Pn_perpdiffusion, TE_Pn_sources;
   
   // Numerical dissipation
 
