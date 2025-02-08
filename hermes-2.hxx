@@ -256,6 +256,8 @@ private:
   BoutReal electron_weight;  // electron heaviness in units of m_e (for slower boundaries)
   bool par_sheath_ve;
   Field3D sheath_dpe, sheath_dpi; 
+
+  Field3D fastest_ispeed,fastest_espeed;
   
   BoundaryRegionPar* bndry_par;
 

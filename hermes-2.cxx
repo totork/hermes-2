@@ -1356,6 +1356,7 @@ int Hermes::init(bool restarting) {
   Te_yp1 = 0.0;
   Te_yp2 = 0.0;
   boundary_direction = 0.0;
+  
   if (verbose) {
     SAVE_REPEAT(debug_decay_Ne);
     SAVE_ONCE(boundary_direction);
@@ -1432,6 +1433,9 @@ int Hermes::init(bool restarting) {
   opt["VePsi"].setConditionallyUsed();
   optsc["neutral_gamma"].setConditionallyUsed();
 
+  alloc_all(fastest_espeed);
+  alloc_all(fastest_ispeed);
+  
   alloc_all(Te);
   alloc_all(Ti);
   alloc_all(Vi);
@@ -1604,8 +1608,13 @@ int Hermes::rhs(BoutReal t) {
   
   sound_speed.applyBoundary("neumann");
 
-
-
+  
+  fastest_ispeed = sound_speed;
+  if (electromagnetic){
+    fastest_espeed = sound_speed;
+  } else {
+    fastest_espeed = sound_speed;
+  }
   
 
 
@@ -1896,15 +1905,21 @@ int Hermes::rhs(BoutReal t) {
             const BoutReal q_e = floor( (sheath_gamma_e - 1.5) * tesheath * nesheath * vesheath * pnt.dir , 0.0);                                                                                         
             const BoutReal flux_e = q_e * coord->J[i] / sqrt(coord->g_22[i]);
 	    BoutReal power_e = 0.0;
-	    power_e = flux_e / (coord->dy[i] * coord->J[i]);
-            sheath_dpe[i] -= (3.0/2.0) * power_e;                                                                                                                                                         
                                                                                                                                                                                                           
             const BoutReal q_i = floor( (sheath_gamma_i - 1.0) * tisheath * nesheath * visheath * pnt.dir , 0.0);                                                                                         
             const BoutReal flux_i = q_i * coord->J[i] / sqrt(coord->g_22[i]);
 	    BoutReal power_i = 0.0;
-	    power_i = flux_i / (coord->dy[i] * coord->J[i]);
-	    sheath_dpi[i] -= (3.0/2.0) * power_i;                                                                                                                                                         
 
+	    if (!sheath_ramp){
+	      power_e = flux_e / (coord->dy[i] * coord->J[i]);
+	      power_i = flux_i / (coord->dy[i] * coord->J[i]);
+	    } else {
+	      power_e = sheath_ramp_factor * (flux_e / (coord->dy[i] * coord->J[i]));
+              power_i = sheath_ramp_factor * (flux_i / (coord->dy[i] * coord->J[i]));
+	    }
+	    
+	    sheath_dpi[i] -= (3.0/2.0) * power_i;                                                                                                                                                         
+	    sheath_dpe[i] -= (3.0/2.0) * power_e;
 	    // Also set the values in the interpolated value after the sheath, here neumann
 
 	    TRACE("Sheath offset==1, set double next fields");
@@ -2117,11 +2132,20 @@ int Hermes::rhs(BoutReal t) {
     if (Ne_parflow){// Row 2
       TRACE("Density parflow");
       if(!use_Vi){
-	Field3D neve = mul_all(Ne,Ve);
-	TE_Ne_parflow = -Div_parP(neve,use_new_div_par);
+	if (!use_new_div_par){
+	  Field3D neve = mul_all(Ne,Ve);
+	  TE_Ne_parflow = -Div_par(neve);
+	} else {
+	  TE_Ne_parflow = -Div_par_mod(Ne,Ve,fastest_espeed);
+	}
+
       } else {
-	Field3D nevi = mul_all(Ne,Vi);
-	TE_Ne_parflow = -Div_parP(nevi,use_new_div_par);
+	if (!use_new_div_par){
+	  Field3D nevi = mul_all(Ne,Vi);
+	  TE_Ne_parflow = -Div_par(nevi);
+	} else {
+	  TE_Ne_parflow = -Div_par_mod(Ne,Vi,fastest_ispeed);
+	}
       }
       ddt(Ne) += TE_Ne_parflow;
     }  // End Ne_parflow
@@ -2191,7 +2215,12 @@ int Hermes::rhs(BoutReal t) {
     
     if(Vort_parcurrent){// Row 2
       TRACE("Vort_parcurrent");
-      TE_Vort_parcurrent = Div_parP(Jpar,use_new_div_par);
+      if (!use_new_div_par){
+	TE_Vort_parcurrent = Div_par(Jpar);
+      } else {
+	TE_Vort_parcurrent = Div_par_mod(Ne, sub_all(Vi,Ve),fastest_ispeed);
+      }
+
       ddt(Vort) += TE_Vort_parcurrent;
     } //End Vort_parcurrent
 
@@ -2261,8 +2290,12 @@ int Hermes::rhs(BoutReal t) {
 
     if (Vort_parflow){
       TRACE("Vorticity parallel flow");
-      Field3D VortVi = mul_all(Vort,Vi);
-      TE_Vort_parflow = -Div_parP(VortVi,use_new_div_par);
+      if (!use_new_div_par){
+	Field3D VortVi = mul_all(Vort,Vi);
+	TE_Vort_parflow = -Div_par(VortVi);
+      } else {
+	TE_Vort_parflow = -Div_par_mod(Vort,Vi,fastest_ispeed);
+      }    
       ddt(Vort) += TE_Vort_parflow;
     }
 
@@ -2319,9 +2352,17 @@ int Hermes::rhs(BoutReal t) {
     
     if (VePsi_parflow){//Row 3 Term 2
       if(!use_Vi){
-	TE_VePsi_parflow = -Ve * Div_parP(sub_all(Ve,Vi),use_new_div_par);
+	if(!use_new_div_par){
+	  TE_VePsi_parflow = -Ve * Div_par(sub_all(Ve,Vi));
+	} else {
+	  TE_VePsi_parflow = -Ve * Div_par(sub_all(Ve,Vi));
+	}
       } else {
-	TE_VePsi_parflow = -Vi * Div_parP(sub_all(Ve,Vi),use_new_div_par);
+	if(!use_new_div_par){
+	  TE_VePsi_parflow = -Vi * Div_par(sub_all(Ve,Vi));
+	} else {
+	  TE_VePsi_parflow = -Vi * Div_par(sub_all(Ve,Vi));
+	}       
       }
       ddt(VePsi) += TE_VePsi_parflow;
     } // End VePsi_parflow
@@ -2419,8 +2460,12 @@ int Hermes::rhs(BoutReal t) {
 
 
     if (NVi_parflow){//Row 1 Term 2
-      auto nvivi = mul_all(NVi,Vi);
-      TE_NVi_parflow = -Div_parP(nvivi,use_new_div_par);
+      if(!use_new_div_par){
+	auto nvivi = mul_all(NVi,Vi);
+	TE_NVi_parflow = -Div_par(nvivi);
+      } else {
+	TE_NVi_parflow = -Div_par_mod(NVi,Vi,fastest_ispeed);
+      }      
       ddt(NVi) += TE_NVi_parflow;
     } // End NVi_parflow
 
@@ -2539,8 +2584,12 @@ int Hermes::rhs(BoutReal t) {
     if (Pe_parflow){//Row 2 
       // Parallel flow plus compression
       TRACE("Pe_parflow + compression");
-      Field3D peve = mul_all(Pe,Ve);
-      TE_Pe_parflow = -Div_parP(peve,use_new_div_par) - (2. / 3) * Pe * Div_parP(Ve,use_new_div_par);;
+      if(!use_new_div_par){
+	Field3D peve = mul_all(Pe,Ve);
+	TE_Pe_parflow = -Div_par(peve) - (2. / 3) * Pe * Div_par(Ve);
+      } else {
+	TE_Pe_parflow = -Div_par_mod(Pe,Ve,fastest_espeed) - (2. / 3) * Pe * Div_par(Ve);
+      }
       ddt(Pe) += TE_Pe_parflow;
     } // End Pe_parflow
 
@@ -2577,8 +2626,12 @@ int Hermes::rhs(BoutReal t) {
 
 
     if (Pe_thermalcurrent){//Row 4 Term 1
-      Field3D tejpar = mul_all(Te,Jpar);
-      TE_Pe_thermalcurrent = (2. / 3) * 0.71 * Div_parP(tejpar,use_new_div_par);
+      if (!use_new_div_par){
+	Field3D tejpar = mul_all(Te,Jpar);
+	TE_Pe_thermalcurrent = (2. / 3) * 0.71 * Div_par(tejpar);
+      } else {
+	TE_Pe_thermalcurrent = (2. / 3) * 0.71 * Div_par_mod(Te,Jpar,fastest_espeed);
+      }
       ddt(Pe) += TE_Pe_thermalcurrent;
     } //End Pe_thermalcurrent
 
@@ -2692,9 +2745,14 @@ int Hermes::rhs(BoutReal t) {
 
     if (Pi_parflow){//Row 2 Term 1 and Term 2
       TRACE("Pi parflow");
-      Field3D pivi = mul_all(Pi,Vi);
-      TE_Pi_parflow = -Div_parP(pivi,use_new_div_par);
-      TE_Pi_parflow += -(2. / 3) * Pi * Div_parP(Vi,use_new_div_par);
+      if (!use_new_div_par){
+	Field3D pivi = mul_all(Pi,Vi);
+	TE_Pi_parflow = -Div_par(pivi);
+	TE_Pi_parflow += -(2. / 3) * Pi * Div_par(Vi);
+      } else {
+	TE_Pi_parflow = -Div_par_mod(Pi,Vi,fastest_ispeed);
+	TE_Pi_parflow += -(2. / 3) * Pi * Div_par(Vi);
+      }
       ddt(Pi) += TE_Pi_parflow;
     } // End Pi_parflow
 
