@@ -39,6 +39,7 @@
 
 
 // OpenADAS interface Atomicpp by T.Body
+#include "neutral-model.hxx"
 #include "atomicpp/ImpuritySpecies.hxx"
 #include "atomicpp/Prad.hxx"
 
@@ -455,6 +456,7 @@ int Hermes::init(bool restarting) {
     show_timesteps = false;
   }
 
+  OPTION(optsc, boundarydecay, false);
   electromagnetic = optsc["electromagnetic"]
                         .doc("Include vector potential psi in Ohm's law?")
                         .withDefault<bool>(true);
@@ -734,7 +736,7 @@ int Hermes::init(bool restarting) {
   OPTION(optneutrals,Recycling_coef, 0.95);
   OPTION(optneutrals, floor_Nn, 1e-5);
   OPTION(optneutrals, floor_Tn, 0.1/20.0);
-
+  OPTION(optneutrals, neutralplasmainteraction, false);
 
   
   // Density
@@ -864,6 +866,7 @@ int Hermes::init(bool restarting) {
 
 
   
+  
   OPTION(optsc, boussinesq, false);
   OPTION(optnumerics, check_finite, false);
   OPTION(optnumerics, floor_vel , -1.0);
@@ -887,7 +890,9 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, flux_limit_alpha, -1);
   OPTION(optnumerics, kappa_limit_alpha, -1);
   OPTION(optnumerics, eta_limit_alpha, -1);
+  OPTION(optnumerics, floor_eta_epar, 5000);
 
+  
   OPTION(optnumerics, scale_ExB, 1.0);
   OPTION(optnumerics, resistivity_multiply, 1.0);
   OPTION(optnumerics, electron_weight, 1.0);
@@ -918,6 +923,7 @@ int Hermes::init(bool restarting) {
   OPTION(optsheath, sheath_gamma_i, 3.0);
   OPTION(optsheath, sheath_infsink, false);
   OPTION(optsheath, infsink_Te, 2.0);
+  OPTION(optsheath, infsink_Ne, 1.0);
   OPTION(optsheath, infsink_amp, 1.0);
   OPTION(optsheath, neutral_vwall, 1. / 3);  // 1/3rd Franck-Condon energy at wall
   OPTION(optsheath, sheath_yup, true);       // Apply sheath at yup?
@@ -1403,6 +1409,19 @@ int Hermes::init(bool restarting) {
   zero_all(psi);
 
 
+  for (const auto &bndry_par :
+           mesh->getBoundariesPar(BoundaryParType::xout)) {
+        for (const auto& pnt : *bndry_par) {
+          const auto i = pnt.ind();
+	  if (pnt.dir > 0.0){
+	    boundary_direction[i] += 1;
+	  } else if (pnt.dir < 0.0){
+	    boundary_direction[i] += 10;
+	  }
+	}
+  }
+
+  
 
   
   if (evolve_te && parallel_sheaths){
@@ -1444,6 +1463,9 @@ int Hermes::init(bool restarting) {
   alloc_all(b);
   alloc_all(d);
 
+  alloc_all(Te32);
+  alloc_all(Ti32);
+  
 
   alloc_all(Ne);
   alloc_all(Te);
@@ -1458,6 +1480,19 @@ int Hermes::init(bool restarting) {
     alloc_all(Pn);
     alloc_all(Tn);
     alloc_all(Vn);
+    SAVE_REPEAT(Tn,Vn);
+    alloc_all(Sneutral);
+    alloc_all(Fn);
+    alloc_all(Qin);
+    alloc_all(Rn);
+    alloc_all(Riz);
+    alloc_all(Rrc);
+    alloc_all(Rcx);
+    alloc_all(Recycling_flux);
+    if (verbose){
+      SAVE_REPEAT(Sneutral,Fn,Rn,Qin,Riz,Rrc,Rcx,Recycling_flux);
+    }
+    
   }
 
 
@@ -1534,7 +1569,7 @@ int Hermes::rhs(BoutReal t) {
     }
   }
   
-  if (isMMS==false){
+  if (isMMS==false && boundarydecay==true){
   
     if (mesh->lastX()) {
       int n = mesh->LocalNx;
@@ -1543,14 +1578,14 @@ int Hermes::rhs(BoutReal t) {
 	  // Extrapolate X-boundaries to have an exponential decay into the boundary
 	  // Extrapolate Ne, Pe, Pi and NVi
 	  // Ne
+
+
 	  BoutReal decay_Ne = limitFreeScale(abs(Ne(n - 4, j, k)) , abs(Ne(n - 3, j, k)));
-	  Ne(n - 2, j, k) = floor(Ne(n - 3, j, k) * decay_Ne,floor_Ne);
-	  Ne(n - 1, j, k) = floor(Ne(n - 3, j, k) * decay_Ne * decay_Ne,floor_Ne);
-	  /*
-	  if (verbose){
-	  debug_decay_Ne(n-3,j,k) = decay_Ne;
-	  } 
-	  */      
+	  //Ne(n - 2, j, k) = floor(Ne(n - 3, j, k) * decay_Ne,floor_Ne);
+	  //Ne(n - 1, j, k) = floor(Ne(n - 3, j, k) * decay_Ne * decay_Ne,floor_Ne);
+	  Ne(n - 2, j, k) = floor(Ne(n - 3, j, k),floor_Ne);
+	  Ne(n - 1, j, k) = floor(Ne(n - 3, j, k),floor_Ne);
+	  
 	  // Pe
 	  BoutReal decay_Te = limitFreeScale(abs(Te(n - 4, j, k)) , abs(Te(n - 3, j, k)));
 	  Te(n - 2, j, k) = floor(Te(n - 3, j, k) * decay_Te,floor_Te);
@@ -1676,21 +1711,6 @@ int Hermes::rhs(BoutReal t) {
 
 
 
-
-  
-  /////////////////////////////////////////////////////////////
-  // Calculate additional variables that are used for various calculations
-
-  Field3D Te32= pow(Te,1.5);
-  Te32.applyBoundary("neumann");
-  mesh->communicate(Te32);
-  Te32.applyParallelBoundary(parbc);
-
-  Field3D Ti32= pow(Ti,1.5);
-  Ti32.applyBoundary("neumann");
-  mesh->communicate(Ti32);
-  Ti32.applyParallelBoundary(parbc);
-  
   //////////////////////////////////////////////////////////////
   // Calculate electrostatic potential phi
 
@@ -1849,17 +1869,22 @@ int Hermes::rhs(BoutReal t) {
       sheath_ramp_factor = rampfactor(t,sheath_ramp_time);
       sheath_dpe = 0.0;
       sheath_dpi = 0.0;
-
+      Recycling_flux = 0.0;
       for (const auto &bndry_par :
            mesh->getBoundariesPar(BoundaryParType::xout)) {
 	for (const auto& pnt : *bndry_par) {
 	  const auto i = pnt.ind();
-
+	  // This if statement catech double boundaries
+	  // And ignores boundaries in the negative direction, only taking the positive one
+	  if (boundary_direction[i] > 10.9 && boundary_direction[i] < 11.1);
+	  else{
+	    /*
 	  BoutReal decay_Ne = limitFreeScale(pnt.yprev(Ne),pnt.ythis(Ne));
 	  BoutReal decay_Te = limitFreeScale(pnt.yprev(Te),pnt.ythis(Te));
 	  BoutReal decay_Ti = limitFreeScale(pnt.yprev(Ti),pnt.ythis(Ti));
 	  if (sheath_interpolate){
-	    pnt.ynext(Ne) = floor(pnt.ythis(Ne)*decay_Ne, floor_Ne);
+	    //pnt.ynext(Ne) = floor(pnt.ythis(Ne)*decay_Ne, floor_Ne);
+	    pnt.ynext(Ne) = floor(pnt.ythis(Ne), floor_Ne); // Not for Ne, sothat NVi does not increase if vi is constant
             pnt.ynext(Te) = floor(pnt.ythis(Te)*decay_Te, floor_Te);
             pnt.ynext(Ti) = floor(pnt.ythis(Ti)*decay_Ti, floor_Ti);
 	    
@@ -1868,6 +1893,11 @@ int Hermes::rhs(BoutReal t) {
             pnt.ynext(Ti) = pnt.ythis(Ti);
             pnt.ynext(Te) = pnt.ythis(Te);
 	  }
+	    */
+	  pnt.ynext(Ne) = floor(pnt.ythis(Ne), floor_Ne); // Not for Ne, sothat NVi does not increase if vi is constant                                                                                                                                                         
+	  pnt.ynext(Te) = floor(pnt.ythis(Te), floor_Te);
+	  pnt.ynext(Ti) = floor(pnt.ythis(Ti), floor_Ti);
+
 	  
 	  pnt.ynext(Pi) = pnt.ynext(Ne)*pnt.ynext(Ti);
 	  pnt.ynext(Pe) = pnt.ynext(Ne)*pnt.ynext(Te);
@@ -1878,13 +1908,10 @@ int Hermes::rhs(BoutReal t) {
 	  BoutReal nesheath = 0.0;
 	  BoutReal tesheath = 0.0;
 	  BoutReal tisheath = 0.0;
-	  if (sheath_interpolate){
-	    //nesheath = pnt.interpolate_sheath_o1(Ne);
-	    //tesheath = pnt.interpolate_sheath_o1(Te);
-	    //tisheath = pnt.interpolate_sheath_o1(Ti);
-
-	    // the sqrt maintains the exponential decay into the sheath, but at the middle point 
-	    nesheath = floor(pnt.ythis(Ne)*sqrt(decay_Ne), floor_Ne);
+	  /*
+	  if (sheath_interpolate){	   
+	  
+	    nesheath = pnt.ynext(Ne);
 	    tesheath = floor(pnt.ythis(Te)*sqrt(decay_Te), floor_Te);
 	    tisheath = floor(pnt.ythis(Ti)*sqrt(decay_Ti), floor_Ti);
 	    
@@ -1893,6 +1920,12 @@ int Hermes::rhs(BoutReal t) {
             tesheath = pnt.ythis(Te);
             tisheath = pnt.ythis(Ti);
 	  }
+	  */
+
+	  nesheath = pnt.ythis(Ne);
+	  tesheath = pnt.ythis(Te);
+	  tisheath = pnt.ythis(Ti);
+	  
 
 	  BoutReal phisheath = log(sqrt(tesheath / (tesheath + tisheath))) * tesheath;
           pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
@@ -1967,17 +2000,21 @@ int Hermes::rhs(BoutReal t) {
 	    
 	    sheath_dpi[i] -= (3.0/2.0) * power_i;                                                                                                                                                         
 	    sheath_dpe[i] -= (3.0/2.0) * power_e;
+
+	    if (evolve_neutrals && Recycling_coef>0.0){
+	      Recycling_flux[i] = abs(visheath * nesheath);
+	    }
+	    
 	    // Also set the values in the interpolated value after the sheath, here neumann
 
 	    TRACE("Sheath offset==1, set double next fields");
 
 	    const int offset_factor = 1;
-	    if(sheath_interpolate){
-	      pnt.ynext(Ne) = floor(pnt.ythis(Ne)*decay_Ne, floor_Ne);
-
-	      pnt.getAt<false>(Ne, offset_factor) = floor(pnt.ythis(Ne)*decay_Ne*decay_Ne, floor_Ne);
-	      pnt.getAt<false>(Te, offset_factor) = floor(pnt.ythis(Te)*decay_Te*decay_Te, floor_Te);
-	      pnt.getAt<false>(Ti, offset_factor) = floor(pnt.ythis(Ti)*decay_Ti*decay_Ti, floor_Ti);
+	    if(sheath_interpolate){	      
+	      //pnt.getAt<false>(Ne, offset_factor) = floor(pnt.ythis(Ne)*decay_Ne*decay_Ne, floor_Ne);
+	      pnt.getAt<false>(Ne, offset_factor) = floor(pnt.ynext(Ne), floor_Ne);
+	      pnt.getAt<false>(Te, offset_factor) = floor(pnt.ynext(Te), floor_Te);
+	      pnt.getAt<false>(Ti, offset_factor) = floor(pnt.ynext(Ti), floor_Ti);
 	      pnt.getAt<false>(Pe, offset_factor) = pnt.getAt<false>(Ne, offset_factor) * pnt.getAt<false>(Te, offset_factor);
 	      pnt.getAt<false>(Pi, offset_factor) = pnt.getAt<false>(Ne, offset_factor) * pnt.getAt<false>(Ti, offset_factor);
 
@@ -2000,9 +2037,9 @@ int Hermes::rhs(BoutReal t) {
 	      pnt.getAt<false>(NVi, offset_factor) = pnt.ynext(NVi);
 	      pnt.getAt<false>(Vort, offset_factor) = pnt.ynext(Vort);
 	    }
-	    
+	  
 	  } // End interpolate_sheathneighbour
-
+	  }
 	  
 	} // End for (const auto& pnt : region)
       } // End iter_regions([&](auto& region)
@@ -2019,6 +2056,34 @@ int Hermes::rhs(BoutReal t) {
 
 
 
+
+  //////////////////////////////////////////////////////////////
+  // Neutral calculations
+
+  /*
+  void NeutralModel::neutral_rates(
+    const Field3D &Ne, const Field3D &Te, const Field3D &Ti,
+    const Field3D &Vi, // Plasma quantities                                                                                                                                                                                                                                       
+    const Field3D &Nn, const Field3D &Tn, const Field3D &Vnpar, // Neutral gas                                                                                                                                                                                                    
+    Field3D &S, Field3D &F, Field3D &Qi, Field3D &R, // Transfer rates                                                                                                                                                                                                            
+    Field3D &Riz, Field3D &Rrc, Field3D &Rcx,
+    BoutReal NormT, BoutReal NormN, BoutReal NormB, BoutReal NormL, BoutReal NormF,
+    bool ionizationloss)
+  */
+  
+  if (evolve_neutrals){
+    fci_neutral_rates( Ne, Te, Ti, Vi, Nn, Tn, Vn, Sneutral, Fn, Qin, Rn, Riz, Rrc, Rcx, Tnorm, Nnorm, Bnorm, rho_s0, Omega_ci, true);
+    
+    
+    
+  }
+
+
+
+
+  //////////////////////////////////////////////////////////////
+  // Debug variables output
+  
   if (verbose){
     BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")){
       const auto iyp = i.yp();
@@ -2033,6 +2098,10 @@ int Hermes::rhs(BoutReal t) {
       Te_ym1[i] = Te.ydown()[iym];
       Te_yp2[i] = Te.yup(1)[iypp];
       Te_yp1[i] = Te.yup()[iyp];
+      Ne_ym2[i] = Ne.ydown(1)[iymm];
+      Ne_ym1[i] = Ne.ydown()[iym];
+      Ne_yp2[i] = Ne.yup(1)[iypp];
+      Ne_yp1[i] = Ne.yup()[iyp];
     }
   }
 
@@ -2043,6 +2112,11 @@ int Hermes::rhs(BoutReal t) {
   // and auxilliary variables like jpar, phi, psi
 
 
+  Te32= mul_all(Te,sqrt_all(Te));
+
+  Ti32= mul_all(Ti,sqrt_all(Ti));
+
+  
   TRACE("Collisions");
 
   const BoutReal tau_e1 = (Cs0 / rho_s0 ) * tau_e0;
@@ -2117,6 +2191,12 @@ int Hermes::rhs(BoutReal t) {
     eta_limit_denom = add_all(1,tmp);
     eta_epar = div_all(eta_epar,eta_limit_denom);
       
+  }
+
+  if (floor_eta_epar>0.0){
+    BOUT_FOR(i, eta_epar.getRegion("RGN_ALL")) {
+      floor_all(eta_epar, floor_eta_epar, i);
+    }
   }
   
   //////////////////////////////////////////////////////////////                                                                        
@@ -2218,7 +2298,12 @@ int Hermes::rhs(BoutReal t) {
     
     if (Ne_sources){//Row 5 Term 2
       TRACE("Density sources");
-      TE_Ne_sources=NeSource;
+      TE_Ne_sources = NeSource;
+
+      if (evolve_neutrals && neutralplasmainteraction){
+	TE_Ne_sources -= Sneutral;
+      }
+      
       ddt(Ne) += TE_Ne_sources;
     }  // End Ne_sources
 
@@ -2523,7 +2608,8 @@ int Hermes::rhs(BoutReal t) {
 	auto nvivi = mul_all(NVi,Vi);
 	TE_NVi_parflow = -Div_par(nvivi);
       } else {
-	TE_NVi_parflow = -Div_par_mod(NVi,Vi,fastest_ispeed);
+	TE_NVi_parflow = -Div_par_nvv_mod(Ne,Vi,fastest_ispeed);
+	  //TE_NVi_parflow = -Div_par_mod(NVi,Vi,fastest_ispeed);
       }      
       ddt(NVi) += TE_NVi_parflow;
     } // End NVi_parflow
@@ -2567,8 +2653,10 @@ int Hermes::rhs(BoutReal t) {
 	  TE_NVi_anomalous = Div_a_Grad_perp_curv(mul_all(Vi, a_d3d), Ne);
 	  TE_NVi_anomalous += Div_a_Grad_perp_curv(mul_all(Ne, a_nu3d), Vi);
 	} else {
+	  
 	  TE_NVi_anomalous = Div_a_Grad_perp_mod(mul_all(Vi,a_d3d), Ne);
 	  TE_NVi_anomalous += Div_a_Grad_perp_mod(mul_all(Ne, a_nu3d), Vi);
+	  
 	}
       }
       ddt(NVi) += TE_NVi_anomalous;
@@ -2603,6 +2691,10 @@ int Hermes::rhs(BoutReal t) {
       ddt(NVi) += TE_NVi_supsonicdampening;
     } // End NVi_supsonicdampening
 
+
+    if (evolve_neutrals && neutralplasmainteraction){
+      ddt(NVi) -= Vi * (Rrc + Rcx);
+    }
 
 
 
@@ -2731,6 +2823,11 @@ int Hermes::rhs(BoutReal t) {
     if (Pe_sources){//Row 7 Term 1
       TRACE("Pe sources");
       TE_Pe_sources = PeSource;
+
+      if (evolve_neutrals && neutralplasmainteraction){
+	TE_Pe_sources += -(2.0/3.0) * Rn; 
+      }
+      
       ddt(Pe) += TE_Pe_sources;
     } //End Pe_sources
 
@@ -2859,6 +2956,11 @@ int Hermes::rhs(BoutReal t) {
 
     if (Pi_sources){//Row 8 Term 1
       TE_Pi_sources = PiSource;
+
+      if (evolve_neutrals && neutralplasmainteraction){
+	TE_Pi_sources += -(2.0/3.0) * Qin;
+      }
+      
       ddt(Pi) += TE_Pi_sources;
     } // End Pi_sources
 
@@ -2924,32 +3026,40 @@ int Hermes::rhs(BoutReal t) {
   //  TE_Nn_sources = 0.0;
 
     if (Nn_parflow){
-
+      
       if (!use_new_div_par){
 	TE_Nn_parflow = -Div_par(NnVn);
       } else {
 	TE_Nn_parflow = -Div_par_mod(Nn,Vn,fastest_ispeed);
       }
-
+      
       ddt(Nn) += TE_Nn_parflow;
     } // End Nn_parflow
-
-  
+    
+    
     if (Nn_perpflow){
       if (use_new_divagradperp){
-	TE_Nn_perpflow = Div_a_Grad_perp_mod(div_all(1.0,Tn),Pn);
-      } else {
-	TE_Nn_perpflow = Div_a_Grad_perp_curv(div_all(1.0,Tn),Pn);
+	TE_Nn_perpflow = anomalous_Dn * Div_a_Grad_perp_mod(div_all(1.0,Tn),Pn);
+	} else {
+	TE_Nn_perpflow = anomalous_Dn * Div_a_Grad_perp_curv(div_all(1.0,Tn),Pn);
       }
-
+      
       ddt(Nn) += TE_Nn_perpflow;
     } // End Nn_perpflow
-
-
+      
+    if (Nn_sources && neutralplasmainteraction){
+      TE_Nn_sources = Sneutral;
+      if (Recycling_coef > 0.0){
+	TE_Nn_sources += Recycling_flux;
+      }
+      ddt(Nn) += TE_Nn_sources;
+    } // End Nn_sources
+      
+   
 
     
-    if (NnVn_parflow){
       
+    if (NnVn_parflow){      
       if (!use_new_div_par){
 	Field3D NnVnVn = mul_all(NnVn, Vn);
 	TE_NnVn_parflow = -Div_par(NnVnVn);
@@ -2962,9 +3072,9 @@ int Hermes::rhs(BoutReal t) {
     
     if (NnVn_perpflow){
       if (use_new_divagradperp){
-	TE_NnVn_perpflow = Div_a_Grad_perp_mod(div_all(Vn,Tn),Pn);
+	TE_NnVn_perpflow = anomalous_Dn * Div_a_Grad_perp_mod(div_all(Vn,Tn),Pn);
       } else {
-	TE_NnVn_perpflow = Div_a_Grad_perp_curv(div_all(Vn,Tn),Pn);
+	TE_NnVn_perpflow = anomalous_Dn * Div_a_Grad_perp_curv(div_all(Vn,Tn),Pn);
       }
       ddt(NnVn) += TE_NnVn_perpflow;
     } // End NnVn_perpflow
@@ -2987,6 +3097,13 @@ int Hermes::rhs(BoutReal t) {
       ddt(NnVn) += TE_NnVn_pardiffusion;
     } // End NnVn_pardiffusion
 
+    if (NnVn_friction && neutralplasmainteraction){
+      TE_NnVn_friction = Vi * (Rrc + Rcx);
+      ddt(NnVn) += TE_NnVn_friction;
+    }
+
+
+    
 
     if (Pn_parflow){
       if (!use_new_div_par){
@@ -3020,6 +3137,17 @@ int Hermes::rhs(BoutReal t) {
       }
       ddt(Pn) += TE_Pn_perpdiffusion;
     } // End Pn_perpdiffusion
+
+    if (Pn_sources && neutralplasmainteraction){
+      TE_Pn_sources = (2.0/3.0) * Qin;
+      if (Recycling_coef > 0.0){
+	TE_Pn_sources += Recycling_flux * 3.5 / Tnorm;
+      }
+      ddt(Pn) += TE_Pn_sources;
+    } // End Pn_sources && neutralplasmainteraction
+
+    
+
     
   } // End evolve_neutrals
 

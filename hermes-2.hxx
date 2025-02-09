@@ -100,15 +100,16 @@ private:
   bool sheath_interpolate;
   bool sheath_infsink;
   BoutReal infsink_Te, infsink_amp;
+  BoutReal infsink_Ne;
   Field3D debug_sheath_infsink;
   bool J_equalize;
   bool set_inner_neumann;
   bool check_finite;
   // Limited variables
   Field3D Telim, Tilim;
-
+  Field3D Te32, Ti32;
   bool isMMS;
-  
+  bool boundarydecay;
   // Collisional terms
   Field3D nu, kappa_epar, kappa_ipar, Dn,eta_epar;
   BoutReal tau_e0, tau_i0;
@@ -120,6 +121,7 @@ private:
   BoutReal flux_limit_alpha;  // Flux limiter. < 0 disables
   BoutReal kappa_limit_alpha; // Heat flux limiter from SOLPS
   BoutReal eta_limit_alpha;   // Momentum flux limiter from SOLPS
+  BoutReal floor_eta_epar;
   BoutReal scale_ExB;
   Field3D eta_limit_denom;
   BoutReal floor_kappa_epar,floor_kappa_ipar;
@@ -282,11 +284,15 @@ private:
   Field3D Tn;
   Field3D Vn;
 
+  bool neutralplasmainteraction;
+  
   BoutReal floor_Nn,floor_Tn;
   BoutReal anomalous_Dn;
   BoutReal Recycling_coef;
   Field3D Recycling_flux;
 
+  Field3D Sneutral, Fn, Qin, Rn, Riz, Rrc, Rcx;
+  
   bool TE_Nn;
   bool Nn_parflow, Nn_perpflow, Nn_sources;
   Field3D TE_Nn_parflow, TE_Nn_perpflow, TE_Nn_sources;
