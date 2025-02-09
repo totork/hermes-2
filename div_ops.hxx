@@ -61,6 +61,8 @@ const Field3D Div_par_mod(const Field3D& f_in, const Field3D& v_in, const Field3
 
 const Field3D Grad_par_mod(const Field3D& f);
 
+const Field3D Div_par_nvv_mod(const Field3D& f, const Field3D& v, const Field3D& fastest);
+
 const Field3D Div_f_v_no_y(const Field3D& n_in, const Field3D& vx,const Field3D& vz, bool bndry_flux);
 
 const Field3D Div_par_diffusion_index(const Field3D &f, bool bndry_flux=true);
