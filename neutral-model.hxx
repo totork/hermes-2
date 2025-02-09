@@ -12,6 +12,21 @@
 
 #include "radiation.hxx"
 
+
+
+void fci_neutral_rates(
+    const Field3D &Ne, const Field3D &Te, const Field3D &Ti,
+    const Field3D &Vi, // Plasma quantities                                                                                                                                                                                                                                       
+    const Field3D &Nn, const Field3D &Tn, const Field3D &Vnpar, // Neutral gas                                                                                                                                                                                                    
+    Field3D &S, Field3D &F, Field3D &Qi, Field3D &R, // Transfer rates                                                                                                                                                                                                            
+    Field3D &Riz, Field3D &Rrc, Field3D &Rcx,
+    BoutReal NormT, BoutReal NormN, BoutReal NormB, BoutReal NormL, BoutReal NormF,
+    bool ionizationloss);
+
+
+
+
+
 class NeutralModel {
 public:
   NeutralModel(Options &options) {
@@ -78,7 +93,8 @@ protected:
   void neutral_rates(const Field3D &Ne, const Field3D &Te, const Field3D &Ti, const Field3D &Vi,    // Plasma quantities
                      const Field3D &Nn, const Field3D &Tn, const Field3D &Vnpar, // Neutral gas
                      Field3D &S, Field3D &F, Field3D &Qi, Field3D &R,  // Transfer rates
-                     Field3D &Riz, Field3D &Rrc, Field3D &Rcx);        // Rates
+                     Field3D &Riz, Field3D &Rrc, Field3D &Rcx,
+		     BoutReal NormT, BoutReal NormN, BoutReal NormB, BoutReal NormL, BoutReal NormF, bool ionizationloss);        // Rates
 
 private:
   NeutralModel();
