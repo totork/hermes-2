@@ -879,6 +879,7 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, Ve_supsonic_dissipation, false);
   OPTION(optnumerics, Ve_supsonic_factor, 1.0);
   OPTION(optnumerics, Ve_supsonic_cut, 1.0);
+  OPTION(optnumerics, NVi_supsonic_cut, 1.0);
   OPTION(optnumerics, Pe_dampening_Te, 8.0);
   OPTION(optnumerics, Pe_dampening_factor , 1.0);
 
@@ -2002,7 +2003,7 @@ int Hermes::rhs(BoutReal t) {
 	    sheath_dpe[i] -= (3.0/2.0) * power_e;
 
 	    if (evolve_neutrals && Recycling_coef>0.0){
-	      Recycling_flux[i] = abs(visheath * nesheath);
+	      Recycling_flux[i] = Recycling_coef*abs(visheath * nesheath) * coord->J[i]/( sqrt(coord->g_22[i])*coord->dy[i]*coord->J[i]);
 	    }
 	    
 	    // Also set the values in the interpolated value after the sheath, here neumann
@@ -2608,8 +2609,9 @@ int Hermes::rhs(BoutReal t) {
 	auto nvivi = mul_all(NVi,Vi);
 	TE_NVi_parflow = -Div_par(nvivi);
       } else {
-	TE_NVi_parflow = -Div_par_nvv_mod(Ne,Vi,fastest_ispeed);
-	  //TE_NVi_parflow = -Div_par_mod(NVi,Vi,fastest_ispeed);
+	//TE_NVi_parflow = -Div_par_nvv_mod(Ne,Vi,fastest_ispeed);
+	auto nvivi = mul_all(NVi,Vi);
+        TE_NVi_parflow = -Div_par(nvivi);
       }      
       ddt(NVi) += TE_NVi_parflow;
     } // End NVi_parflow
@@ -2680,11 +2682,11 @@ int Hermes::rhs(BoutReal t) {
     if (NVi_supsonicdampening){
       TE_NVi_supsonicdampening = 0.0;
       BOUT_FOR(i, NVi.getRegion("RGN_NOBNDRY")){
-        if(Vi[i] < (-sound_speed[i])){
-          BoutReal tmp = abs(Vi[i])/(sound_speed[i]);
+        if(Vi[i] < (-NVi_supsonic_cut*sound_speed[i])){
+          BoutReal tmp = abs(Vi[i])/(NVi_supsonic_cut*sound_speed[i]);
           TE_NVi_supsonicdampening[i] = NVi_supsonic_factor * (floor(exp(tmp)-1.0,0.0));
-        } else if (Vi[i] > (sound_speed[i])){
-          BoutReal tmp = abs(Vi[i])/(sound_speed[i]);
+        } else if (Vi[i] > (NVi_supsonic_cut*sound_speed[i])){
+          BoutReal tmp = abs(Vi[i])/(NVi_supsonic_cut*sound_speed[i]);
           TE_NVi_supsonicdampening[i] = -NVi_supsonic_factor * (floor(exp(tmp)-1.0,0.0));
 	}
       }
