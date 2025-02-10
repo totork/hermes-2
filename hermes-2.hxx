@@ -316,6 +316,7 @@ private:
   bool NVi_supsonic_dissipation;
   BoutReal NVi_supsonic_factor;
   Field3D NVi_dampening;
+  BoutReal NVi_supsonic_cut;
 
   bool Ve_supsonic_dissipation;
   BoutReal Ve_supsonic_factor;

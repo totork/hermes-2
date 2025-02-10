@@ -1571,52 +1571,69 @@ int Hermes::rhs(BoutReal t) {
   }
   
   if (isMMS==false && boundarydecay==true){
-  
-    if (mesh->lastX()) {
-      int n = mesh->LocalNx;
-      for (int j = mesh->ystart; j <= mesh->yend; j++) {
-	for (int k = 0; k < mesh->LocalNz; k++) {
-	  // Extrapolate X-boundaries to have an exponential decay into the boundary
-	  // Extrapolate Ne, Pe, Pi and NVi
-	  // Ne
+    if (boundarydecay==true){
+      if (mesh->lastX()) {
+	int n = mesh->LocalNx;
+	for (int j = mesh->ystart; j <= mesh->yend; j++) {
+	  for (int k = 0; k < mesh->LocalNz; k++) {
+	    // Extrapolate X-boundaries to have an exponential decay into the boundary
+	    // Extrapolate Ne, Pe, Pi and NVi
+	    // Ne
+	    
 
-
-	  BoutReal decay_Ne = limitFreeScale(abs(Ne(n - 4, j, k)) , abs(Ne(n - 3, j, k)));
-	  //Ne(n - 2, j, k) = floor(Ne(n - 3, j, k) * decay_Ne,floor_Ne);
-	  //Ne(n - 1, j, k) = floor(Ne(n - 3, j, k) * decay_Ne * decay_Ne,floor_Ne);
-	  Ne(n - 2, j, k) = floor(Ne(n - 3, j, k),floor_Ne);
-	  Ne(n - 1, j, k) = floor(Ne(n - 3, j, k),floor_Ne);
-	  
-	  // Pe
-	  BoutReal decay_Te = limitFreeScale(abs(Te(n - 4, j, k)) , abs(Te(n - 3, j, k)));
-	  Te(n - 2, j, k) = floor(Te(n - 3, j, k) * decay_Te,floor_Te);
-	  Te(n - 1, j, k) = floor(Te(n - 3, j, k) * decay_Te * decay_Te,floor_Te);
-	  // Pi
-	  BoutReal decay_Ti = limitFreeScale(abs(Ti(n - 4, j, k)) , abs(Ti(n - 3, j, k)));
-	  Ti(n - 2, j, k) = floor(Ti(n - 3, j, k) * decay_Ti,floor_Ti);
-	  Ti(n - 1, j, k) = floor(Ti(n - 3, j, k) * decay_Ti * decay_Ti,floor_Ti);
-	  // Vi
-	  BoutReal decay_Vi = limitFreeScale(abs(Vi(n - 4, j, k)) , abs(Vi(n - 3, j, k)));
-	  Vi(n - 2, j, k) = Vi(n - 3, j, k) * decay_Vi;
-	  Vi(n - 1, j, k) = Vi(n - 3, j, k) * decay_Vi * decay_Vi;
-	  // Ve                                                                                                                                                                                             
-	  BoutReal decay_Ve = limitFreeScale(abs(Ve(n - 4, j, k)) , abs(Ve(n - 3, j, k)));
-	  Ve(n - 2, j, k) = Ve(n - 3, j, k) * decay_Ve;
-	  Ve(n - 1, j, k) = Ve(n - 3, j, k) * decay_Ve * decay_Ve;	
-	  // Vort
-	  //BoutReal decay_Vort = limitFreeScale(abs(Vort(n - 4, j, k)) , abs(Vort(n - 3, j, k)));
-	  //Vort(n - 2, j, k) = Vort(n - 3, j, k) * decay_Vort;
-	  //Vort(n - 1, j, k) = Vort(n - 3, j, k) * decay_Vort * decay_Vort;
-	  Pi(n - 1, j, k) = Ti(n - 1, j, k) * Ne(n - 1, j, k);
-	  Pi(n - 2, j, k) = Ti(n - 2, j, k) * Ne(n - 2, j, k);
-	  Pe(n - 1, j, k) = Te(n - 1, j, k) * Ne(n - 1, j, k);
-	  Pe(n - 2, j, k) = Te(n - 2, j, k) * Ne(n - 2, j, k);	
-	  NVi(n - 1, j, k) = Vi(n - 1, j, k) * Ne(n - 1, j, k);
-	  NVi(n - 2, j, k) = Vi(n - 2, j, k) * Ne(n - 2, j, k);        
-	  VePsi(n - 1, j, k) = Ve(n - 1, j, k) - Vi(n - 1, j, k);
-	  VePsi(n - 2, j, k) = Ve(n - 2, j, k) - Vi(n - 2, j, k);	  	
+	    BoutReal decay_Ne = limitFreeScale(abs(Ne(n - 4, j, k)) , abs(Ne(n - 3, j, k)));
+	    //Ne(n - 2, j, k) = floor(Ne(n - 3, j, k) * decay_Ne,floor_Ne);
+	    //Ne(n - 1, j, k) = floor(Ne(n - 3, j, k) * decay_Ne * decay_Ne,floor_Ne);
+	    Ne(n - 2, j, k) = floor(Ne(n - 3, j, k),floor_Ne);
+	    Ne(n - 1, j, k) = floor(Ne(n - 3, j, k),floor_Ne);
+	    
+	    // Pe
+	    BoutReal decay_Te = limitFreeScale(abs(Te(n - 4, j, k)) , abs(Te(n - 3, j, k)));
+	    Te(n - 2, j, k) = floor(Te(n - 3, j, k) * decay_Te,floor_Te);
+	    Te(n - 1, j, k) = floor(Te(n - 3, j, k) * decay_Te * decay_Te,floor_Te);
+	    // Pi
+	    BoutReal decay_Ti = limitFreeScale(abs(Ti(n - 4, j, k)) , abs(Ti(n - 3, j, k)));
+	    Ti(n - 2, j, k) = floor(Ti(n - 3, j, k) * decay_Ti,floor_Ti);
+	    Ti(n - 1, j, k) = floor(Ti(n - 3, j, k) * decay_Ti * decay_Ti,floor_Ti);
+	    // Vi
+	    BoutReal decay_Vi = limitFreeScale(abs(Vi(n - 4, j, k)) , abs(Vi(n - 3, j, k)));
+	    Vi(n - 2, j, k) = Vi(n - 3, j, k) * decay_Vi;
+	    Vi(n - 1, j, k) = Vi(n - 3, j, k) * decay_Vi * decay_Vi;
+	    // Ve                                                                                                                                                                                             
+	    BoutReal decay_Ve = limitFreeScale(abs(Ve(n - 4, j, k)) , abs(Ve(n - 3, j, k)));
+	    Ve(n - 2, j, k) = Ve(n - 3, j, k) * decay_Ve;
+	    Ve(n - 1, j, k) = Ve(n - 3, j, k) * decay_Ve * decay_Ve;	
+	    // Vort
+	    //BoutReal decay_Vort = limitFreeScale(abs(Vort(n - 4, j, k)) , abs(Vort(n - 3, j, k)));
+	    //Vort(n - 2, j, k) = Vort(n - 3, j, k) * decay_Vort;
+	    //Vort(n - 1, j, k) = Vort(n - 3, j, k) * decay_Vort * decay_Vort;
+	    Pi(n - 1, j, k) = Ti(n - 1, j, k) * Ne(n - 1, j, k);
+	    Pi(n - 2, j, k) = Ti(n - 2, j, k) * Ne(n - 2, j, k);
+	    Pe(n - 1, j, k) = Te(n - 1, j, k) * Ne(n - 1, j, k);
+	    Pe(n - 2, j, k) = Te(n - 2, j, k) * Ne(n - 2, j, k);	
+	    NVi(n - 1, j, k) = Vi(n - 1, j, k) * Ne(n - 1, j, k);
+	    NVi(n - 2, j, k) = Vi(n - 2, j, k) * Ne(n - 2, j, k);        
+	    VePsi(n - 1, j, k) = Ve(n - 1, j, k) - Vi(n - 1, j, k);
+	    VePsi(n - 2, j, k) = Ve(n - 2, j, k) - Vi(n - 2, j, k);	  	
+	  }
 	}
       }
+    } else {
+      if (mesh->lastX()) {
+        int n = mesh->LocalNx;
+        for (int j = mesh->ystart; j <= mesh->yend; j++) {
+          for (int k = 0; k < mesh->LocalNz; k++) {
+	    Ne(n - 1, j, k) = Ne(n - 2, j, k);
+	    Pe(n - 1, j, k) = Pe(n - 2, j, k);
+	    Pi(n - 1, j, k) = Pi(n - 2, j, k);
+	    NVi(n - 1, j, k) = NVi(n - 2, j, k);
+	    Vort(n - 1, j, k) = Vort(n - 2, j, k);
+	    VePsi(n - 1, j, k) = VePsi(n - 2, j, k);
+	    
+          }
+        }
+      }
+
     }
 
   } // End
@@ -1877,7 +1894,7 @@ int Hermes::rhs(BoutReal t) {
 	  const auto i = pnt.ind();
 	  // This if statement catech double boundaries
 	  // And ignores boundaries in the negative direction, only taking the positive one
-	  if (boundary_direction[i] > 10.9 && boundary_direction[i] < 11.1);
+	  if (boundary_direction[i] > 10.9 && boundary_direction[i] < 11.1 && pnt.dir < 0.0);
 	  else{
 	    /*
 	  BoutReal decay_Ne = limitFreeScale(pnt.yprev(Ne),pnt.ythis(Ne));
