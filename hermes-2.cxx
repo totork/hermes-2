@@ -863,7 +863,7 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, use_new_grad_par, false);
   OPTION(optnumerics, use_new_divagradperp, false);
   OPTION(optnumerics, use_Delp2, false);
-
+  OPTION(optnumerics, use_slope_limiter, false);
 
   
   
@@ -2281,7 +2281,7 @@ int Hermes::rhs(BoutReal t) {
 	  Field3D neve = mul_all(Ne,Ve);
 	  TE_Ne_parflow = -Div_par(neve);
 	} else {
-	  TE_Ne_parflow = -Div_par_mod(Ne,Ve,fastest_espeed);
+	  TE_Ne_parflow = -Div_par_mod(Ne,Ve,fastest_espeed, use_slope_limiter);
 	}
 
       } else {
@@ -2289,7 +2289,7 @@ int Hermes::rhs(BoutReal t) {
 	  Field3D nevi = mul_all(Ne,Vi);
 	  TE_Ne_parflow = -Div_par(nevi);
 	} else {
-	  TE_Ne_parflow = -Div_par_mod(Ne,Vi,fastest_ispeed);
+	  TE_Ne_parflow = -Div_par_mod(Ne,Vi,fastest_ispeed, use_slope_limiter);
 	}
       }
       ddt(Ne) += TE_Ne_parflow;
@@ -2368,7 +2368,7 @@ int Hermes::rhs(BoutReal t) {
       if (!use_new_div_par){
 	TE_Vort_parcurrent = Div_par(Jpar);
       } else {
-	TE_Vort_parcurrent = Div_par_mod(Ne, sub_all(Vi,Ve),fastest_ispeed);
+	TE_Vort_parcurrent = Div_par_mod(Ne, sub_all(Vi,Ve),fastest_ispeed, use_slope_limiter);
       }
 
       ddt(Vort) += TE_Vort_parcurrent;
@@ -2444,7 +2444,7 @@ int Hermes::rhs(BoutReal t) {
 	Field3D VortVi = mul_all(Vort,Vi);
 	TE_Vort_parflow = -Div_par(VortVi);
       } else {
-	TE_Vort_parflow = -Div_par_mod(Vort,Vi,fastest_ispeed);
+	TE_Vort_parflow = -Div_par_mod(Vort,Vi,fastest_ispeed, use_slope_limiter);
       }    
       ddt(Vort) += TE_Vort_parflow;
     }
@@ -2762,7 +2762,7 @@ int Hermes::rhs(BoutReal t) {
 	Field3D peve = mul_all(Pe,Ve);
 	TE_Pe_parflow = -Div_par(peve) - (2. / 3) * Pe * Div_par(Ve);
       } else {
-	TE_Pe_parflow = -Div_par_mod(Pe,Ve,fastest_espeed) - (2. / 3) * Pe * Div_par(Ve);
+	TE_Pe_parflow = -Div_par_mod(Pe,Ve,fastest_espeed, use_slope_limiter) - (2. / 3) * Pe * Div_par(Ve);
       }
       ddt(Pe) += TE_Pe_parflow;
     } // End Pe_parflow
@@ -2808,7 +2808,7 @@ int Hermes::rhs(BoutReal t) {
 	Field3D tejpar = mul_all(Te,Jpar);
 	TE_Pe_thermalcurrent = (2. / 3) * 0.71 * Div_par(tejpar);
       } else {
-	TE_Pe_thermalcurrent = (2. / 3) * 0.71 * Div_par_mod(Te,Jpar,fastest_espeed);
+	TE_Pe_thermalcurrent = (2. / 3) * 0.71 * Div_par_mod(Te,Jpar,fastest_espeed, use_slope_limiter);
       }
       ddt(Pe) += TE_Pe_thermalcurrent;
     } //End Pe_thermalcurrent
@@ -2933,7 +2933,7 @@ int Hermes::rhs(BoutReal t) {
 	TE_Pi_parflow = -Div_par(pivi);
 	TE_Pi_parflow += -(2. / 3) * Pi * Div_par(Vi);
       } else {
-	TE_Pi_parflow = -Div_par_mod(Pi,Vi,fastest_ispeed);
+	TE_Pi_parflow = -Div_par_mod(Pi,Vi,fastest_ispeed, use_slope_limiter);
 	TE_Pi_parflow += -(2. / 3) * Pi * Div_par(Vi);
       }
       ddt(Pi) += TE_Pi_parflow;
@@ -3049,7 +3049,7 @@ int Hermes::rhs(BoutReal t) {
       if (!use_new_div_par){
 	TE_Nn_parflow = -Div_par(NnVn);
       } else {
-	TE_Nn_parflow = -Div_par_mod(Nn,Vn,fastest_ispeed);
+	TE_Nn_parflow = -Div_par_mod(Nn,Vn,fastest_ispeed, use_slope_limiter);
       }
       
       ddt(Nn) += TE_Nn_parflow;
@@ -3083,7 +3083,7 @@ int Hermes::rhs(BoutReal t) {
 	Field3D NnVnVn = mul_all(NnVn, Vn);
 	TE_NnVn_parflow = -Div_par(NnVnVn);
       } else {
-	TE_NnVn_parflow = -Div_par_mod(NnVn,Vn,fastest_ispeed);
+	TE_NnVn_parflow = -Div_par_mod(NnVn,Vn,fastest_ispeed, use_slope_limiter);
       }
       
       ddt(NnVn) += TE_NnVn_parflow;
@@ -3129,7 +3129,7 @@ int Hermes::rhs(BoutReal t) {
 	Field3D PnVn = mul_all(Pn, Vn);
 	TE_Pn_parflow = -Div_par(PnVn);
       } else {
-	TE_Pn_parflow = -Div_par_mod(Pn, Vn, fastest_ispeed);
+	TE_Pn_parflow = -Div_par_mod(Pn, Vn, fastest_ispeed, use_slope_limiter);
       }
       ddt(Pn) += TE_Pn_parflow;
     } // End Pn_parflow

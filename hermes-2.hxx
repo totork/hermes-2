@@ -216,6 +216,7 @@ private:
   bool use_new_grad_par;
   bool use_new_divagradperp;
   bool use_new_viscosity;
+  bool use_slope_limiter;
   bool use_Delp2;
   bool use_Te_limiter;
   bool use_Ti_limiter;
