@@ -1926,19 +1926,7 @@ int Hermes::rhs(BoutReal t) {
 	  BoutReal nesheath = 0.0;
 	  BoutReal tesheath = 0.0;
 	  BoutReal tisheath = 0.0;
-	  /*
-	  if (sheath_interpolate){	   
-	  
-	    nesheath = pnt.ynext(Ne);
-	    tesheath = floor(pnt.ythis(Te)*sqrt(decay_Te), floor_Te);
-	    tisheath = floor(pnt.ythis(Ti)*sqrt(decay_Ti), floor_Ti);
-	    
-	  } else {
-	    nesheath = pnt.ythis(Ne);
-            tesheath = pnt.ythis(Te);
-            tisheath = pnt.ythis(Ti);
-	  }
-	  */
+
 
 	  nesheath = pnt.ythis(Ne);
 	  tesheath = pnt.ythis(Te);
@@ -2065,6 +2053,64 @@ int Hermes::rhs(BoutReal t) {
 	  
       break;
     } // End case 0
+    case 1:{
+      // This is meant to conserve kinetic energy  at the sheath boundary
+      // Temperature is also maintained
+      // Density is this changed to account for the change in momentum
+      sheath_ramp_factor = rampfactor(t,sheath_ramp_time);
+      sheath_dpe = 0.0;
+      sheath_dpi = 0.0;
+      Recycling_flux = 0.0;
+      for (const auto &bndry_par :
+           mesh->getBoundariesPar(BoundaryParType::xout)) {
+        for (const auto& pnt : *bndry_par) {
+          const auto i = pnt.ind();
+          // This if statement catech double boundaries                                                                                              
+          // And ignores boundaries in the negative direction, only taking the positive one                                                          
+          if (boundary_direction[i] > 10.9 && boundary_direction[i] < 11.1 && pnt.dir < 0.0);
+          else{
+
+	    BoutReal kin_E = pnt.ythis(Ne) * pnt.ythis(Vi) * pnt.ythis(Vi);
+	    BoutReal tesheath = pnt.ythis(Te);
+	    BoutReal tisheath = pnt.ythis(Ti);
+	    BoutReal phisheath = log(sqrt(tesheath / (tesheath + tisheath))) * tesheath;
+	    pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
+
+	    
+	    BoutReal visheath = 0.0;
+	    if (!sheath_ramp){
+	      visheath = pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath);
+	    } else {
+	      visheath = sheath_ramp_factor * (pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath));
+	    }
+	    BoutReal vesheath = 0.0;
+	    if (evolve_vepsi){
+	      if (!sheath_ramp){
+		vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
+	      } else {
+		vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath)));
+	      }
+	    } else {
+	      vesheath = visheath;
+	    }
+
+	    BoutReal nesheath = floor(kin_E / (visheath*visheath), floor_Ne);
+	    const BoutReal jsheath = nesheath * (visheath - vesheath);
+	    const BoutReal nvisheath = nesheath * visheath;
+	    
+
+	    
+	  } // End if (boundary_direction[i]
+
+	} // End for (const auto& pnt : *bndry_par)
+	
+      } // End for (const auto &bndry_par
+      
+      
+      
+      break;
+    } // End case 1
+      
     default: {
       throw BoutException("Not implemented");
       break;
