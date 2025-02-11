@@ -867,7 +867,12 @@ int Hermes::init(bool restarting) {
 
 
   OPTION(optnumerics, use_rhie_interpolation, false);
-  
+  if (use_rhie_interpolation){
+    alloc_all(rhie_cor_up);
+    alloc_all(rhie_cor_down);
+    SAVE_REPEAT(rhie_cor_up,rhie_cor_down);
+  }
+
   
   OPTION(optsc, boussinesq, false);
   OPTION(optnumerics, check_finite, false);
@@ -1507,7 +1512,7 @@ int Hermes::init(bool restarting) {
     SAVE_ONCE(xl,yl,zl);
 
   }
-
+  set_all(oness, 1.0);
   
   // Here are some sanity checks for the flags
 
@@ -1824,7 +1829,7 @@ int Hermes::rhs(BoutReal t) {
   } // End calc_potential
   
 
-
+  
   
 
   //////////////////////////////////////////////////////////////
@@ -2328,6 +2333,8 @@ int Hermes::rhs(BoutReal t) {
 	if (!use_new_div_par){
 	  Field3D neve = mul_all(Ne,Ve);
 	  TE_Ne_parflow = -Div_par(neve);
+	} else if(use_rhie_interpolation){
+	  TE_Ne_parflow = -Div_par_rhie(Ne, Ve, add_all(Pe,Pi), rhie_cor_up, rhie_cor_down);
 	} else {
 	  TE_Ne_parflow = -Div_par_mod(Ne,Ve,fastest_espeed, use_slope_limiter);
 	}
@@ -2336,6 +2343,8 @@ int Hermes::rhs(BoutReal t) {
 	if (!use_new_div_par){
 	  Field3D nevi = mul_all(Ne,Vi);
 	  TE_Ne_parflow = -Div_par(nevi);
+	} else if (use_rhie_interpolation){
+	  TE_Ne_parflow = -Div_par_rhie(Ne, Vi, add_all(Pe,Pi), rhie_cor_up, rhie_cor_down);
 	} else {
 	  TE_Ne_parflow = -Div_par_mod(Ne,Vi,fastest_ispeed, use_slope_limiter);
 	}
@@ -2673,6 +2682,8 @@ int Hermes::rhs(BoutReal t) {
       if(!use_new_div_par){
 	auto nvivi = mul_all(NVi,Vi);
 	TE_NVi_parflow = -Div_par(nvivi);
+      } else if (use_rhie_interpolation){
+	TE_NVi_parflow = -Div_par_rhie(NVi, Vi, add_all(Pe,Pi), rhie_cor_up, rhie_cor_down);
       } else {
 	//TE_NVi_parflow = -Div_par_nvv_mod(Ne,Vi,fastest_ispeed);
 	auto nvivi = mul_all(NVi,Vi);
@@ -2809,6 +2820,9 @@ int Hermes::rhs(BoutReal t) {
       if(!use_new_div_par){
 	Field3D peve = mul_all(Pe,Ve);
 	TE_Pe_parflow = -Div_par(peve) - (2. / 3) * Pe * Div_par(Ve);
+      } else if(use_rhie_interpolation){
+	TE_Pe_parflow = -Div_par_rhie(Pe, Ve, add_all(Pe,Pi), rhie_cor_up,rhie_cor_down ) -
+	  2.0/3.0 * Pe * Div_par_rhie(oness, Ve, add_all(Pe,Pi), rhie_cor_up, rhie_cor_down);
       } else {
 	TE_Pe_parflow = -Div_par_mod(Pe,Ve,fastest_espeed, use_slope_limiter) - (2. / 3) * Pe * Div_par(Ve);
       }
@@ -2980,6 +2994,9 @@ int Hermes::rhs(BoutReal t) {
 	Field3D pivi = mul_all(Pi,Vi);
 	TE_Pi_parflow = -Div_par(pivi);
 	TE_Pi_parflow += -(2. / 3) * Pi * Div_par(Vi);
+      } else if (use_rhie_interpolation){
+	TE_Pi_parflow = -Div_par_rhie(Pi,Vi,add_all(Pi,Pe), rhie_cor_up, rhie_cor_down);
+	TE_Pi_parflow += -2.0/3.0 * Pi * Div_par_rhie(oness, Vi, add_all(Pi,Pe), rhie_cor_up, rhie_cor_down);
       } else {
 	TE_Pi_parflow = -Div_par_mod(Pi,Vi,fastest_ispeed, use_slope_limiter);
 	TE_Pi_parflow += -(2. / 3) * Pi * Div_par(Vi);

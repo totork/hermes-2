@@ -404,7 +404,7 @@ const Field3D Div_n_bxGrad_f_B_XPPM(const Field3D &n, const Field3D &f,
 
 
 
-const Field3D Div_par_rhie(const Field3D& f, const Field3D& v, const Field3D& P){
+const Field3D Div_par_rhie(const Field3D& f, const Field3D& v, const Field3D& P, Field3D& out_up, Field3D& out_down){
   Mesh* mesh = f.getMesh();
   Field3D result{zeroFrom(f)};
   Coordinates* coord = f.getCoordinates();
@@ -417,7 +417,8 @@ const Field3D Div_par_rhie(const Field3D& f, const Field3D& v, const Field3D& P)
 
     // Rhie-Chow interpolation for the upper cell face
 
-    BoutReal V_P = coord->J[ind];
+    //BoutReal V_P = coord->J[ind];
+    BoutReal V_P = 1.0;
     BoutReal a_P = 0.5;
     
     // Cells are WW - W - P - E - EE
@@ -440,6 +441,9 @@ const Field3D Div_par_rhie(const Field3D& f, const Field3D& v, const Field3D& P)
 
     BoutReal cor_up = V_P/a_P * (grad_P_up - avg_grad_P_up);
     BoutReal cor_down = V_P/a_P * (grad_P_down - avg_grad_P_down);
+
+    out_up[ind] = cor_up;
+    out_down[ind] = cor_down;
     
     BoutReal c = 0.5 * (f[ind] + f.yup()[iyp]) * ((v[ind] + v.yup()[iyp]) - cor_up);             // K at the upper boundary                                        
     BoutReal J = 0.5 * (coord->J[ind] + coord->J.yup()[iyp]); // Jacobian at boundary                                                                 
