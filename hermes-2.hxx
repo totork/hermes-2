@@ -146,6 +146,10 @@ private:
   bool electromagnetic; // Include magnetic potential psi
   bool FiniteElMass;    // Finite Electron Mass
 
+  // All variables for the rhie chow velocity correction
+
+  bool use_rhie_interpolation;
+  
   /////////////////////////////////////////////////////
   // Switches for all the terms in the equations
 

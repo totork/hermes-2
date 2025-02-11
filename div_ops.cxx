@@ -403,6 +403,62 @@ const Field3D Div_n_bxGrad_f_B_XPPM(const Field3D &n, const Field3D &f,
 }
 
 
+
+const Field3D Div_par_rhie(const Field3D& f, const Field3D& v, const Field3D& P){
+  Mesh* mesh = f.getMesh();
+  Field3D result{zeroFrom(f)};
+  Coordinates* coord = f.getCoordinates();
+
+  for (const auto& ind : f.getRegion("RGN_NOBNDRY")) {
+    const auto iyp = ind.yp();
+    const auto iypp = ind.ypp();
+    const auto iym = ind.ym();
+    const auto iymm = ind.ymm();
+
+    // Rhie-Chow interpolation for the upper cell face
+
+    BoutReal V_P = coord->J[ind];
+    BoutReal a_P = 0.5;
+    
+    // Cells are WW - W - P - E - EE
+    
+    // First I need two gradients
+    // Gradient on the cell face
+    BoutReal grad_P_up = (P.yup()[iyp] - P[ind])/(coord->dy[ind] * 0.5*( sqrt(coord->g_22.yup()[iyp]) + sqrt(coord->g_22[ind]) ) );
+    BoutReal grad_P_down = (P[ind] - P.ydown()[iym])/(coord->dy[ind] * 0.5*( sqrt(coord->g_22.ydown()[iym]) + sqrt(coord->g_22[ind]) ) );
+
+
+    // This is the length betweehn P and EE
+    // It is the average of the length between P and E and also E and EE
+    
+    BoutReal deltax_P_E_EE = 0.5*coord->dy[ind]*( sqrt(coord->g_22[ind]) + 2.0*sqrt(coord->g_22.yup()[iyp]) + sqrt(coord->g_22.yup(1)[iypp]) );
+    BoutReal deltax_W_P_E = 0.5*coord->dy[ind]*( sqrt(coord->g_22.ydown()[iym]) + 2.0*sqrt(coord->g_22[ind]) + sqrt(coord->g_22.yup()[iyp]) );
+    BoutReal deltax_WW_W_P = 0.5*coord->dy[ind]*( sqrt(coord->g_22.ydown(1)[iymm]) + 2.0*sqrt(coord->g_22.ydown()[iym]) + sqrt(coord->g_22[ind]) );
+    
+    BoutReal avg_grad_P_up = 0.5*( (P.yup(1)[iypp] - P[ind])/deltax_P_E_EE + (P.yup()[iyp] - P.ydown()[iym])/deltax_W_P_E );
+    BoutReal avg_grad_P_down = 0.5*( (P[ind] - P.ydown(1)[iymm])/deltax_WW_W_P + (P.yup()[iyp] - P.ydown()[iym])/deltax_W_P_E  );
+
+    BoutReal cor_up = V_P/a_P * (grad_P_up - avg_grad_P_up);
+    BoutReal cor_down = V_P/a_P * (grad_P_down - avg_grad_P_down);
+    
+    BoutReal c = 0.5 * (f[ind] + f.yup()[iyp]) * ((v[ind] + v.yup()[iyp]) - cor_up);             // K at the upper boundary                                        
+    BoutReal J = 0.5 * (coord->J[ind] + coord->J.yup()[iyp]); // Jacobian at boundary                                                                 
+    BoutReal sqrtg_22 = sqrt(0.5 * (coord->g_22[ind] + coord->g_22.yup()[iyp]));
+    BoutReal flux = c * J / sqrtg_22;
+    result[ind] += flux / (coord->dy[ind] * coord->J[ind]);
+
+    // Calculate flux at lower surface                                                                                                              
+    c = 0.5 * (f[ind] + f.ydown()[iym]) * ((v[ind] + v.ydown()[iym]) - cor_down);           // K at the lower boundary                                       
+    J = 0.5 * (coord->J[ind] + coord->J.ydown()[iym]); // Jacobian at boundary                                                                       
+    sqrtg_22 = sqrt(0.5 * (coord->g_22[ind] + coord->g_22.ydown()[iym]));
+    flux = c * J / sqrtg_22;
+    result[ind] -= flux / (coord->dy[ind] * coord->J[ind]);
+  }
+  return result;
+}
+
+
+
 const Field3D Div_par_nvv_mod(const Field3D& f, const Field3D& v, const Field3D& fastest){
   Mesh* mesh = f.getMesh();
   Field3D result{zeroFrom(f)};
