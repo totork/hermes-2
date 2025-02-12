@@ -2059,6 +2059,7 @@ int Hermes::rhs(BoutReal t) {
 
 	      pnt.getAt<false>(phi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(phi),pnt.ynext(phi));
 	      pnt.getAt<false>(Vi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Vi),pnt.ynext(Vi));
+	      pnt.getAt<false>(Ve, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Ve),pnt.ynext(Ve));
 	      pnt.getAt<false>(Jpar, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Jpar),pnt.ynext(Jpar));
 	      pnt.getAt<false>(NVi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(NVi),pnt.ynext(NVi));
 	      pnt.getAt<false>(Vort, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Vort),pnt.ynext(Vort));
