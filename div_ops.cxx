@@ -509,7 +509,7 @@ const Field3D Div_par_nvv_mod(const Field3D& f, const Field3D& v, const Field3D&
 
 
     BoutReal flux_up = (0.5 * (fiR * viR * viR + fipL * vipL * vipL) + 0.5 * amax_up * (fiR*viR - fipL*vipL)) * J_up / g_22up;
-    BoutReal flux_down = (0.5 * (fiL * viL * viL + fimR * vimR * vimR) - 0.5 * amax_down  * (fimR*vimR - fiL*viL )) * J_down / g_22down;
+    BoutReal flux_down = (0.5 * (fiL * viL * viL + fimR * vimR * vimR) + 0.5 * amax_down  * (fimR*vimR - fiL*viL )) * J_down / g_22down;
 
 
 
@@ -570,7 +570,8 @@ const Field3D Div_par_mod(const Field3D& f, const Field3D& v, const Field3D& fas
       
 
       BoutReal flux_up = (0.5 * (fiR * viR + fipL*vipL) + 0.5 * amax_up * (fiR - fipL)) * J_up / g_22up;
-      BoutReal flux_down = (0.5 * (fiL*viL + fimR*vimR) - 0.5 * amax_down * (fiL - fimR)) * J_down / g_22down;
+      BoutReal flux_down = (0.5 * (fiL*viL + fimR*vimR) - 0.5 * amax_down * (fiL - fimR)) * J_down / g_22down;  // signs are switched compared to other, but the difference is also switched so it
+      // should work fine
 
       //BoutReal flux_up = 0.5 * fiR * (viR + amax_up) * J_up / g_22up;
       //BoutReal flux_down = 0.5 * fiL * (viL - amax_down) * J_down / g_22down;
