@@ -898,7 +898,7 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, flux_limit_alpha, -1);
   OPTION(optnumerics, kappa_limit_alpha, -1);
   OPTION(optnumerics, eta_limit_alpha, -1);
-  OPTION(optnumerics, floor_eta_epar, 5000);
+  OPTION(optnumerics, floor_eta_epar, -1);
 
   
   OPTION(optnumerics, scale_ExB, 1.0);
@@ -1950,6 +1950,17 @@ int Hermes::rhs(BoutReal t) {
 	    visheath = sheath_ramp_factor * (pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath));
 	  }
 
+	  if (pnt.dir > 0.99 && pnt.dir < 1.01){
+	    if (pnt.ythis(Vi) > visheath){
+	      visheath = pnt.ythis(Vi);
+	    }
+	  } else {
+	    if (pnt.ythis(Vi) < visheath){
+	      visheath = pnt.ythis(Vi);
+	    }
+	  }
+
+	  
 
 	  BoutReal vesheath = 0.0;
 	  if (evolve_vepsi){
@@ -1958,11 +1969,26 @@ int Hermes::rhs(BoutReal t) {
 	    } else {
 	      vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath))); 
 	    }
+
+	    if (pnt.dir > 0.99 && pnt.dir < 1.01){
+	      if (pnt.ythis(Ve) > vesheath){
+		vesheath = pnt.ythis(Ve);
+	      }
+	    } else {
+	      if (pnt.ythis(Ve) < vesheath){
+		vesheath = pnt.ythis(Ve);
+	      }
+	    }
+	    
+
 	    
 	  } else {
 	    vesheath = visheath;
 	  }
+	  
 
+	  
+	  
 	  const BoutReal jsheath = nesheath * (visheath - vesheath);
 	  const BoutReal nvisheath = nesheath * visheath;
 
@@ -2681,7 +2707,7 @@ int Hermes::rhs(BoutReal t) {
     if (NVi_parflow){//Row 1 Term 2
       if(!use_new_div_par){
 	auto nvivi = mul_all(NVi,Vi);
-	TE_NVi_parflow = -Div_par(nvivi);
+	TE_NVi_parflow = -Vi*Div_par(NVi);
       } else if (use_rhie_interpolation){
 	TE_NVi_parflow = -Div_par_rhie(NVi, Vi, add_all(Pe,Pi), rhie_cor_up, rhie_cor_down);
       } else {
