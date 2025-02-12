@@ -2690,32 +2690,36 @@ int Hermes::rhs(BoutReal t) {
 
     
     if (NVi_ExB){//Row 1 Term 1
+
       if (use_Div_n_bxGrad_f_B_XPPM){
         TE_NVi_ExB = -Div_n_bxGrad_f_B_XPPM(NVi, phi, ne_bndry_flux , poloidal_flows , false , bracket_factor) * scale_ExB;
       } else {
         TE_NVi_ExB = -bracket(phi,NVi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
       }
+
       ddt(NVi) += TE_NVi_ExB;
     } // End NVi_ExB
 
 
     if (NVi_mag){//Row 1 Term 3
+
       TE_NVi_mag = -fci_curvature(mul_all(NVi , Ti),use_bracket);
       ddt(NVi) += TE_NVi_mag;
+
     } // End NVi_mag
 
 
     if (NVi_parflow){//Row 1 Term 2
+
       if(!use_new_div_par){
 	auto nvivi = mul_all(NVi,Vi);
-	TE_NVi_parflow = -Vi*Div_par(NVi);
+	TE_NVi_parflow = -Div_par(nvivi);
       } else if (use_rhie_interpolation){
 	TE_NVi_parflow = -Div_par_rhie(NVi, Vi, add_all(Pe,Pi), rhie_cor_up, rhie_cor_down);
       } else {
-	//TE_NVi_parflow = -Div_par_nvv_mod(Ne,Vi,fastest_ispeed);
-	auto nvivi = mul_all(NVi,Vi);
-        TE_NVi_parflow = -Div_par(nvivi);
-      }      
+	TE_NVi_parflow = -Div_par_nvv_mod(Ne,Vi,fastest_ispeed);
+      }
+      
       ddt(NVi) += TE_NVi_parflow;
     } // End NVi_parflow
 
