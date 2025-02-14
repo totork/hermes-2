@@ -412,6 +412,19 @@ Field3D withBoundary(Field3D &&f, const Field3D &bndry) {
 }
 
 
+const Field3D adaptive_sourceterm(const Field3D& thisfield ,const Field3D& sourceterm, const BoutReal maximum, const BoutReal overshoot){
+  Field2D averaged = DC(thisfield);
+  BoutReal thismax = max(averaged);
+  if (thismax>maximum){
+    BoutReal ratio = floor((thismax - maximum)/overshoot,0.0);
+    return sourceterm * exp(-ratio);	
+  } else {
+    return sourceterm;
+  }
+}
+
+
+
 
 const Field3D new_Delp2(const Field3D& a){
   
@@ -559,10 +572,9 @@ int Hermes::init(bool restarting) {
   if (evolve_neutrals) {
     SOLVE_FOR(Nn);
     SOLVE_FOR(NnVn);
-    SOLVE_FOR(Pn);
-    EvolvingVars.add(Nn,NnVn,Pn);
+    EvolvingVars.add(Nn,NnVn);
     if (output_ddt) {
-      SAVE_REPEAT(ddt(Nn),ddt(NnVn),ddt(Pn));
+      SAVE_REPEAT(ddt(Nn),ddt(NnVn));
     }
   } else {
     zero_all(Nn);
@@ -688,49 +700,59 @@ int Hermes::init(bool restarting) {
   TE_Nn = optsc["TE_Nn"].doc("Save all terms in time evolution of neutral density").withDefault<bool>(false);
   TE_NnVn = optsc["TE_NnVn"].doc("Save all terms in time evolution of neutral momentum").withDefault<bool>(false);
   TE_Pn = optsc["TE_Pn"].doc("Save all terms in time evolution of neutral pressure").withDefault<bool>(false);
-
+  
+  
   Nn_parflow = optnn["Nn_parflow"].doc("Use neutral density parallel flow").withDefault<bool>(false);
   Nn_perpflow = optnn["Nn_perpflow"].doc("Use neutral density perpendicular flow").withDefault<bool>(false);
   Nn_sources = optnn["Nn_sources"].doc("Use neutral density source terms").withDefault<bool>(false);
-
+  Nn_hyper = optnn["Nn_hyper"].doc("Use neutral density source terms").withDefault<bool>(false);
+  
   NnVn_parflow = optnnvn["NnVn_parflow"].doc("Use neutral momentum parallel flow").withDefault<bool>(false);
   NnVn_perpflow = optnnvn["NnVn_perpflow"].doc("Use neutral momentum parallel flow").withDefault<bool>(false);
   NnVn_pargradient = optnnvn["NnVn_pargradient"].doc("Use neutral momentum parallel flow").withDefault<bool>(false);
   NnVn_pardiffusion = optnnvn["NnVn_pardiffusion"].doc("Use neutral momentum parallel flow").withDefault<bool>(false);
   NnVn_friction = optnnvn["NnVn_friction"].doc("Use neutral momentum parallel flow").withDefault<bool>(false);
+  NnVn_hyper = optnnvn["NnVn_hyper"].doc("Use neutral momentum parallel flow").withDefault<bool>(false);
 
+  
   Pn_parflow = optpn["Pn_parflow"].doc("Use neutral momentum parallel flow").withDefault<bool>(false);
   Pn_perpflow = optpn["Pn_perpflow"].doc("Use neutral momentum parallel flow").withDefault<bool>(false);
   Pn_parcompression = optpn["Pn_parcompression"].doc("Use neutral momentum parallel flow").withDefault<bool>(false);
   Pn_perpdiffusion = optpn["Pn_perpdiffusion"].doc("Use neutral momentum parallel flow").withDefault<bool>(false);
   Pn_sources = optpn["Pn_sources"].doc("Use neutral momentum parallel flow").withDefault<bool>(false);
-
+  Pn_hyper = optpn["Pn_hyper"].doc("Use neutral momentum parallel flow").withDefault<bool>(false);
+  
   TE_Nn_parflow = 0.0;
   TE_Nn_perpflow = 0.0;
   TE_Nn_sources = 0.0;
-
+  TE_Nn_hyper = 0.0;
+  
   TE_NnVn_parflow = 0.0;
   TE_NnVn_perpflow = 0.0;
   TE_NnVn_pargradient = 0.0;
   TE_NnVn_pardiffusion = 0.0;
   TE_NnVn_friction = 0.0;
+  TE_NnVn_hyper = 0.0;
 
+  
   TE_Pn_parflow = 0.0;
   TE_Pn_perpflow = 0.0;
   TE_Pn_parcompression = 0.0;
   TE_Pn_perpdiffusion = 0.0;
   TE_Pn_sources = 0.0;
+  TE_Pn_hyper = 0.0;
+  
 
   if (TE_Nn){
-    SAVE_REPEAT(TE_Nn_parflow, TE_Nn_perpflow, TE_Nn_sources);
+    SAVE_REPEAT(TE_Nn_parflow, TE_Nn_perpflow, TE_Nn_sources, TE_Nn_hyper);
   }
 
   if (TE_NnVn){
-    SAVE_REPEAT(TE_NnVn_parflow, TE_NnVn_perpflow, TE_NnVn_pargradient, TE_NnVn_pardiffusion, TE_NnVn_friction);
+    SAVE_REPEAT(TE_NnVn_parflow, TE_NnVn_perpflow, TE_NnVn_pargradient, TE_NnVn_pardiffusion, TE_NnVn_friction, TE_NnVn_hyper);
   }
 
   if (TE_Pn){
-    SAVE_REPEAT(TE_Pn_parflow, TE_Pn_perpflow, TE_Pn_parcompression, TE_Pn_perpdiffusion, TE_Pn_sources);
+    SAVE_REPEAT(TE_Pn_parflow, TE_Pn_perpflow, TE_Pn_parcompression, TE_Pn_perpdiffusion, TE_Pn_sources, TE_Pn_hyper);
   }
 
   OPTION(optneutrals,Recycling_coef, 0.95);
@@ -924,6 +946,18 @@ int Hermes::init(bool restarting) {
 
   OPTION(optnumerics, use_conduction_limiter,false);
   OPTION(optnumerics, conduction_limiter_value, 1.0);
+
+
+  OPTION(optnumerics, adapt_source, false);
+  OPTION(optnumerics, Ne_target, 1.0);
+  OPTION(optnumerics, Te_target, 1.0);
+  OPTION(optnumerics, Ti_target, 1.0);
+  OPTION(optnumerics, adaptive_overshoot, 1.0);
+
+
+  
+  
+  
   // Sheath switches
   
   OPTION(optsheath, sheath_model, 0);
@@ -1497,8 +1531,10 @@ int Hermes::init(bool restarting) {
     alloc_all(Rrc);
     alloc_all(Rcx);
     alloc_all(Recycling_flux);
+    alloc_all(Dnn);
     if (verbose){
       SAVE_REPEAT(Sneutral,Fn,Rn,Qin,Riz,Rrc,Rcx,Recycling_flux);
+      SAVE_REPEAT(Dnn, Pn);
     }
     
   }
@@ -1549,7 +1585,6 @@ int Hermes::rhs(BoutReal t) {
   if (evolve_neutrals){
     Nn.applyBoundary(t);
     NnVn.applyBoundary(t);
-    Pn.applyBoundary(t);
   }
   
   BOUT_FOR(i, Ne.getRegion("RGN_NOY")) {
@@ -1569,11 +1604,10 @@ int Hermes::rhs(BoutReal t) {
 
     if (evolve_neutrals){
       Vn[i] = NnVn[i] / Nn[i];
-      Tn[i] = floor(Pn[i] / Nn[i], floor_Tn);
       Nn[i] = floor(Nn[i], floor_Nn);
       
       NnVn[i] = Nn[i] * Vn[i];
-      Pn[i] = Nn[i] * Tn[i];
+      Pn[i] = Nn[i] * Ti[i];
     }
   }
   
@@ -1667,7 +1701,6 @@ int Hermes::rhs(BoutReal t) {
   if (evolve_neutrals){
     Nn.applyParallelBoundary(parbc);
     NnVn.applyParallelBoundary(parbc);
-    Pn.applyParallelBoundary(parbc);
   }
 
 
@@ -1692,13 +1725,10 @@ int Hermes::rhs(BoutReal t) {
     mul_all(NVi, Vi, Ne, i);
 
     if(evolve_neutrals){
-      div_all(Tn, Pn, Nn, i);
       div_all(Vn, NnVn, Nn, i);
       
       floor_all(Nn, floor_Nn, i);
-      floor_all(Tn, floor_Tn, i);
-
-      mul_all(Pn, Tn, Nn, i);
+      mul_all(Pn, Ti, Nn, i);
       mul_all(NnVn, Vn, Nn, i);
       
     }
@@ -2170,13 +2200,24 @@ int Hermes::rhs(BoutReal t) {
   */
   
   if (evolve_neutrals){
-    fci_neutral_rates( Ne, Te, Ti, Vi, Nn, Tn, Vn, Sneutral, Fn, Qin, Rn, Riz, Rrc, Rcx, Tnorm, Nnorm, Bnorm, rho_s0, Omega_ci, true);
+    fci_neutral_rates( Ne, Te, Ti, Vi, Nn, Ti, Vn, Sneutral, Fn, Qin, Rn, Riz, Rrc, Rcx, Tnorm, Nnorm, Bnorm, rho_s0, Omega_ci, true, Dnn);
+    Fn.applyBoundary("neumann");
+    Qin.applyBoundary("neumann");
+    Rn.applyBoundary("neumann");
+    Riz.applyBoundary("neumann");
+    Rcx.applyBoundary("neumann");
+    Rrc.applyBoundary("neumann");
+    Dnn.applyBoundary("neumann");
     
-    
-    
+    mesh->communicate(Fn, Qin, Rn, Riz, Rcx, Rrc, Dnn);
+    Fn.applyParallelBoundary(parbc);
+    Qin.applyParallelBoundary(parbc);
+    Rn.applyParallelBoundary(parbc);
+    Riz.applyParallelBoundary(parbc);
+    Rrc.applyParallelBoundary(parbc);
+    Rcx.applyParallelBoundary(parbc);
+    Dnn.applyParallelBoundary(parbc);
   }
-
-
 
 
   //////////////////////////////////////////////////////////////
@@ -2400,8 +2441,13 @@ int Hermes::rhs(BoutReal t) {
     
     if (Ne_sources){//Row 5 Term 2
       TRACE("Density sources");
-      TE_Ne_sources = NeSource;
+      if (adapt_source) {
+	TE_Ne_sources = adaptive_sourceterm(Ne ,NeSource, Ne_target, adaptive_overshoot);
+      } else {
+	TE_Ne_sources = NeSource;
+      }
 
+      
       if (evolve_neutrals && neutralplasmainteraction){
 	TE_Ne_sources -= Sneutral;
       }
@@ -2802,7 +2848,7 @@ int Hermes::rhs(BoutReal t) {
 
 
     if (evolve_neutrals && neutralplasmainteraction){
-      ddt(NVi) -= Vi * (Rrc + Rcx);
+      ddt(NVi) -= (Vi - Vn)  * (Rrc + Rcx);
     }
 
 
@@ -2934,7 +2980,11 @@ int Hermes::rhs(BoutReal t) {
 
     if (Pe_sources){//Row 7 Term 1
       TRACE("Pe sources");
-      TE_Pe_sources = PeSource;
+      if (adapt_source){
+	TE_Pe_sources = adaptive_sourceterm(Te ,PeSource, Te_target, adaptive_overshoot);
+      } else {
+	TE_Pe_sources = PeSource;
+      }
 
       if (evolve_neutrals && neutralplasmainteraction){
 	TE_Pe_sources += -(2.0/3.0) * Rn; 
@@ -3070,8 +3120,12 @@ int Hermes::rhs(BoutReal t) {
 
 
     if (Pi_sources){//Row 8 Term 1
-      TE_Pi_sources = PiSource;
-
+      if (adapt_source){
+	TE_Pi_sources = adaptive_sourceterm(Ti ,PiSource, Ti_target, adaptive_overshoot);
+      } else {
+	TE_Pi_sources = PiSource;
+      }
+	
       if (evolve_neutrals && neutralplasmainteraction){
 	TE_Pi_sources += -(2.0/3.0) * Qin;
       }
@@ -3135,7 +3189,6 @@ int Hermes::rhs(BoutReal t) {
   if (evolve_neutrals){
     ddt(Nn) = 0.0;
     ddt(NnVn) = 0.0;
-    ddt(Pn) = 0.0;
 
 
   //  TE_Nn_sources = 0.0;
@@ -3154,23 +3207,29 @@ int Hermes::rhs(BoutReal t) {
     
     if (Nn_perpflow){
       if (use_new_divagradperp){
-	TE_Nn_perpflow = anomalous_Dn * Div_a_Grad_perp_mod(div_all(1.0,Tn),Pn);
-	} else {
-	TE_Nn_perpflow = anomalous_Dn * Div_a_Grad_perp_curv(div_all(1.0,Tn),Pn);
-      }
-      
+	TE_Nn_perpflow =  Div_a_Grad_perp_mod(div_all(Dnn, Ti),Pn);
+      } else {
+	//TE_Nn_perpflow = div_all(Dnn, Tn) * new_Delp2(Pn);
+	TE_Nn_perpflow = Div_a_Grad_perp_curv(div_all(Dnn, Ti),Pn);
+      }      
       ddt(Nn) += TE_Nn_perpflow;
     } // End Nn_perpflow
-      
+
+    
+    TE_Nn_sources = 0.0;
     if (Nn_sources && neutralplasmainteraction){
-      TE_Nn_sources = Sneutral;
-      if (Recycling_coef > 0.0){
-	TE_Nn_sources += Recycling_flux;
-      }
-      ddt(Nn) += TE_Nn_sources;
-    } // End Nn_sources
-      
-   
+      TE_Nn_sources += Sneutral;
+    }
+    if (Nn_sources && Recycling_coef > 0.0){
+      TE_Nn_sources += Recycling_flux;
+    }
+    ddt(Nn) += TE_Nn_sources;
+
+    
+    if (Nn_hyper){      
+      TE_Nn_hyper = hyperdissipation(hyper_D, Nn);
+      ddt(Nn) += TE_Nn_hyper;
+    } // End Pe_hyper
 
     
       
@@ -3187,9 +3246,10 @@ int Hermes::rhs(BoutReal t) {
     
     if (NnVn_perpflow){
       if (use_new_divagradperp){
-	TE_NnVn_perpflow = anomalous_Dn * Div_a_Grad_perp_mod(div_all(Vn,Tn),Pn);
+	TE_NnVn_perpflow =  Div_a_Grad_perp_mod(div_all(mul_all(Vn, Dnn),Ti),Pn);
       } else {
-	TE_NnVn_perpflow = anomalous_Dn * Div_a_Grad_perp_curv(div_all(Vn,Tn),Pn);
+	//TE_NnVn_perpflow = Vn * Dnn / Tn * new_Delp2(Pn); 
+	TE_NnVn_perpflow =  Div_a_Grad_perp_curv(div_all(mul_all(Vn, Dnn) ,Ti),Pn);
       }
       ddt(NnVn) += TE_NnVn_perpflow;
     } // End NnVn_perpflow
@@ -3205,63 +3265,23 @@ int Hermes::rhs(BoutReal t) {
 
     if (NnVn_pardiffusion){
       if (!use_new_conduction){
-	TE_NnVn_pardiffusion = Div_par_K_Grad_par(mul_all(anomalous_Dn, Nn), Vn);
-      } else {
-	TE_NnVn_pardiffusion = Div_par_K_Grad_par_mod(mul_all(anomalous_Dn, Nn), Vn);
+	TE_NnVn_pardiffusion = Div_par_K_Grad_par(mul_all(Dnn, Nn), Vn);
+      } else {	
+	TE_NnVn_pardiffusion = Div_par_K_Grad_par_mod(mul_all(Dnn, Nn), Vn);
       }
       ddt(NnVn) += TE_NnVn_pardiffusion;
     } // End NnVn_pardiffusion
 
     if (NnVn_friction && neutralplasmainteraction){
-      TE_NnVn_friction = Vi * (Rrc + Rcx);
+      TE_NnVn_friction = (Vi - Vn) * (Rrc + Rcx);
       ddt(NnVn) += TE_NnVn_friction;
     }
 
+    if (NnVn_hyper){
+      TE_NnVn_hyper = hyperdissipation(hyper_nu, NnVn);
+      ddt(NnVn) += TE_NnVn_hyper;
+    } // End Pe_hyper
 
-    
-
-    if (Pn_parflow){
-      if (!use_new_div_par){
-	Field3D PnVn = mul_all(Pn, Vn);
-	TE_Pn_parflow = -Div_par(PnVn);
-      } else {
-	TE_Pn_parflow = -Div_par_mod(Pn, Vn, fastest_ispeed, use_slope_limiter);
-      }
-      ddt(Pn) += TE_Pn_parflow;
-    } // End Pn_parflow
-
-    if (Pn_perpflow){
-      if (use_new_divagradperp){
-        TE_Pn_perpflow = anomalous_Dn * new_Delp2(Pn);
-      } else {
-	TE_Pn_perpflow = anomalous_Dn * new_Delp2(Pn);
-      }
-      ddt(Pn) += TE_Pn_perpflow;
-    }
-
-    if (Pn_parcompression){
-      TE_Pn_parcompression = -2.0/3.0 * Pn * Div_par(Vn);
-      ddt(Pn) += TE_Pn_parcompression;
-    } // End Pn_parcompression
-
-    if (Pn_perpdiffusion){
-      if (use_new_divagradperp){
-        TE_Pn_perpdiffusion = anomalous_Dn * Div_a_Grad_perp_mod(Nn,Tn);
-      } else {
-        TE_Pn_perpdiffusion = anomalous_Dn * Div_a_Grad_perp_curv(Nn, Tn);
-      }
-      ddt(Pn) += TE_Pn_perpdiffusion;
-    } // End Pn_perpdiffusion
-
-    if (Pn_sources && neutralplasmainteraction){
-      TE_Pn_sources = (2.0/3.0) * Qin;
-      if (Recycling_coef > 0.0){
-	TE_Pn_sources += Recycling_flux * 3.5 / Tnorm;
-      }
-      ddt(Pn) += TE_Pn_sources;
-    } // End Pn_sources && neutralplasmainteraction
-
-    
 
     
   } // End evolve_neutrals

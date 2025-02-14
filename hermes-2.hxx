@@ -297,21 +297,21 @@ private:
   BoutReal Recycling_coef;
   Field3D Recycling_flux;
 
-  Field3D Sneutral, Fn, Qin, Rn, Riz, Rrc, Rcx;
+  Field3D Sneutral, Fn, Qin, Rn, Riz, Rrc, Rcx, Dnn;
   
   bool TE_Nn;
-  bool Nn_parflow, Nn_perpflow, Nn_sources;
-  Field3D TE_Nn_parflow, TE_Nn_perpflow, TE_Nn_sources;
+  bool Nn_parflow, Nn_perpflow, Nn_sources, Nn_hyper;
+  Field3D TE_Nn_parflow, TE_Nn_perpflow, TE_Nn_sources, TE_Nn_hyper;
 
 
   bool TE_NnVn;
-  bool NnVn_parflow, NnVn_perpflow, NnVn_pargradient, NnVn_pardiffusion, NnVn_friction;
-  Field3D TE_NnVn_parflow, TE_NnVn_perpflow, TE_NnVn_pargradient, TE_NnVn_pardiffusion, TE_NnVn_friction;
+  bool NnVn_parflow, NnVn_perpflow, NnVn_pargradient, NnVn_pardiffusion, NnVn_friction, NnVn_hyper;
+  Field3D TE_NnVn_parflow, TE_NnVn_perpflow, TE_NnVn_pargradient, TE_NnVn_pardiffusion, TE_NnVn_friction, TE_NnVn_hyper;
 
 
   bool TE_Pn;
-  bool Pn_parflow, Pn_perpflow, Pn_parcompression, Pn_perpdiffusion, Pn_sources;
-  Field3D TE_Pn_parflow, TE_Pn_perpflow, TE_Pn_parcompression, TE_Pn_perpdiffusion, TE_Pn_sources;
+  bool Pn_parflow, Pn_perpflow, Pn_parcompression, Pn_perpdiffusion, Pn_sources, Pn_hyper;
+  Field3D TE_Pn_parflow, TE_Pn_perpflow, TE_Pn_parcompression, TE_Pn_perpdiffusion, TE_Pn_sources, TE_Pn_hyper;
   
   // Numerical dissipation
 
@@ -334,9 +334,11 @@ private:
   
   bool ramp_mesh;   // Use Ne,Pe in the grid file for starting ramp target
   BoutReal ramp_timescale; // Length of time for the initial ramp
-  Field3D NeTarget, PeTarget, PiTarget; // For adaptive sources
+
   bool sheath_ramp;
   BoutReal sheath_ramp_time,sheath_ramp_factor;
+
+  BoutReal Ne_target, Te_target, Ti_target,adaptive_overshoot;
   
   bool adapt_source; // Use a PI controller to feedback profiles
   bool core_sources; // Sources only in the core
