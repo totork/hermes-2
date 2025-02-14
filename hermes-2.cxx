@@ -3306,14 +3306,13 @@ int Hermes::precon(BoutReal t, BoutReal gamma, BoutReal delta) {
   if (!neutralSolver){
     auto& optss = Options::root();
     neutralSolver = Laplacian::create(&optss["neutralSolver"]);
-    neutralSolver->setInnerBoundaryFlags(INVERT_DC_GRAD | INVERT_AC_GRAD);
     neutralSolver->setCoefA(1.0);
   }
   
   neutralSolver->setCoefD(-gamma*Dnn);
   
-  ddt(Nn) = neutralSolver->solve(ddt(Nn));
-  ddt(NnVn) = neutralSolver->solve(ddt(NnVn));
+  ddt(Nn) = neutralSolver->solve(ddt(Nn),oness);
+  ddt(NnVn) = neutralSolver->solve(ddt(NnVn),oness);
   return 0;
 }
 
