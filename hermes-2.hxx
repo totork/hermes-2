@@ -402,7 +402,8 @@ private:
   
   bool newXZsolver; 
   std::unique_ptr<Laplacian> phiSolver{nullptr}; // Old Laplacian in X-Z
- 
+
+  std::unique_ptr<Laplacian> neutralSolver{nullptr};
 
   bool relaxation;
   Field3D phi_1;

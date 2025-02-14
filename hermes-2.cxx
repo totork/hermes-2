@@ -1557,6 +1557,8 @@ int Hermes::init(bool restarting) {
   }
 
 
+  setPrecon((preconfunc)&Hermes::precon);
+
   
   return 0;
 }
@@ -3299,6 +3301,23 @@ int Hermes::rhs(BoutReal t) {
  * to timestep
  * @param[in] delta   Not used here
  */
+
+int Hermes::precon(BoutReal t, BoutReal gamma, BoutReal delta) {
+  if (!neutralSolver){
+    auto& optss = Options::root();
+    neutralSolver = Laplacian::create(&optss["neutralSolver"]);
+    neutralSolver->setInnerBoundaryFlags(INVERT_DC_GRAD | INVERT_AC_GRAD);
+    neutralSolver->setCoefA(1.0);
+  }
+  
+  neutralSolver->setCoefD(-gamma*Dnn);
+  
+  ddt(Nn) = neutralSolver->solve(ddt(Nn));
+  ddt(NnVn) = neutralSolver->solve(ddt(NnVn));
+  return 0;
+}
+
+
 
 
 Field3D Hermes::fci_curvature(const Field3D &f, const bool &bool_bracket) {
