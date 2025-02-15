@@ -238,7 +238,7 @@ void fci_neutral_rates(
     BoutReal vth_n = sqrt(Tn[ind]);
     BoutReal a0 = 3.1415*SQ(5.29e-11);
     BoutReal lambda_nn = 1. / (NormN*Nn[ind]*a0); // meters
-    BoutReal Lmax = 1.0;
+    BoutReal Lmax = 0.02;
     if(lambda_nn > Lmax) {
       lambda_nn = Lmax;
     }	
