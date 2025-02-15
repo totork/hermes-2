@@ -572,9 +572,10 @@ int Hermes::init(bool restarting) {
   if (evolve_neutrals) {
     SOLVE_FOR(Nn);
     SOLVE_FOR(NnVn);
-    EvolvingVars.add(Nn,NnVn);
+    SOLVE_FOR(Pn);
+    EvolvingVars.add(Nn,NnVn,Pn);
     if (output_ddt) {
-      SAVE_REPEAT(ddt(Nn),ddt(NnVn));
+      SAVE_REPEAT(ddt(Nn),ddt(NnVn), ddt(Pn));
     }
   } else {
     zero_all(Nn);
@@ -706,6 +707,7 @@ int Hermes::init(bool restarting) {
   Nn_perpflow = optnn["Nn_perpflow"].doc("Use neutral density perpendicular flow").withDefault<bool>(false);
   Nn_sources = optnn["Nn_sources"].doc("Use neutral density source terms").withDefault<bool>(false);
   Nn_hyper = optnn["Nn_hyper"].doc("Use neutral density source terms").withDefault<bool>(false);
+  Nn_numdiff = optnn["Nn_numdiff"].doc("Use neutral density source terms").withDefault<bool>(false);
   
   NnVn_parflow = optnnvn["NnVn_parflow"].doc("Use neutral momentum parallel flow").withDefault<bool>(false);
   NnVn_perpflow = optnnvn["NnVn_perpflow"].doc("Use neutral momentum parallel flow").withDefault<bool>(false);
@@ -713,7 +715,7 @@ int Hermes::init(bool restarting) {
   NnVn_pardiffusion = optnnvn["NnVn_pardiffusion"].doc("Use neutral momentum parallel flow").withDefault<bool>(false);
   NnVn_friction = optnnvn["NnVn_friction"].doc("Use neutral momentum parallel flow").withDefault<bool>(false);
   NnVn_hyper = optnnvn["NnVn_hyper"].doc("Use neutral momentum parallel flow").withDefault<bool>(false);
-
+  NnVn_numdiff = optnnvn["NnVn_numdiff"].doc("Use neutral momentum parallel flow").withDefault<bool>(false);
   
   Pn_parflow = optpn["Pn_parflow"].doc("Use neutral momentum parallel flow").withDefault<bool>(false);
   Pn_perpflow = optpn["Pn_perpflow"].doc("Use neutral momentum parallel flow").withDefault<bool>(false);
@@ -721,11 +723,13 @@ int Hermes::init(bool restarting) {
   Pn_perpdiffusion = optpn["Pn_perpdiffusion"].doc("Use neutral momentum parallel flow").withDefault<bool>(false);
   Pn_sources = optpn["Pn_sources"].doc("Use neutral momentum parallel flow").withDefault<bool>(false);
   Pn_hyper = optpn["Pn_hyper"].doc("Use neutral momentum parallel flow").withDefault<bool>(false);
+  Pn_numdiff = optpn["Pn_numdiff"].doc("Use neutral momentum parallel flow").withDefault<bool>(false);
   
   TE_Nn_parflow = 0.0;
   TE_Nn_perpflow = 0.0;
   TE_Nn_sources = 0.0;
   TE_Nn_hyper = 0.0;
+  TE_Nn_numdiff = 0.0;
   
   TE_NnVn_parflow = 0.0;
   TE_NnVn_perpflow = 0.0;
@@ -733,7 +737,8 @@ int Hermes::init(bool restarting) {
   TE_NnVn_pardiffusion = 0.0;
   TE_NnVn_friction = 0.0;
   TE_NnVn_hyper = 0.0;
-
+  TE_NnVn_numdiff = 0.0;
+  
   
   TE_Pn_parflow = 0.0;
   TE_Pn_perpflow = 0.0;
@@ -741,25 +746,27 @@ int Hermes::init(bool restarting) {
   TE_Pn_perpdiffusion = 0.0;
   TE_Pn_sources = 0.0;
   TE_Pn_hyper = 0.0;
+  TE_Pn_numdiff = 0.0;
+
   
 
   if (TE_Nn){
-    SAVE_REPEAT(TE_Nn_parflow, TE_Nn_perpflow, TE_Nn_sources, TE_Nn_hyper);
+    SAVE_REPEAT(TE_Nn_parflow, TE_Nn_perpflow, TE_Nn_sources, TE_Nn_hyper, TE_Nn_numdiff);
   }
 
   if (TE_NnVn){
-    SAVE_REPEAT(TE_NnVn_parflow, TE_NnVn_perpflow, TE_NnVn_pargradient, TE_NnVn_pardiffusion, TE_NnVn_friction, TE_NnVn_hyper);
+    SAVE_REPEAT(TE_NnVn_parflow, TE_NnVn_perpflow, TE_NnVn_pargradient, TE_NnVn_pardiffusion, TE_NnVn_friction, TE_NnVn_hyper, TE_NnVn_numdiff);
   }
 
   if (TE_Pn){
-    SAVE_REPEAT(TE_Pn_parflow, TE_Pn_perpflow, TE_Pn_parcompression, TE_Pn_perpdiffusion, TE_Pn_sources, TE_Pn_hyper);
+    SAVE_REPEAT(TE_Pn_parflow, TE_Pn_perpflow, TE_Pn_parcompression, TE_Pn_perpdiffusion, TE_Pn_sources, TE_Pn_hyper, TE_Pn_numdiff);
   }
 
   OPTION(optneutrals,Recycling_coef, 0.95);
-  OPTION(optneutrals, floor_Nn, 1e-5);
-  OPTION(optneutrals, floor_Tn, 0.1/20.0);
+  OPTION(optneutrals, floor_Nn, 1e-9);
+  OPTION(optneutrals, floor_Tn, 0.001/20.0);
   OPTION(optneutrals, neutralplasmainteraction, false);
-
+  OPTION(optneutrals, simplified_diffusion, false);
   
   // Density
   TE_Ne_ExB = 0.0;
@@ -1320,13 +1327,16 @@ int Hermes::init(bool restarting) {
   opt["phiSolver"].setConditionallyUsed();
   optsc["newXZsolver"].setConditionallyUsed();
 
-  OPTION(optsc, newXZsolver, false);
+  OPTION(optnumerics, newXZsolver, false);
   
     // Use older Laplacian solver                                                                                                                 
-
-  phiSolver = Laplacian::create(&opt["phiSolver"]);
-  phiSolver->setCoefC(1./ SQ(coord->Bxy));
-
+  if (newXZsolver){
+    newSolver = LaplaceXZ::create(mesh,&opt["phiSolver"]);
+    newSolver->setCoefs(1. / SQ(coord->Bxy), 0.0);
+  } else {
+    phiSolver = Laplacian::create(&opt["phiSolver"]);
+    phiSolver->setCoefC(1./ SQ(coord->Bxy));
+  }
   
   phi = 0.0;
   Ve = 0.0;
@@ -1534,7 +1544,7 @@ int Hermes::init(bool restarting) {
     alloc_all(Dnn);
     if (verbose){
       SAVE_REPEAT(Sneutral,Fn,Rn,Qin,Riz,Rrc,Rcx,Recycling_flux);
-      SAVE_REPEAT(Dnn, Pn);
+      SAVE_REPEAT(Dnn);
     }
     
   }
@@ -1587,6 +1597,7 @@ int Hermes::rhs(BoutReal t) {
   if (evolve_neutrals){
     Nn.applyBoundary(t);
     NnVn.applyBoundary(t);
+    Pn.applyBoundary(t);
   }
   
   BOUT_FOR(i, Ne.getRegion("RGN_NOY")) {
@@ -1606,10 +1617,11 @@ int Hermes::rhs(BoutReal t) {
 
     if (evolve_neutrals){
       Vn[i] = NnVn[i] / Nn[i];
+      Tn[i] = floor(Pn[i] / Nn[i], floor_Tn);
       Nn[i] = floor(Nn[i], floor_Nn);
       
       NnVn[i] = Nn[i] * Vn[i];
-      Pn[i] = Nn[i] * Ti[i];
+      Pn[i] = Nn[i] * Tn[i];
     }
   }
   
@@ -1703,6 +1715,7 @@ int Hermes::rhs(BoutReal t) {
   if (evolve_neutrals){
     Nn.applyParallelBoundary(parbc);
     NnVn.applyParallelBoundary(parbc);
+    Pn.applyParallelBoundary(parbc);
   }
 
 
@@ -1727,10 +1740,13 @@ int Hermes::rhs(BoutReal t) {
     mul_all(NVi, Vi, Ne, i);
 
     if(evolve_neutrals){
+      div_all(Tn, Pn, Nn, i);
       div_all(Vn, NnVn, Nn, i);
       
       floor_all(Nn, floor_Nn, i);
-      mul_all(Pn, Ti, Nn, i);
+      floor_all(Tn, floor_Tn, i);
+      
+      mul_all(Pn, Tn, Nn, i);
       mul_all(NnVn, Vn, Nn, i);
       
     }
@@ -1796,23 +1812,47 @@ int Hermes::rhs(BoutReal t) {
 	  }
 	}
       } else if (isMMS){
-
-	if (mesh->firstX()) {
-          for (int j = mesh->ystart; j <= mesh->yend; j++) {
-            for (int k = 0; k < mesh->LocalNz; k++) {
-              phi_boundary3d(mesh->xstart - 1, j, k) = 0.5 * ( Pi(mesh->xstart - 1, j, k) + Pi(mesh->xstart, j, k));
+	if (newXZsolver){
+	  
+	  if (mesh->firstX()) {
+            for (int j = mesh->ystart; j <= mesh->yend; j++) {
+              for (int k = 0; k < mesh->LocalNz; k++) {
+		phi_boundary3d(mesh->xstart  , j, k) =0.5 * ( Pi(mesh->xstart, j, k)+Pi(mesh->xstart, j, k) );
+              }
             }
           }
-        }	
 
 
-        if (mesh->lastX()) {
-          for (int j = mesh->ystart; j <= mesh->yend; j++) {
-            for (int k = 0; k < mesh->LocalNz; k++) {
-              phi_boundary3d(mesh->xend + 1, j, k) = 0.5 * ( Pi(mesh->xend + 1, j, k) + Pi(mesh->xend, j, k) );
+          if (mesh->lastX()) {
+            for (int j = mesh->ystart; j <= mesh->yend; j++) {
+              for (int k = 0; k < mesh->LocalNz; k++) {
+		phi_boundary3d(mesh->xend+1, j, k) = 0.5 * (Pi(mesh->xend+1, j, k) + Pi(mesh->xend+1, j, k));
+              }
             }
           }
-        }
+	  
+	  
+
+	} else {
+	  if (mesh->firstX()) {
+	    for (int j = mesh->ystart; j <= mesh->yend; j++) {
+	      for (int k = 0; k < mesh->LocalNz; k++) {
+		phi_boundary3d(mesh->xstart - 1, j, k) = 0.5 * ( Pi(mesh->xstart - 1, j, k) + Pi(mesh->xstart, j, k));
+		//phi_boundary3d(mesh->xstart - 2, j, k) = 0.5 * ( Pi(mesh->xstart - 2, j, k) + Pi(mesh->xstart - 1, j, k));
+	      }
+	    }
+	  }	
+	  
+
+	  if (mesh->lastX()) {
+	    for (int j = mesh->ystart; j <= mesh->yend; j++) {
+	      for (int k = 0; k < mesh->LocalNz; k++) {
+		phi_boundary3d(mesh->xend + 1, j, k) = 0.5 * ( Pi(mesh->xend + 1, j, k) + Pi(mesh->xend, j, k) );
+		//phi_boundary3d(mesh->xend + 2, j, k) = 0.5 * ( Pi(mesh->xend + 2, j, k) + Pi(mesh->xend +1 , j, k) );
+	      }
+	    }
+	  }
+	}
 
 	
 
@@ -1825,7 +1865,12 @@ int Hermes::rhs(BoutReal t) {
 	// Use older Laplacian solver
 	// phiSolver->setCoefC(1./SQ(coord->Bxy)); // Set when initialised
       mesh->communicate(phi_boundary3d);
-      phi = phiSolver->solve(mul_all(Vort , mul_all(coord->Bxy, coord->Bxy)), phi_boundary3d);//_boundary3d);
+      if (newXZsolver){
+	phi = newSolver->solve(Vort, phi_boundary3d);
+      } else {
+	phi = phiSolver->solve(mul_all(Vort , mul_all(coord->Bxy, coord->Bxy)), phi_boundary3d);
+      }
+
 	
       
       // Hot ion term in vorticity
@@ -2202,7 +2247,7 @@ int Hermes::rhs(BoutReal t) {
   */
   
   if (evolve_neutrals){
-    fci_neutral_rates( Ne, Te, Ti, Vi, Nn, Ti, Vn, Sneutral, Fn, Qin, Rn, Riz, Rrc, Rcx, Tnorm, Nnorm, Bnorm, rho_s0, Omega_ci, true, Dnn);
+    fci_neutral_rates( Ne, Te, Ti, Vi, Nn, Tn, Vn, Sneutral, Fn, Qin, Rn, Riz, Rrc, Rcx, Tnorm, Nnorm, Bnorm, rho_s0, Omega_ci, true, Dnn);
     Fn.applyBoundary("neumann");
     Qin.applyBoundary("neumann");
     Rn.applyBoundary("neumann");
@@ -3191,7 +3236,7 @@ int Hermes::rhs(BoutReal t) {
   if (evolve_neutrals){
     ddt(Nn) = 0.0;
     ddt(NnVn) = 0.0;
-
+    ddt(Pn) = 0.0;
 
   //  TE_Nn_sources = 0.0;
 
@@ -3208,13 +3253,18 @@ int Hermes::rhs(BoutReal t) {
     
     
     if (Nn_perpflow){
-      if (use_new_divagradperp){
-	TE_Nn_perpflow =  Div_a_Grad_perp_mod(div_all(Dnn, Ti),Pn);
+      if (!simplified_diffusion){
+	if (use_new_divagradperp){
+	  TE_Nn_perpflow =  Div_a_Grad_perp_mod(div_all(Dnn, Tn),Pn);
+	} else {
+	  //TE_Nn_perpflow = div_all(Dnn, Tn) * new_Delp2(Pn);
+	  TE_Nn_perpflow = Div_a_Grad_perp_curv(div_all(Dnn, Tn),Pn);
+	}      
+	ddt(Nn) += TE_Nn_perpflow;
       } else {
-	//TE_Nn_perpflow = div_all(Dnn, Tn) * new_Delp2(Pn);
-	TE_Nn_perpflow = Div_a_Grad_perp_curv(div_all(Dnn, Ti),Pn);
-      }      
-      ddt(Nn) += TE_Nn_perpflow;
+	TE_Nn_perpflow = Dnn * new_Delp2(Nn);
+	ddt(Nn) += TE_Nn_perpflow;
+      }
     } // End Nn_perpflow
 
     
@@ -3233,6 +3283,14 @@ int Hermes::rhs(BoutReal t) {
       ddt(Nn) += TE_Nn_hyper;
     } // End Pe_hyper
 
+
+    if (Nn_numdiff){
+      TE_Nn_numdiff = numericaldissipation(num_D,Nn);
+      ddt(Nn) += TE_Nn_numdiff;
+    } // End Ne_numdiff
+
+
+
     
       
     if (NnVn_parflow){      
@@ -3247,13 +3305,18 @@ int Hermes::rhs(BoutReal t) {
     } // End NnVn_parflow 
     
     if (NnVn_perpflow){
-      if (use_new_divagradperp){
-	TE_NnVn_perpflow =  Div_a_Grad_perp_mod(div_all(mul_all(Vn, Dnn),Ti),Pn);
+      if (!simplified_diffusion){
+	if (use_new_divagradperp){
+	  TE_NnVn_perpflow =  Div_a_Grad_perp_mod(div_all(mul_all(Vn, Dnn),Tn),Pn);
+	} else {
+	  //TE_NnVn_perpflow = Vn * Dnn / Tn * new_Delp2(Pn); 
+	  TE_NnVn_perpflow =  Div_a_Grad_perp_curv(div_all(mul_all(Vn, Dnn) ,Tn),Pn);
+	}
+	ddt(NnVn) += TE_NnVn_perpflow;
       } else {
-	//TE_NnVn_perpflow = Vn * Dnn / Tn * new_Delp2(Pn); 
-	TE_NnVn_perpflow =  Div_a_Grad_perp_curv(div_all(mul_all(Vn, Dnn) ,Ti),Pn);
+	TE_NnVn_perpflow = Dnn * Nn * new_Delp2(Vn);
+	ddt(NnVn) += TE_NnVn_perpflow;
       }
-      ddt(NnVn) += TE_NnVn_perpflow;
     } // End NnVn_perpflow
   
     if (NnVn_pargradient){
@@ -3284,7 +3347,77 @@ int Hermes::rhs(BoutReal t) {
       ddt(NnVn) += TE_NnVn_hyper;
     } // End Pe_hyper
 
+    if (NnVn_numdiff){
+      TE_NnVn_numdiff = numericaldissipation(num_nu,Vn);
+      ddt(NnVn) += TE_NnVn_numdiff;
+    } // End Ne_numdiff
 
+
+
+
+    
+
+    if (Pn_parflow){
+      if (!use_new_div_par){
+	Field3D PnVn = mul_all(Pn, Vn);
+	TE_Pn_parflow = -Div_par(PnVn);
+      } else {
+	TE_Pn_parflow = -Div_par_mod(Pn, Vn, fastest_ispeed, use_slope_limiter);
+      }
+      ddt(Pn) += TE_Pn_parflow;
+    } // End Pn_parflow
+    
+    if (Pn_perpflow){
+      if (!simplified_diffusion){
+	if (use_new_divagradperp){
+	  TE_Pn_perpflow = Div_a_Grad_perp_mod(Dnn,Pn);
+	} else {
+	  TE_Pn_perpflow = Div_a_Grad_perp_curv(Dnn,Pn);
+	}
+	ddt(Pn) += TE_Pn_perpflow;
+      } else {
+	TE_Pn_perpflow = Dnn * Nn * new_Delp2(Tn);
+	ddt(Pn) += TE_Pn_perpflow;
+      }
+    }
+    
+    if (Pn_parcompression){
+      TE_Pn_parcompression = -2.0/3.0 * Pn * Div_par(Vn);
+      ddt(Pn) += TE_Pn_parcompression;
+    } // End Pn_parcompression
+    
+    if (Pn_perpdiffusion){
+      if (!simplified_diffusion){
+	if (use_new_divagradperp){
+	  TE_Pn_perpdiffusion = Div_a_Grad_perp_mod(mul_all(Dnn, Nn), Pn);
+	} else {
+	  TE_Pn_perpdiffusion = Div_a_Grad_perp_curv(mul_all(Dnn, Nn), Pn);
+	}
+	ddt(Pn) += TE_Pn_perpdiffusion;
+      } else {
+	TE_Pn_perpdiffusion = Dnn * new_Delp2(Pn);
+	ddt(Pn) += TE_Pn_perpdiffusion;
+      }
+    } // End Pn_perpdiffusion
+
+    TE_Pn_sources = 0.0;
+    if (Pn_sources && neutralplasmainteraction){
+      TE_Pn_sources = (2.0/3.0) * Qin;
+    } // End Pn_sources && neutralplasmainteraction
+    if (Recycling_coef > 0.0){
+      TE_Pn_sources += Recycling_flux * 3.5 / Tnorm;
+    }
+    ddt(Pn) += TE_Pn_sources;
+    
+    if (Pn_hyper){
+      TE_Pn_hyper = hyperdissipation(hyper_chi, Tn);
+      ddt(Pn) += TE_Pn_hyper;
+    } // End Pe_hyper
+
+    if (Pn_numdiff){
+      TE_Pn_numdiff = numericaldissipation(num_chi,Tn);
+      ddt(Pn) += TE_Pn_numdiff;
+    } // End Ne_numdiff
     
   } // End evolve_neutrals
 

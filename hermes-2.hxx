@@ -291,6 +291,7 @@ private:
   Field3D Vn;
 
   bool neutralplasmainteraction;
+  bool simplified_diffusion;
   
   BoutReal floor_Nn,floor_Tn;
   BoutReal anomalous_Dn;
@@ -300,18 +301,18 @@ private:
   Field3D Sneutral, Fn, Qin, Rn, Riz, Rrc, Rcx, Dnn;
   
   bool TE_Nn;
-  bool Nn_parflow, Nn_perpflow, Nn_sources, Nn_hyper;
-  Field3D TE_Nn_parflow, TE_Nn_perpflow, TE_Nn_sources, TE_Nn_hyper;
+  bool Nn_parflow, Nn_perpflow, Nn_sources, Nn_hyper, Nn_numdiff;
+  Field3D TE_Nn_parflow, TE_Nn_perpflow, TE_Nn_sources, TE_Nn_hyper, TE_Nn_numdiff;
 
 
   bool TE_NnVn;
-  bool NnVn_parflow, NnVn_perpflow, NnVn_pargradient, NnVn_pardiffusion, NnVn_friction, NnVn_hyper;
-  Field3D TE_NnVn_parflow, TE_NnVn_perpflow, TE_NnVn_pargradient, TE_NnVn_pardiffusion, TE_NnVn_friction, TE_NnVn_hyper;
+  bool NnVn_parflow, NnVn_perpflow, NnVn_pargradient, NnVn_pardiffusion, NnVn_friction, NnVn_hyper, NnVn_numdiff;
+  Field3D TE_NnVn_parflow, TE_NnVn_perpflow, TE_NnVn_pargradient, TE_NnVn_pardiffusion, TE_NnVn_friction, TE_NnVn_hyper, TE_NnVn_numdiff;
 
 
   bool TE_Pn;
-  bool Pn_parflow, Pn_perpflow, Pn_parcompression, Pn_perpdiffusion, Pn_sources, Pn_hyper;
-  Field3D TE_Pn_parflow, TE_Pn_perpflow, TE_Pn_parcompression, TE_Pn_perpdiffusion, TE_Pn_sources, TE_Pn_hyper;
+  bool Pn_parflow, Pn_perpflow, Pn_parcompression, Pn_perpdiffusion, Pn_sources, Pn_hyper, Pn_numdiff;
+  Field3D TE_Pn_parflow, TE_Pn_perpflow, TE_Pn_parcompression, TE_Pn_perpdiffusion, TE_Pn_sources, TE_Pn_hyper, TE_Pn_numdiff;
   
   // Numerical dissipation
 
@@ -402,9 +403,10 @@ private:
   
   bool newXZsolver; 
   std::unique_ptr<Laplacian> phiSolver{nullptr}; // Old Laplacian in X-Z
-
+  std::unique_ptr<LaplaceXZ> newSolver{nullptr};
   std::unique_ptr<Laplacian> neutralSolver{nullptr};
-
+  
+  
   bool relaxation;
   Field3D phi_1;
   BoutReal lambda_0,lambda_2;
