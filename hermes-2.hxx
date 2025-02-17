@@ -241,6 +241,7 @@ private:
   BoutReal anomalous_nu;   // Momentum diffusion (kinematic viscosity)
   Field3D hyper_D, hyper_chi, hyper_nu;
   Field3D num_D, num_nu, num_chi;
+  Field3D num_Vort;
   Field3D a_d3d, a_chi3d, a_nu3d; // 3D coef
   bool anomalous_D_nvi; // Include terms in momentum equation
   bool anomalous_D_pepi; // Include terms in Pe, Pi equations
@@ -404,6 +405,7 @@ private:
   bool newXZsolver; 
   std::unique_ptr<Laplacian> phiSolver{nullptr}; // Old Laplacian in X-Z
   std::unique_ptr<LaplaceXZ> newSolver{nullptr};
+  //std::unique_ptr<LaplaceXZ> newaparSolver{nullptr};
   std::unique_ptr<Laplacian> neutralSolver{nullptr};
   
   

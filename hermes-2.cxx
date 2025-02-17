@@ -64,7 +64,7 @@ BoutReal limitFreeScale(BoutReal fm, BoutReal fc) {
     return 1; // Neumann rather than increasing into boundary
   }
   BoutReal fp = fc / fm;
-  return std::max(fp, 0.98);
+  return std::max(fp, 0.85);
 }
 
 
@@ -1045,7 +1045,7 @@ int Hermes::init(bool restarting) {
   num_D = opttransport["num_D"].doc("numerical parallel diffusion").withDefault(0.0);
   num_nu = opttransport["num_nu"].doc("numerical parallel viscosity").withDefault(0.0);
   num_chi = opttransport["num_chi"].doc("numerical parallel conductivity").withDefault(0.0);
-
+  num_Vort = opttransport["num_Vort"].doc("numerical parallel viscosity for vorticity").withDefault(num_nu);
   
   hyper_D /= (rho_s0 * rho_s0 * rho_s0 * rho_s0) * Omega_ci;
   hyper_nu /= (rho_s0 * rho_s0 * rho_s0 * rho_s0) * Omega_ci;
@@ -1054,7 +1054,7 @@ int Hermes::init(bool restarting) {
   num_D /= (rho_s0 * rho_s0 * rho_s0 * rho_s0) * Omega_ci;
   num_nu /= (rho_s0 * rho_s0 * rho_s0 * rho_s0) * Omega_ci;
   num_chi /= (rho_s0 * rho_s0 * rho_s0 * rho_s0) * Omega_ci;
-
+  num_Vort /= (rho_s0 * rho_s0 * rho_s0 * rho_s0) * Omega_ci;
   
   hyper_D.applyBoundary("neumann");
   hyper_chi.applyBoundary("neumann");
@@ -1062,16 +1062,17 @@ int Hermes::init(bool restarting) {
   num_D.applyBoundary("neumann");
   num_chi.applyBoundary("neumann");
   num_nu.applyBoundary("neumann");
-
-  mesh->communicate( hyper_D , hyper_chi , hyper_nu , num_D , num_nu ,num_chi);
+  num_Vort.applyBoundary("neumann");
   
-  hyper_D.applyParallelBoundary("parallel_neumann_o1");
-  hyper_nu.applyParallelBoundary("parallel_neumann_o1");
-  hyper_chi.applyParallelBoundary("parallel_neumann_o1");
-  num_D.applyParallelBoundary("parallel_neumann_o1");
-  num_nu.applyParallelBoundary("parallel_neumann_o1");
-  num_chi.applyParallelBoundary("parallel_neumann_o1");
-
+  mesh->communicate( hyper_D , hyper_chi , hyper_nu , num_D , num_nu ,num_chi, num_Vort);
+  
+  hyper_D.applyParallelBoundary(parbc);
+  hyper_nu.applyParallelBoundary(parbc);
+  hyper_chi.applyParallelBoundary(parbc);
+  num_D.applyParallelBoundary(parbc);
+  num_nu.applyParallelBoundary(parbc);
+  num_chi.applyParallelBoundary(parbc);
+  num_Vort.applyParallelBoundary(parbc);
 
   
   
@@ -1919,6 +1920,8 @@ int Hermes::rhs(BoutReal t) {
 
       Field3D ones = 1.0;
       Field3D tmp = -Ne*0.5*beta_e*mi_me;
+      //Field3D tmp = -0.5*beta_e*mi_me;
+
       // With laplacian
       //aparSolver->setCoefD(1.0);
       //aparSolver->setCoefA(-Ne*0.5*beta_e*mi_me);
@@ -2610,7 +2613,7 @@ int Hermes::rhs(BoutReal t) {
 
     if (Vort_numdiff){
       TRACE("Vorticity numerical parallel diffusion");
-      TE_Vort_numdiff = numericaldissipation(num_nu,Vort);
+      TE_Vort_numdiff = numericaldissipation(num_Vort,Vort);
       ddt(Vort) += TE_Vort_numdiff;
     } // End Vort_numdiff
 
@@ -3475,7 +3478,18 @@ Field3D Hermes::fci_curvature(const Field3D &f, const bool &bool_bracket) {
 
 
 Field3D Hermes::hyperdissipation(const Field3D &a, const Field3D &b) {
-  return -a * (D4DX4(b)/SQSQ_g_11 + D4DZ4(b)/SQSQ_g_33);
+  Field3D result = -a * (D4DX4(b)/SQSQ_g_11 + D4DZ4(b)/SQSQ_g_33);
+  /*
+  if (mesh->lastX()) {
+        int n = mesh->LocalNx;
+	for (int j = mesh->ystart; j <= mesh->yend; j++) {
+          for (int k = 0; k < mesh->LocalNz; k++) {
+	    result(n - 3, j, k) = 0.0;
+	  }
+	}
+  }
+  */
+  return result;
   //return -a * (D4DZ4(b)/SQSQ_g_33);
 }
 
