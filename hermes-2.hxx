@@ -146,7 +146,10 @@ private:
   bool electromagnetic; // Include magnetic potential psi
   bool FiniteElMass;    // Finite Electron Mass
 
-  Field3D oness;
+  Field3D oness,zeroes;
+  
+
+  BoutReal low_diffuse_value;
   // All variables for the rhie chow velocity correction
   
   bool use_rhie_interpolation;
@@ -155,7 +158,7 @@ private:
   // Switches for all the terms in the equations
 
   // Density equation
-  bool Ne_ExB, Ne_mag, Ne_parflow, Ne_collision, Ne_anomalous, Ne_sources,Ne_hyper, Ne_numdiff;
+  bool Ne_ExB, Ne_mag, Ne_parflow, Ne_collision, Ne_anomalous, Ne_sources,Ne_hyper, Ne_numdiff, Ne_lowdiffuse;
 
   // Ion momentum
   bool NVi_ExB, NVi_mag, NVi_parflow, NVi_parpressure, NVi_parviscos, NVi_collision, NVi_anomalous,NVi_hyper,NVi_numdiff; 
@@ -164,10 +167,10 @@ private:
   // Electron pressure
   bool Pe_ExB, Pe_mag, Pe_parflow, Pe_conduction, Pe_ohmic, Pe_thermalforce, Pe_thermalcurrent;
   bool Pe_collision, Pe_anomalous, Pe_sources, Pe_energyexchange,Pe_hyper,Pe_numdiff;
-  bool Pe_dampening;
+  bool Pe_dampening, Pe_lowdiffuse;
   // Ion Pressure
   bool Pi_ExB, Pi_mag, Pi_parflow, Pi_conduction, Pi_diamagenergyexchange, Pi_parviscousheat;
-  bool Pi_resistivedrift, Pi_perpviscous, Pi_sources,Pi_hyper,Pi_numdiff,Pi_anomalous, Pi_energyexchange;
+  bool Pi_resistivedrift, Pi_perpviscous, Pi_sources,Pi_hyper,Pi_numdiff,Pi_anomalous, Pi_energyexchange, Pi_lowdiffuse;
 
   // Vorticity
   bool Vort_mag, Vort_parcurrent, Vort_polarcurrent, Vort_collision, Vort_parviscous;
@@ -183,7 +186,7 @@ private:
   // Field for the terms
   bool TE_Ne,TE_NVi,TE_Pe,TE_Pi,TE_Vort,TE_VePsi;
 
-  Field3D TE_Ne_ExB, TE_Ne_mag, TE_Ne_parflow, TE_Ne_collision, TE_Ne_anomalous, TE_Ne_sources, TE_Ne_hyper, TE_Ne_numdiff;
+  Field3D TE_Ne_ExB, TE_Ne_mag, TE_Ne_parflow, TE_Ne_collision, TE_Ne_anomalous, TE_Ne_sources, TE_Ne_hyper, TE_Ne_numdiff, TE_Ne_lowdiffuse;
   
   // Fields for ion momentum terms
   Field3D TE_NVi_ExB, TE_NVi_mag, TE_NVi_parflow, TE_NVi_parpressure, TE_NVi_parviscos, TE_NVi_collision, TE_NVi_anomalous, 
@@ -191,11 +194,11 @@ private:
   Field3D TE_NVi_supsonicdampening;
   // Fields for electron pressure terms
   Field3D TE_Pe_ExB, TE_Pe_mag, TE_Pe_parflow, TE_Pe_conduction, TE_Pe_ohmic, TE_Pe_thermalforce, TE_Pe_thermalcurrent;
-  Field3D TE_Pe_collision, TE_Pe_anomalous, TE_Pe_sources, TE_Pe_energyexchange, TE_Pe_hyper, TE_Pe_numdiff;
+  Field3D TE_Pe_collision, TE_Pe_anomalous, TE_Pe_sources, TE_Pe_energyexchange, TE_Pe_hyper, TE_Pe_numdiff, TE_Pe_lowdiffuse;
   Field3D TE_Pe_dampening,TE_Pe_sheath;
   // Fields for ion pressure terms
   Field3D TE_Pi_ExB, TE_Pi_mag, TE_Pi_parflow, TE_Pi_conduction, TE_Pi_diamagenergyexchange, TE_Pi_parviscousheat;
-  Field3D TE_Pi_resistivedrift, TE_Pi_perpviscous, TE_Pi_sources, TE_Pi_hyper, TE_Pi_numdiff,TE_Pi_anomalous, TE_Pi_energyexchange;
+  Field3D TE_Pi_resistivedrift, TE_Pi_perpviscous, TE_Pi_sources, TE_Pi_hyper, TE_Pi_numdiff,TE_Pi_anomalous, TE_Pi_energyexchange, TE_Pi_lowdiffuse;
 
   // Fields for vorticity terms
   Field3D TE_Vort_mag, TE_Vort_parcurrent, TE_Vort_polarcurrent, TE_Vort_collision, TE_Vort_parviscous;
@@ -241,7 +244,8 @@ private:
   BoutReal anomalous_nu;   // Momentum diffusion (kinematic viscosity)
   Field3D hyper_D, hyper_chi, hyper_nu;
   Field3D num_D, num_nu, num_chi;
-  Field3D num_Vort;
+  Field3D num_Vort, num_VePsi;
+  
   Field3D a_d3d, a_chi3d, a_nu3d; // 3D coef
   bool anomalous_D_nvi; // Include terms in momentum equation
   bool anomalous_D_pepi; // Include terms in Pe, Pi equations
@@ -284,7 +288,7 @@ private:
 
 
   // neutral variables
-  bool evolve_neutrals;
+  bool evolve_neutrals, evolve_pn;
   Field3D Nn;
   Field3D NnVn;
   Field3D Pn;
@@ -298,7 +302,7 @@ private:
   BoutReal anomalous_Dn;
   BoutReal Recycling_coef;
   Field3D Recycling_flux;
-
+  BoutReal neutrals_lmax;
   Field3D Sneutral, Fn, Qin, Rn, Riz, Rrc, Rcx, Dnn;
   
   bool TE_Nn;

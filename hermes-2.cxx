@@ -569,14 +569,23 @@ int Hermes::init(bool restarting) {
   // Neutrals
 
   evolve_neutrals = optsc["evolve_neutrals"].doc("Evolve neutrals?").withDefault<bool>(false);
+  evolve_pn = optsc["evolve_pn"].doc("Evolve neutrals?").withDefault<bool>(false);
   if (evolve_neutrals) {
     SOLVE_FOR(Nn);
     SOLVE_FOR(NnVn);
-    SOLVE_FOR(Pn);
-    EvolvingVars.add(Nn,NnVn,Pn);
+    EvolvingVars.add(Nn,NnVn);
     if (output_ddt) {
-      SAVE_REPEAT(ddt(Nn),ddt(NnVn), ddt(Pn));
+      SAVE_REPEAT(ddt(Nn),ddt(NnVn));
     }
+
+    if (evolve_pn){
+      SOLVE_FOR(Pn);
+      EvolvingVars.add(Pn);
+      if(output_ddt){
+	SAVE_REPEAT(ddt(Pn));
+      }
+    }
+    
   } else {
     zero_all(Nn);
     zero_all(NnVn);
@@ -598,6 +607,8 @@ int Hermes::init(bool restarting) {
   Ne_sources = optne["Ne_sources"].doc("Use sources in density").withDefault<bool>(false);
   Ne_hyper = optne["Ne_hyper"].doc("Use hyperdiffusion in density").withDefault<bool>(false);
   Ne_numdiff = optne["Ne_numdiff"].doc("Use parallel numerical diffusion in density").withDefault<bool>(false);
+  Ne_lowdiffuse = optne["Ne_lowdiffuse"].doc("Use parallel numerical diffusion in density").withDefault<bool>(false);
+
   
   use_Vi = optne["use_Vi"].doc("Use ion velocity instead of electron velocity in density equation").withDefault<bool>(false);
   
@@ -631,7 +642,7 @@ int Hermes::init(bool restarting) {
   Pe_hyper = optpe["Pe_hyper"].doc("Use hyperdiffusion in electron pressure").withDefault<bool>(false);
   Pe_numdiff = optpe["Pe_numdiff"].doc("Use parallel numerical diffusion in electron pressure").withDefault<bool>(false);
   Pe_dampening = optpe["Pe_dampening"].doc("Use dampening of high temperatures in electron pressure").withDefault<bool>(false);
-
+  Pe_lowdiffuse = optpe["Pe_lowdiffuse"].doc("Use dampening of high temperatures in electron pressure").withDefault<bool>(false);
 
 
   
@@ -651,6 +662,7 @@ int Hermes::init(bool restarting) {
   Pi_numdiff = optpi["Pi_numdiff"].doc("Use parallel numerical diffusion in ion pressure").withDefault<bool>(false);
   Pi_anomalous = optpi["Pi_anomalous"].doc("Include anomalous effects in ion energy").withDefault<bool>(false);
   Pi_energyexchange = optpi["Pi_energyexchange"].doc("Include anomalous effects in ion energy").withDefault<bool>(false);
+  Pi_lowdiffuse = optpi["Pi_lowdiffuse"].doc("Include anomalous effects in ion energy").withDefault<bool>(false);
   
   // bool Vort_mag, Vort_parcurrent, Vort_polarcurrent, Vort_collision, Vort_parviscous;
   // bool Vort_anomalous;
@@ -731,6 +743,7 @@ int Hermes::init(bool restarting) {
   TE_Nn_hyper = 0.0;
   TE_Nn_numdiff = 0.0;
   
+  
   TE_NnVn_parflow = 0.0;
   TE_NnVn_perpflow = 0.0;
   TE_NnVn_pargradient = 0.0;
@@ -767,7 +780,7 @@ int Hermes::init(bool restarting) {
   OPTION(optneutrals, floor_Tn, 0.001/20.0);
   OPTION(optneutrals, neutralplasmainteraction, false);
   OPTION(optneutrals, simplified_diffusion, false);
-  
+  OPTION(optneutrals, neutrals_lmax, 0.01);
   // Density
   TE_Ne_ExB = 0.0;
   TE_Ne_mag = 0.0;
@@ -777,8 +790,10 @@ int Hermes::init(bool restarting) {
   TE_Ne_sources = 0.0;
   TE_Ne_hyper = 0.0;
   TE_Ne_numdiff = 0.0;
+  TE_Ne_lowdiffuse = 0.0;
   if (TE_Ne) {
     SAVE_REPEAT(TE_Ne_ExB, TE_Ne_mag, TE_Ne_parflow, TE_Ne_collision, TE_Ne_anomalous, TE_Ne_sources, TE_Ne_hyper, TE_Ne_numdiff);
+    SAVE_REPEAT(TE_Ne_lowdiffuse);
   }
 
 
@@ -815,10 +830,11 @@ int Hermes::init(bool restarting) {
   TE_Pe_numdiff = 0.0;
   TE_Pe_dampening = 0.0;
   TE_Pe_sheath = 0.0;
+  TE_Pe_lowdiffuse = 0.0;
   if (TE_Pe) {
     SAVE_REPEAT(TE_Pe_ExB, TE_Pe_mag, TE_Pe_parflow, TE_Pe_conduction, TE_Pe_ohmic, TE_Pe_thermalforce, TE_Pe_thermalcurrent);
     SAVE_REPEAT(TE_Pe_collision, TE_Pe_anomalous, TE_Pe_sources, TE_Pe_energyexchange, TE_Pe_hyper, TE_Pe_numdiff);
-    SAVE_REPEAT(TE_Pe_dampening,TE_Pe_sheath);
+    SAVE_REPEAT(TE_Pe_dampening,TE_Pe_sheath, TE_Pe_lowdiffuse);
   }
   
 
@@ -836,9 +852,11 @@ int Hermes::init(bool restarting) {
   TE_Pi_numdiff = 0.0;
   TE_Pi_anomalous = 0.0;
   TE_Pi_energyexchange = 0.0;
+  TE_Pi_lowdiffuse = 0.0;
   if (TE_Pi) {
     SAVE_REPEAT(TE_Pi_ExB, TE_Pi_mag, TE_Pi_parflow, TE_Pi_conduction, TE_Pi_diamagenergyexchange, TE_Pi_parviscousheat);
     SAVE_REPEAT(TE_Pi_resistivedrift, TE_Pi_perpviscous, TE_Pi_sources, TE_Pi_hyper, TE_Pi_numdiff,TE_Pi_anomalous,TE_Pi_energyexchange);
+    SAVE_REPEAT(TE_Pi_lowdiffuse);
   }
 
 
@@ -894,6 +912,7 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, use_Delp2, false);
   OPTION(optnumerics, use_slope_limiter, false);
 
+  OPTION(optnumerics, low_diffuse_value, 1e-3);
 
   OPTION(optnumerics, use_rhie_interpolation, false);
   if (use_rhie_interpolation){
@@ -1046,6 +1065,7 @@ int Hermes::init(bool restarting) {
   num_nu = opttransport["num_nu"].doc("numerical parallel viscosity").withDefault(0.0);
   num_chi = opttransport["num_chi"].doc("numerical parallel conductivity").withDefault(0.0);
   num_Vort = opttransport["num_Vort"].doc("numerical parallel viscosity for vorticity").withDefault(num_nu);
+  num_VePsi = opttransport["num_VePsi"].doc("numerical parallel viscosity for vorticity").withDefault(num_nu);
   
   hyper_D /= (rho_s0 * rho_s0 * rho_s0 * rho_s0) * Omega_ci;
   hyper_nu /= (rho_s0 * rho_s0 * rho_s0 * rho_s0) * Omega_ci;
@@ -1055,6 +1075,8 @@ int Hermes::init(bool restarting) {
   num_nu /= (rho_s0 * rho_s0 * rho_s0 * rho_s0) * Omega_ci;
   num_chi /= (rho_s0 * rho_s0 * rho_s0 * rho_s0) * Omega_ci;
   num_Vort /= (rho_s0 * rho_s0 * rho_s0 * rho_s0) * Omega_ci;
+  num_VePsi /= (rho_s0 * rho_s0 * rho_s0 * rho_s0) * Omega_ci;
+
   
   hyper_D.applyBoundary("neumann");
   hyper_chi.applyBoundary("neumann");
@@ -1063,8 +1085,9 @@ int Hermes::init(bool restarting) {
   num_chi.applyBoundary("neumann");
   num_nu.applyBoundary("neumann");
   num_Vort.applyBoundary("neumann");
+  num_VePsi.applyBoundary("neumann");
   
-  mesh->communicate( hyper_D , hyper_chi , hyper_nu , num_D , num_nu ,num_chi, num_Vort);
+  mesh->communicate( hyper_D , hyper_chi , hyper_nu , num_D , num_nu ,num_chi, num_Vort, num_VePsi);
   
   hyper_D.applyParallelBoundary(parbc);
   hyper_nu.applyParallelBoundary(parbc);
@@ -1073,7 +1096,7 @@ int Hermes::init(bool restarting) {
   num_nu.applyParallelBoundary(parbc);
   num_chi.applyParallelBoundary(parbc);
   num_Vort.applyParallelBoundary(parbc);
-
+  num_VePsi.applyParallelBoundary(parbc);
   
   
   if (anomalous_D > 0.0) {
@@ -1560,13 +1583,20 @@ int Hermes::init(bool restarting) {
 
   }
   set_all(oness, 1.0);
-  
+  set_all(zeroes, 0.0);
   // Here are some sanity checks for the flags
 
   if (evolve_vort && !calc_potential && !isMMS){
     throw BoutException("Evolving vorticity but not the potential");
   }
 
+
+
+  neutralSolver = Laplacian::create(&opt["neutralSolver"]);
+  neutralSolver->setCoefA(oness);
+
+
+  
 
   setPrecon((preconfunc)&Hermes::precon);
 
@@ -1598,7 +1628,9 @@ int Hermes::rhs(BoutReal t) {
   if (evolve_neutrals){
     Nn.applyBoundary(t);
     NnVn.applyBoundary(t);
-    Pn.applyBoundary(t);
+    if (evolve_pn){
+      Pn.applyBoundary(t);
+    }
   }
   
   BOUT_FOR(i, Ne.getRegion("RGN_NOY")) {
@@ -1618,7 +1650,11 @@ int Hermes::rhs(BoutReal t) {
 
     if (evolve_neutrals){
       Vn[i] = NnVn[i] / Nn[i];
-      Tn[i] = floor(Pn[i] / Nn[i], floor_Tn);
+      if (evolve_pn){
+	Tn[i] = floor(Pn[i] / Nn[i], floor_Tn);
+      } else {
+	Tn[i] = Ti[i];
+      }
       Nn[i] = floor(Nn[i], floor_Nn);
       
       NnVn[i] = Nn[i] * Vn[i];
@@ -1716,7 +1752,9 @@ int Hermes::rhs(BoutReal t) {
   if (evolve_neutrals){
     Nn.applyParallelBoundary(parbc);
     NnVn.applyParallelBoundary(parbc);
-    Pn.applyParallelBoundary(parbc);
+    if (evolve_pn){
+      Pn.applyParallelBoundary(parbc);
+    }
   }
 
 
@@ -2250,7 +2288,8 @@ int Hermes::rhs(BoutReal t) {
   */
   
   if (evolve_neutrals){
-    fci_neutral_rates( Ne, Te, Ti, Vi, Nn, Tn, Vn, Sneutral, Fn, Qin, Rn, Riz, Rrc, Rcx, Tnorm, Nnorm, Bnorm, rho_s0, Omega_ci, true, Dnn);
+    fci_neutral_rates( Ne, Te, Ti, Vi, Nn, Tn, Vn, Sneutral, Fn, Qin, Rn, Riz, Rrc, Rcx, Tnorm, Nnorm, Bnorm, rho_s0,
+		       Omega_ci, true, Dnn, neutrals_lmax);
     Fn.applyBoundary("neumann");
     Qin.applyBoundary("neumann");
     Rn.applyBoundary("neumann");
@@ -2519,6 +2558,16 @@ int Hermes::rhs(BoutReal t) {
       ddt(Ne) += TE_Ne_numdiff;
     } // End Ne_numdiff
 
+
+    if (Ne_lowdiffuse){
+      if (use_new_divagradperp){
+        TE_Ne_lowdiffuse = Div_a_Grad_perp_mod(div_all(mul_all(low_diffuse_value, a_d3d), Ne), Ne);
+      } else {
+        TE_Ne_lowdiffuse = Div_a_Grad_perp_curv(div_all(mul_all(low_diffuse_value, a_d3d), Ne), Ne);
+      }
+      ddt(Ne) += TE_Ne_lowdiffuse;
+    } // End Ne_lowdiffuse
+
     
   } //End evolve_ne
   
@@ -2720,7 +2769,7 @@ int Hermes::rhs(BoutReal t) {
 
     if (VePsi_numdiff){
       TRACE("VePsi numerical parallel diffusion");
-      TE_VePsi_numdiff = numericaldissipation(num_nu,Ve);
+      TE_VePsi_numdiff = numericaldissipation(num_VePsi,Ve);
       ddt(VePsi) += TE_VePsi_numdiff;
     } // End VePsi_numdiff
 
@@ -3081,6 +3130,17 @@ int Hermes::rhs(BoutReal t) {
       }
       ddt(Pe) += TE_Pe_dampening ; 
     } // End Pe_dampening
+
+
+    if (Pe_lowdiffuse){
+      if (use_new_divagradperp){
+        TE_Pe_lowdiffuse = Ne * Div_a_Grad_perp_mod(div_all(mul_all(low_diffuse_value, a_chi3d), Te), Te);
+      } else {
+        TE_Pe_lowdiffuse = Ne * Div_a_Grad_perp_curv(div_all(mul_all(low_diffuse_value, a_chi3d), Te), Te);
+      }
+      ddt(Pe) += TE_Pe_lowdiffuse;
+    } // End Pe_lowdiffuse
+
     
   } // End evolve_te
 
@@ -3225,6 +3285,17 @@ int Hermes::rhs(BoutReal t) {
       ddt(Pi) += TE_Pi_numdiff;
     } // End Pi_numdiff
 
+
+    if (Pi_lowdiffuse){
+      if (use_new_divagradperp){
+	TE_Pi_lowdiffuse = Ne * Div_a_Grad_perp_mod(div_all(mul_all(low_diffuse_value, a_chi3d), Ti), Ti);
+      } else {
+        TE_Pi_lowdiffuse = Ne * Div_a_Grad_perp_curv(div_all(mul_all(low_diffuse_value, a_chi3d), Ti), Ti);
+      }
+      ddt(Pi) += TE_Pi_lowdiffuse;
+    } // End Pe_lowdiffuse
+
+
     
   } // End evolve_ti
 
@@ -3239,7 +3310,9 @@ int Hermes::rhs(BoutReal t) {
   if (evolve_neutrals){
     ddt(Nn) = 0.0;
     ddt(NnVn) = 0.0;
-    ddt(Pn) = 0.0;
+    if (evolve_pn){
+      ddt(Pn) = 0.0;
+    }
 
   //  TE_Nn_sources = 0.0;
 
@@ -3358,70 +3431,72 @@ int Hermes::rhs(BoutReal t) {
 
 
 
-    
+    if (evolve_pn){
 
-    if (Pn_parflow){
-      if (!use_new_div_par){
-	Field3D PnVn = mul_all(Pn, Vn);
-	TE_Pn_parflow = -Div_par(PnVn);
-      } else {
-	TE_Pn_parflow = -Div_par_mod(Pn, Vn, fastest_ispeed, use_slope_limiter);
-      }
-      ddt(Pn) += TE_Pn_parflow;
-    } // End Pn_parflow
-    
-    if (Pn_perpflow){
-      if (!simplified_diffusion){
-	if (use_new_divagradperp){
-	  TE_Pn_perpflow = Div_a_Grad_perp_mod(Dnn,Pn);
+      if (Pn_parflow){
+	if (!use_new_div_par){
+	  Field3D PnVn = mul_all(Pn, Vn);
+	  TE_Pn_parflow = -Div_par(PnVn);
 	} else {
-	  TE_Pn_perpflow = Div_a_Grad_perp_curv(Dnn,Pn);
+	  TE_Pn_parflow = -Div_par_mod(Pn, Vn, fastest_ispeed, use_slope_limiter);
 	}
-	ddt(Pn) += TE_Pn_perpflow;
-      } else {
-	TE_Pn_perpflow = Dnn * Nn * new_Delp2(Tn);
-	ddt(Pn) += TE_Pn_perpflow;
-      }
-    }
+	ddt(Pn) += TE_Pn_parflow;
+      } // End Pn_parflow
     
-    if (Pn_parcompression){
-      TE_Pn_parcompression = -2.0/3.0 * Pn * Div_par(Vn);
-      ddt(Pn) += TE_Pn_parcompression;
-    } // End Pn_parcompression
-    
-    if (Pn_perpdiffusion){
-      if (!simplified_diffusion){
-	if (use_new_divagradperp){
-	  TE_Pn_perpdiffusion = Div_a_Grad_perp_mod(mul_all(Dnn, Nn), Pn);
+      if (Pn_perpflow){
+	if (!simplified_diffusion){
+	  if (use_new_divagradperp){
+	    TE_Pn_perpflow = Div_a_Grad_perp_mod(Dnn,Pn);
+	  } else {
+	    TE_Pn_perpflow = Div_a_Grad_perp_curv(Dnn,Pn);
+	  }
+	  ddt(Pn) += TE_Pn_perpflow;
 	} else {
-	  TE_Pn_perpdiffusion = Div_a_Grad_perp_curv(mul_all(Dnn, Nn), Pn);
+	  TE_Pn_perpflow = Dnn * Nn * new_Delp2(Tn);
+	  ddt(Pn) += TE_Pn_perpflow;
 	}
-	ddt(Pn) += TE_Pn_perpdiffusion;
-      } else {
-	TE_Pn_perpdiffusion = Dnn * new_Delp2(Pn);
-	ddt(Pn) += TE_Pn_perpdiffusion;
       }
-    } // End Pn_perpdiffusion
-
-    TE_Pn_sources = 0.0;
-    if (Pn_sources && neutralplasmainteraction){
-      TE_Pn_sources = (2.0/3.0) * Qin;
-    } // End Pn_sources && neutralplasmainteraction
-    if (Recycling_coef > 0.0){
-      TE_Pn_sources += Recycling_flux * 3.5 / Tnorm;
-    }
-    ddt(Pn) += TE_Pn_sources;
     
-    if (Pn_hyper){
-      TE_Pn_hyper = hyperdissipation(hyper_chi, Tn);
-      ddt(Pn) += TE_Pn_hyper;
-    } // End Pe_hyper
-
-    if (Pn_numdiff){
-      TE_Pn_numdiff = numericaldissipation(num_chi,Tn);
-      ddt(Pn) += TE_Pn_numdiff;
-    } // End Ne_numdiff
+      if (Pn_parcompression){
+	TE_Pn_parcompression = -2.0/3.0 * Pn * Div_par(Vn);
+	ddt(Pn) += TE_Pn_parcompression;
+      } // End Pn_parcompression
     
+      if (Pn_perpdiffusion){
+	if (!simplified_diffusion){
+	  if (use_new_divagradperp){
+	    TE_Pn_perpdiffusion = Div_a_Grad_perp_mod(mul_all(Dnn, Nn), Pn);
+	  } else {
+	    TE_Pn_perpdiffusion = Div_a_Grad_perp_curv(mul_all(Dnn, Nn), Pn);
+	  }
+	  ddt(Pn) += TE_Pn_perpdiffusion;
+	} else {
+	  TE_Pn_perpdiffusion = Dnn * new_Delp2(Pn);
+	  ddt(Pn) += TE_Pn_perpdiffusion;
+	}
+      } // End Pn_perpdiffusion
+      
+      TE_Pn_sources = 0.0;
+      if (Pn_sources && neutralplasmainteraction){
+	TE_Pn_sources = (2.0/3.0) * Qin;
+      } // End Pn_sources && neutralplasmainteraction
+      if (Recycling_coef > 0.0){
+	TE_Pn_sources += Recycling_flux * 3.5 / Tnorm;
+      }
+      ddt(Pn) += TE_Pn_sources;
+    
+      if (Pn_hyper){
+	TE_Pn_hyper = hyperdissipation(hyper_chi, Tn);
+	ddt(Pn) += TE_Pn_hyper;
+      } // End Pe_hyper
+      
+      if (Pn_numdiff){
+	TE_Pn_numdiff = numericaldissipation(num_chi,Tn);
+	ddt(Pn) += TE_Pn_numdiff;
+      } // End Ne_numdiff
+      
+    } // End evolve_pn
+      
   } // End evolve_neutrals
 
 
@@ -3439,16 +3514,16 @@ int Hermes::rhs(BoutReal t) {
  */
 
 int Hermes::precon(BoutReal t, BoutReal gamma, BoutReal delta) {
-  if (!neutralSolver){
-    auto& optss = Options::root();
-    neutralSolver = Laplacian::create(&optss["neutralSolver"]);
-    neutralSolver->setCoefA(1.0);
-  }
+
   
-  neutralSolver->setCoefD(-gamma*Dnn);
+  neutralSolver->setCoefD(mul_all(-gamma,Dnn) );
+  auto ddtNn = ddt(Nn);
+  ddtNn.applyBoundary("neumann");
+  mesh->communicate(ddtNn);
+  ddtNn.applyParallelBoundary("parallel_neumann_o2");
   
-  ddt(Nn) = neutralSolver->solve(ddt(Nn),oness);
-  ddt(NnVn) = neutralSolver->solve(ddt(NnVn),oness);
+  ddt(Nn) = neutralSolver->solve(ddtNn, ddtNn);
+  //ddt(NnVn) = neutralSolver->solve(ddt(NnVn), ddt(NnVn));
   return 0;
 }
 
