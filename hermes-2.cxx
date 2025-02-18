@@ -1801,7 +1801,7 @@ int Hermes::rhs(BoutReal t) {
   if (electromagnetic){
     fastest_espeed = sound_speed;
   } else {
-    fastest_espeed = sound_speed;
+    fastest_espeed = mul_all(sqrt(mime),sound_speed);
   }
   
 
@@ -2746,13 +2746,13 @@ int Hermes::rhs(BoutReal t) {
 	if(!use_new_div_par){
 	  TE_VePsi_parflow = -Ve * Div_par(sub_all(Ve,Vi));
 	} else {
-	  TE_VePsi_parflow = -Ve * Div_par(sub_all(Ve,Vi));
+	  TE_VePsi_parflow = -Ve * Div_par_mod(sub_all(Ve,Vi), fastest_espeed, use_slope_limiter);
 	}
       } else {
 	if(!use_new_div_par){
 	  TE_VePsi_parflow = -Vi * Div_par(sub_all(Ve,Vi));
 	} else {
-	  TE_VePsi_parflow = -Vi * Div_par(sub_all(Ve,Vi));
+	  TE_VePsi_parflow = -Vi * Div_par_mod(sub_all(Ve,Vi), fastest_espeed, use_slope_limiter);
 	}       
       }
       ddt(VePsi) += TE_VePsi_parflow;
