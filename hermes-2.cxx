@@ -1591,10 +1591,10 @@ int Hermes::init(bool restarting) {
   }
 
 
-
-  neutralSolver = Laplacian::create(&opt["neutralSolver"]);
-  neutralSolver->setCoefA(oness);
-
+  if (evolve_neutrals){
+    neutralSolver = Laplacian::create(&opt["neutralSolver"]);
+    neutralSolver->setCoefA(oness);
+  }
 
   
 
@@ -1801,7 +1801,7 @@ int Hermes::rhs(BoutReal t) {
   if (electromagnetic){
     fastest_espeed = sound_speed;
   } else {
-    fastest_espeed = mul_all(sqrt(mime),sound_speed);
+    fastest_espeed = mul_all(sqrt(mi_me),sound_speed);
   }
   
 
