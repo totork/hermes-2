@@ -54,7 +54,7 @@ void fci_neutral_rates(
     Field3D &S, Field3D &F, Field3D &Qi, Field3D &R, // Transfer rates
     Field3D &Riz, Field3D &Rrc, Field3D &Rcx,
     BoutReal NormT, BoutReal NormN, BoutReal NormB, BoutReal NormL, BoutReal NormF,
-    bool ionizationloss , Field3D& Dnn) {      // Rates
+    bool ionizationloss , Field3D& Dnn, BoutReal Lmax) {      // Rates
 
 
   UpdatedRadiatedPower hydrogen;
@@ -238,7 +238,6 @@ void fci_neutral_rates(
     BoutReal vth_n = sqrt(Tn[ind]);
     BoutReal a0 = 3.1415*SQ(5.29e-11);
     BoutReal lambda_nn = 1. / (NormN*Nn[ind]*a0); // meters
-    BoutReal Lmax = 0.02;
     if(lambda_nn > Lmax) {
       lambda_nn = Lmax;
     }	
