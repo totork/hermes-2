@@ -93,6 +93,8 @@ private:
   Field3D debug_phibndry3d;
   Field3D debug_Pe_conduction_A,debug_Pe_conduction_B;
   Field3D debug_decay_Ne;
+
+  bool phi_inneraverage;
   
   Field3D Vi_sheath , Ve_sheath , Jpar_sheath , Ne_sheath , Te_sheath , Ti_sheath , Vort_sheath,phi_sheath;
   Field3D Te_ythis,Te_ynext,Te_yprev;

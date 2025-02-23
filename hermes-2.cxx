@@ -493,6 +493,7 @@ int Hermes::init(bool restarting) {
   //////////////////////////////////////////////////////////////////////////
 
   // Check which variables should be evolved
+  OPTION(optsc, phi_inneraverage, false);
   OPTION(optsc,output_ddt,false);
   // Electron density
   evolve_ne = optsc["evolve_ne"].doc("Evolve density?").withDefault<bool>(false);
@@ -1835,9 +1836,14 @@ int Hermes::rhs(BoutReal t) {
     if (boussinesq) {
       if (!isMMS){
 	if (mesh->firstX()) {
+	  Field3D averaged_phi = DC(phi);
 	  for (int j = mesh->ystart; j <= mesh->yend; j++) {
 	    for (int k = 0; k < mesh->LocalNz; k++) {
-	      phi_boundary3d(mesh->xstart - 1, j, k) = 0.5 * ( 3.0*(Te(mesh->xstart - 1, j, k) + Te(mesh->xstart, j, k)) + Pi(mesh->xstart - 1, j, k) + Pi(mesh->xstart, j, k));
+	      if (phi_inneraverage){
+		phi_boundary3d(mesh->xstart - 1, j, k) = Pi(mesh->xstart, j, k ) + averaged_phi(mesh->xstart, j, k);
+	      } else {
+		phi_boundary3d(mesh->xstart - 1, j, k) = 0.5 * ( 3.0*(Te(mesh->xstart - 1, j, k) + Te(mesh->xstart, j, k)) + Pi(mesh->xstart - 1, j, k) + Pi(mesh->xstart, j, k));
+	      }
 	    }
 	  }
 	}
@@ -1850,6 +1856,9 @@ int Hermes::rhs(BoutReal t) {
 	    }
 	  }
 	}
+
+	
+	
       } else if (isMMS){
 	if (newXZsolver){
 	  
@@ -1957,13 +1966,14 @@ int Hermes::rhs(BoutReal t) {
     if (FiniteElMass) {
 
       Field3D ones = 1.0;
-      Field3D tmp = -Ne*0.5*beta_e*mi_me;
+      //Field3D tmp = -Ne*0.5*beta_e*mi_me;
+      Field3D tmp = mul_all(Ne, mul_all(-0.5, mul_all(beta_e, mi_me)));
       //Field3D tmp = -0.5*beta_e*mi_me;
 
       // With laplacian
       //aparSolver->setCoefD(1.0);
       //aparSolver->setCoefA(-Ne*0.5*beta_e*mi_me);
-      aparSolver->setCoefs(ones,tmp);
+      aparSolver->setCoefs(oness,tmp);
       //psi = aparSolver->solve(-VePsi,psi);
       psi = aparSolver->solve(-VePsi*Ne,ones);
       mesh->communicate(psi);
@@ -2563,7 +2573,8 @@ int Hermes::rhs(BoutReal t) {
       if (use_new_divagradperp){
         TE_Ne_lowdiffuse = Div_a_Grad_perp_mod(div_all(mul_all(low_diffuse_value, a_d3d), Ne), Ne);
       } else {
-        TE_Ne_lowdiffuse = Div_a_Grad_perp_curv(div_all(mul_all(low_diffuse_value, a_d3d), Ne), Ne);
+        //TE_Ne_lowdiffuse = Div_a_Grad_perp_curv(div_all(mul_all(low_diffuse_value, a_d3d), Ne), Ne);
+	TE_Ne_lowdiffuse = (low_diffuse_value * a_d3d / Ne) * new_Delp2(Ne);
       }
       ddt(Ne) += TE_Ne_lowdiffuse;
     } // End Ne_lowdiffuse
@@ -2612,8 +2623,30 @@ int Hermes::rhs(BoutReal t) {
 
 	if (j_pol_pi){
 
-	  throw BoutException("j_pol_pi not implemented!");
+	  if (use_Div_n_bxGrad_f_B_XPPM){
+            TE_Vort_polarcurrent = -0.5 * Div_n_bxGrad_f_B_XPPM(Vort, phi, vort_bndry_flux,
+                                             poloidal_flows, false , bracket_factor) * scale_ExB;
+          } else {
+            TE_Vort_polarcurrent = -0.5 * bracket(phi,Vort, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
+          }
 
+	  Field3D vEdotGradPi =  bracket(phi, Pi, BRACKET_ARAKAWA) * bracket_factor;
+	  vEdotGradPi.applyBoundary("neumann");
+	  
+	  Field3D DelpPhi_2B2 = 0.5 * new_Delp2(phi) / SQ(Bxyz);
+	  DelpPhi_2B2.applyBoundary("neumann");
+	  
+	  Field3D inv_2sqb = 0.5 / SQ(Bxyz);
+	  inv_2sqb.applyBoundary("neumann");
+
+	  mesh->communicate(vEdotGradPi, DelpPhi_2B2, inv_2sqb);
+	  
+	  TE_Vort_polarcurrent -= Div_a_Grad_perp_curv(inv_2sqb, vEdotGradPi) * bracket_factor * scale_ExB;
+
+	  TE_Vort_polarcurrent -= bracket(add_all(phi,Pi), DelpPhi_2B2) * bracket_factor * scale_ExB;
+
+	  ddt(Vort) += TE_Vort_polarcurrent;
+	  
 	}else if (j_pol_simplified) {// Row 3 Term 2
 	  // use simplified polarization term from i.e. GBS                                                                                             
 	  if (use_Div_n_bxGrad_f_B_XPPM){
@@ -3136,7 +3169,8 @@ int Hermes::rhs(BoutReal t) {
       if (use_new_divagradperp){
         TE_Pe_lowdiffuse = Ne * Div_a_Grad_perp_mod(div_all(mul_all(low_diffuse_value, a_chi3d), Te), Te);
       } else {
-        TE_Pe_lowdiffuse = Ne * Div_a_Grad_perp_curv(div_all(mul_all(low_diffuse_value, a_chi3d), Te), Te);
+        //TE_Pe_lowdiffuse = Ne * Div_a_Grad_perp_curv(div_all(mul_all(low_diffuse_value, a_chi3d), Te), Te);
+	TE_Pe_lowdiffuse =  low_diffuse_value * a_chi3d / Te * new_Delp2(Te);
       }
       ddt(Pe) += TE_Pe_lowdiffuse;
     } // End Pe_lowdiffuse
@@ -3290,7 +3324,8 @@ int Hermes::rhs(BoutReal t) {
       if (use_new_divagradperp){
 	TE_Pi_lowdiffuse = Ne * Div_a_Grad_perp_mod(div_all(mul_all(low_diffuse_value, a_chi3d), Ti), Ti);
       } else {
-        TE_Pi_lowdiffuse = Ne * Div_a_Grad_perp_curv(div_all(mul_all(low_diffuse_value, a_chi3d), Ti), Ti);
+        //TE_Pi_lowdiffuse = Ne * Div_a_Grad_perp_curv(div_all(mul_all(low_diffuse_value, a_chi3d), Ti), Ti);
+	TE_Pi_lowdiffuse = low_diffuse_value * a_chi3d / Ti * new_Delp2(Ti);
       }
       ddt(Pi) += TE_Pi_lowdiffuse;
     } // End Pe_lowdiffuse
