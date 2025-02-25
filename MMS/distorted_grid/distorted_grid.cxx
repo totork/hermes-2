@@ -309,16 +309,18 @@ private:
     Field3D Ne;	
   Field3D theta,rho_n,rho;
   BoutReal diffusion,dpar;
-  Field3D diffusion3D;
-  Field3D Ne_source,Ne_solution,xl,yl,zl;
-  Field3D debug_diffusion, debug_pardiffusion;
+  Field3D diffusion3D, dpar3D;
+  Field3D Ne_source,Ne_solution,xl,yl,zl, x1;
+  Field3D debug_diffusion, debug_pardiffusion, debug_arakawa;
+  Field3D phi_solution;
+  Field3D bracket_factor;
+
 protected:
   int init(bool UNUSED(restart)) override {
 
     TRACE("LOAD DATA AND OPTIONS");
     auto& opt = Options::root();
     auto *coord = mesh->getCoordinates();
-
     auto& optne = Options::root()["Ne"];
 
     OPTION(opt,diffusion,0.0);
@@ -326,15 +328,18 @@ protected:
     xl = opt["xl"].withDefault(Field3D{0.0});
     yl = opt["yl"].withDefault(Field3D{0.0});
     zl = opt["zl"].withDefault(Field3D{0.0});
+    x1 = opt["x1"].withDefault(Field3D{0.0});
+    SAVE_ONCE(xl,yl,zl,x1);    
 
-    SAVE_ONCE(xl,yl,zl);
-    
     Ne=0.0;
-    Ne_source = 0.0;
-    Ne_solution = 0.0;
-    SAVE_REPEAT(Ne_source,Ne_solution);
     
     SOLVE_FOR(Ne);
+
+    Ne_source = 0.0;
+    Ne_solution = 0.0;
+    phi_solution = 0.0;
+    SAVE_REPEAT(Ne_source, Ne_solution, phi_solution);
+    
     theta=0.0;
     mesh->get(theta,"theta");
     SAVE_ONCE(theta);
@@ -347,41 +352,41 @@ protected:
     mesh->get(rho,"rho");
     SAVE_ONCE(rho);
 
+
     xl=rho;
     zl=theta;
 
+    bracket_factor = sqrt(coord->g_22) / (coord->J);
+
     debug_diffusion = 0.0;
     debug_pardiffusion = 0.0;
-    SAVE_REPEAT(debug_diffusion,debug_pardiffusion);
+    debug_arakawa = 0.0;
+    SAVE_REPEAT(debug_diffusion,debug_pardiffusion, debug_arakawa);
 
-    diffusion3D = 0.0;
+    diffusion3D = opt["diffusion"].withDefault(Field3D{0.0});
+    dpar3D = opt["dpar"].withDefault(Field3D{0.0});
+
     diffusion3D = 0.001 + 0.001*xl;
-    SAVE_ONCE(diffusion3D);
+    dpar3D = 0.3 + 0.02 * sin(4 * zl + 0.5);
+    
+    SAVE_ONCE(diffusion3D, dpar3D);
     
     return 0;
   }
   
   int rhs(BoutReal t) override {
-    //2*cos(0.5 - yl)*sin(0. - 0.1*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl)
-    //Ne_solution = 2*cos(0.5 - yl)*sin(0. - 0.1*t)*sin(31.41592653589794*(-0.4 + xl))*sin(0.1 - 4*zl);
-    Ne_solution = 0.4*cos(0.5 - 1.*yl)*sin(0. - 0.001*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl);
-    Ne_source = 0. - 0.0062831853071795875*cos(15.70796326794897*(-0.4 + xl))*cos(0.5 - 1.*yl)*sin(0. - 0.001*t)*sin(0.1 - 4*zl) - (6.283185307179587*(0.001 + 0.001*xl)*cos(15.70796326794897*(-0.4 + xl))*cos(0.5 - 1.*yl)*sin(0. - 0.001*t)*sin(0.1 - 4*zl))/xl - 0.0004*cos(0. - 0.001*t)*cos(0.5 - 1.*yl)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl) + 98.69604401089363*(0.001 + 0.001*xl)*cos(0.5 - 1.*yl)*sin(0. - 0.001*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl) - (1.*(0. - 6.4*(0.001 + 0.001*xl)*cos(0.5 - 1.*yl)*sin(0. - 0.001*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl)))/power(xl,2);
+    
+    //auto *coord = mesh->getCoordinates();
 
+    Ne_solution = 0.1*cos(0.5 - 1.*yl)*sin(0. - 0.01*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl);
 
-    /*
-    if ((diffusion <= 0.0) && (dpar <= 0.0)){
-      
-      Ne_source = -0.4*cos(0.5 - 1.*yl)*cos(0. - 0.1*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl)/10.0;
-      
-    } else if ((diffusion) == 0.001 && (dpar == 1.0)) {
-      
-      Ne_source = -0.04000000000000001*cos(0. - 0.1*t)*cos(0.5 - 1.*yl)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl) - 0.001*((6.283185307179587*cos(15.70796326794897*(-0.4 + xl))*cos(0.5 - 1.*yl)*sin(0. - 0.1*t)*sin(0.1 - 4*zl))/xl - 98.69604401089363*cos(0.5 - 1.*yl)*sin(0. - 0.1*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl) - (6.4*cos(0.5 - 1.*yl)*sin(0. - 0.1*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl))/power(xl,2)) - (1.*((-3.2*cos(0.1 - 4*zl)*sin(0. - 0.1*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.5 - 1.*yl))/(8. - 0.2*power(xl,2)) - 0.4*cos(0.5 - 1.*yl)*sin(0. - 0.1*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl) - (6.4*cos(0.5 - 1.*yl)*sin(0. - 0.1*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl))/power(8. - 0.2*power(xl,2),2)))/(1 + power(xl,2)/power(8. - 0.2*power(xl,2),2));
-    } else {
-      
-      BoutException("No source");
-      
-    }
-    */
+    Ne_source = -0.0015707963267948969*cos(15.70796326794897*(-0.4 + xl))*cos(0.5 - 1.*yl)*sin(0. - 0.01*t)*sin(0.1 - 4*zl) - (1.5707963267948968*(0.001 + 0.001*xl)*cos(15.70796326794897*(-0.4 + xl))*cos(0.5 - 1.*yl)*sin(0. - 0.01*t)*sin(0.1 - 4*zl))/xl - 0.001*cos(0. - 0.01*t)*cos(0.5 - 1.*yl)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl) + 24.674011002723407*(0.001 + 0.001*xl)*cos(0.5 - 1.*yl)*sin(0. - 0.01*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl) - (1.*(0. - 1.6*(0.001 + 0.001*xl)*cos(0.5 - 1.*yl)*sin(0. - 0.01*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl)))/power(xl,2) + 0.01*((-3.1415926535897936*cos(15.70796326794897*(-0.4 + xl))*cos(0.5 - 1.*yl)*cos(0.1 - 4*zl)*cos(1.*zl)*power(sin(0. - 0.01*t),2)*sin(15.70796326794897*(-0.4 + xl))*sin(6.*yl))/xl + (0.7853981633974484*cos(15.70796326794897*(-0.4 + xl))*cos(0.5 - 1.*yl)*power(sin(0. - 0.01*t),2)*sin(15.70796326794897*(-0.4 + xl))*sin(6.*yl)*sin(0.1 - 4*zl)*sin(1.*zl))/xl) - (((-0.8*cos(0.1 - 4*zl)*sin(0. - 0.01*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.5 - 1.*yl))/(8. - 2.*power(xl,2)) - 0.1*cos(0.5 - 1.*yl)*sin(0. - 0.01*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl) - (1.6*cos(0.5 - 1.*yl)*sin(0. - 0.01*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl))/power(8. - 2.*power(xl,2),2))*(0.3 + 0.02*sin(0.5 + 4*zl)))/(1 + power(xl,2)/power(8. - 2.*power(xl,2),2));
+    
+    
+    phi_solution = -0.5*cos(1.*zl)*sin(0. - 0.01*t)*sin(15.70796326794897*(-0.4 + xl))*sin(6.*yl);
+    mesh->communicate(phi_solution);
+
+    
     Ne.applyBoundary();
       
     if (mesh->firstX()) {
@@ -412,26 +417,25 @@ protected:
 	  }
       }
     }
-    
-      
 
-      
+
+
+    
     mesh->communicate(Ne);
     Ne.applyParallelBoundary();
+
     ddt(Ne) = 0.0;
     ddt(Ne) += Ne_source;
     
-    if (diffusion>0.0){
-      //debug_diffusion = diffusion*new_Delp2(Ne);
-      debug_diffusion = Div_a_Grad_perp_mod(diffusion3D, Ne);
-      ddt(Ne) += debug_diffusion;
-    }
+    debug_diffusion = Div_a_Grad_perp_mod(diffusion3D, Ne);
+    ddt(Ne) += debug_diffusion;
 
-    if (dpar > 0.0){
-      debug_pardiffusion = dpar * Grad2_par2(Ne);
-      ddt(Ne) += debug_pardiffusion;
-    }
-      
+    debug_pardiffusion = dpar3D * Grad2_par2(Ne);
+    ddt(Ne) += debug_pardiffusion;
+    
+    debug_arakawa = -0.01 * bracket(phi_solution, Ne, BRACKET_ARAKAWA) * bracket_factor;
+    ddt(Ne) += debug_arakawa;
+    
     return 0;
   }
 

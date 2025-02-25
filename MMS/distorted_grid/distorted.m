@@ -26,9 +26,15 @@ and normalised radial coordinate rn
 absb[x_] = Sqrt[1 + x^2/q[x]^2];
 pgrad[f_, x_, z_, y_, t_] = (D[f[x,z,y,t],y] + 1/q[x]*D[f[x,z,y,t],z])/absb[x];
 ddx[f_, r_, p_, z_, t_] = D[f[r, p, z, t], r];
-ddy[f_, r_, p_, z_, t_] = D[f[r, p, z, t], r]*Sin[p] + D[f[r, p, z, t], p]*Cos[p]/r;
+ddy[f_, r_, p_, z_, t_] = D[f[r, p, z, t], p]/r;
 d2dx2[f_, r_, p_, z_, t_] = D[ddx[f, r, p, z, t], r];
 d2dy2[f_, r_, p_, z_, t_] = D[ddy[f, r, p, z, t], r]*Sin[p] +  D[ddy[f, r, p, z, t], p]*Cos[p]/r;
+
+arakawa[u_, v_, r_, p_, z_, t_] = 
+  ddx[u, r, p, z, t]*ddy[v, r, p, z, t] - 
+   ddy[u, r, p, z, t]*ddx[v, r, p, z, t];
+bracketoperator[f_, g_, r_, p_, z_, t_] = -arakawa[g,f,r,p,z,t];
+ExBoperator[f_, r_, p_, z_, t_] = -arakawa[MmsPhi,f,r,p,z,t];
 
 
 LaplacePerpMmsSol[f_,r_, p_, z_, t_] =  d2dx2[f, r, p, z, t] + d2dy2[f, r, p, z, t];
@@ -38,7 +44,7 @@ divagradperp[a_, f_, r_, p_, z_, t_] = D[a[r,p,z,t],r]*D[f[r,p,z,t],r] + a[r,p,z
 									+1.0/(r^2)*(D[a[r,p,z,t],p]*D[f[r,p,z,t],p] + a[r,p,z,t]*D[f[r,p,z,t],{p,2}]);
 									
 									
-d2dpar2[f_, x_, z_, y_, t_] = Dpar * ((D[D[f[x, z, y, t], y], y] + 2/q[x]*D[D[f[x, z, y, t], y], z] + 
+d2dpar2[f_, x_, z_, y_, t_] = Dpar[x,z,y,t] * ((D[D[f[x, z, y, t], y], y] + 2/q[x]*D[D[f[x, z, y, t], y], z] + 
      1/q[x]^2*D[D[f[x, z, y, t], z], z])/absb[x]^2);
   
 xn[x_] = (x-xmin)/(xmax-xmin);  
@@ -54,13 +60,16 @@ given above
 *)
 MmsDens[x_, z_, y_, t_] = amp*Sin[2.0*Pi*kx*xn[x]]*Sin[kz*z - phz]*Cos[ky*y- phy]*Sin[omega*t - pht];
 MmsUpar[x_, z_, y_, t_]=1;
-
+MmsPhi[x_, y_, z_, t_] = ampphi*Sin[2.0*Pi*kxphi*xn[x]]*Sin[kzphi*z]*Cos[kyphi*y]*Sin[omega*t - pht];
 
 
 pflux[x_, z_, y_, t_]=MmsDens[x, z, y, t];
 
 (*Smms[x_, z_, y_, t_]=D[MmsDens[x,z,y,t],t]-Dperp * LaplacePerp[MmsDens,x,z,y,t]-d2dpar2[MmsDens,x,z,y,t];*)
-Smms[x_, z_, y_, t_]=D[MmsDens[x,z,y,t],t]-divagradperp[Dperp,MmsDens,x,z,y,t]-d2dpar2[MmsDens,x,z,y,t];
+Smms[x_, z_, y_, t_]=D[MmsDens[x,z,y,t],t]\
+				-divagradperp[Dperp,MmsDens,x,z,y,t]\
+				-d2dpar2[MmsDens,x,z,y,t]\
+				+scaleExB*ExBoperator[MmsDens, x, z, y, t];
 
 
 Print["Finished MMS Terms"];
