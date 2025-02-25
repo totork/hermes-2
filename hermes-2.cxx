@@ -1840,6 +1840,7 @@ int Hermes::rhs(BoutReal t) {
 	  for (int j = mesh->ystart; j <= mesh->yend; j++) {
 	    for (int k = 0; k < mesh->LocalNz; k++) {
 	      if (phi_inneraverage){
+		phi_boundary3d(mesh->xstart - 2, j, k) = Pi(mesh->xstart, j, k ) + averaged_phi(mesh->xstart, j, k);
 		phi_boundary3d(mesh->xstart - 1, j, k) = Pi(mesh->xstart, j, k ) + averaged_phi(mesh->xstart, j, k);
 	      } else {
 		phi_boundary3d(mesh->xstart - 1, j, k) = 0.5 * ( 3.0*(Te(mesh->xstart - 1, j, k) + Te(mesh->xstart, j, k)) + Pi(mesh->xstart - 1, j, k) + Pi(mesh->xstart, j, k));
