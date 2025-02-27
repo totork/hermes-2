@@ -65,6 +65,11 @@ private:
   Field3D Vort;       // Vorticity
   Field3D NVi;        // Parallel momentum
 
+  Field3D phi_1;
+  BoutReal lam1, lam2;
+
+  Field3D mu_i_par, mu_i_perp;
+  
   Field3D Pe_yup, Pe_ydown,kappa_epar_yup,kappa_epar_ydown;
   
   Field3D xl,yl,zl;
@@ -145,6 +150,8 @@ private:
   bool evolve_nvi;
   bool evolve_vepsi;
   bool evolve_ne;
+  bool steady_state;
+  
   bool electromagnetic; // Include magnetic potential psi
   bool FiniteElMass;    // Finite Electron Mass
 
@@ -416,8 +423,7 @@ private:
   
   
   bool relaxation;
-  Field3D phi_1;
-  BoutReal lambda_0,lambda_2;
+
   
   // Mesh quantities
   Coordinates::FieldMetric B12, B32, B42;

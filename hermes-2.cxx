@@ -464,7 +464,8 @@ int Hermes::init(bool restarting) {
   auto& optnnvn = opt["NnVn"];
   auto& optpn = opt["Pn"];
   auto& optneutrals = opt["Neutrals"];
-
+  auto& optss = opt["Steady_state"];
+  
   isMMS = opt["solver"]["mms"].withDefault<bool>(false);
   
   output.write("Running in MMS mode? {}\n", isMMS);
@@ -495,6 +496,11 @@ int Hermes::init(bool restarting) {
   calc_potential=optsc["calc_potential"]
                         .doc("Calculate the electrostatic potential?")
 			.withDefault<bool>(true);
+
+  steady_state=optsc["steady_state"]
+			.doc("Use the steady state solver for drift approximations?")
+                        .withDefault<bool>(false);
+
   
   //////////////////////////////////////////////////////////////////////////
 
@@ -550,12 +556,14 @@ int Hermes::init(bool restarting) {
   // Electron velocity + mag. potential
 
   evolve_vepsi = optsc["evolve_vepsi"].doc("Evolve electron velocity?").withDefault<bool>(false);
-  if (evolve_vepsi) {
+  if (evolve_vepsi && !steady_state) {
     SOLVE_FOR(VePsi);
     EvolvingVars.add(VePsi);
     if (output_ddt) {
       SAVE_REPEAT(ddt(VePsi));
     }
+  } else if (evolve_vepsi && steady_state){
+    throw BoutException("Evolving vepsi and steady state is not compatible");
   } else {
     zero_all(VePsi);
   }
@@ -572,6 +580,18 @@ int Hermes::init(bool restarting) {
     zero_all(Vort);
   }
 
+
+  // Steady state variable
+
+  if (steady_state){
+    SOLVE_FOR(phi_1);
+    EvolvingVars.add(phi_1);
+    if (output_ddt){
+      SAVE_REPEAT(ddt(phi_1));
+    }
+  } else {
+    zero_all(phi_1);
+  }
 
   // Neutrals
 
@@ -1058,6 +1078,22 @@ int Hermes::init(bool restarting) {
 
   // Get the transport parameters
 
+
+  
+  if (steady_state){
+    mu_i_par = optss["mu_i_par"].doc("anomalous parallel transport of vorticity, for the steady state solver").withDefault(Field3D{0.0});
+    mu_i_perp = optss["mu_i_perp"].doc("anomalous perpendicular transport of vorticity, for the steady state solver").withDefault(Field3D{0.0});  
+    mu_i_par.applyBoundary("neumann");
+    mu_i_perp.applyBoundary("neumann");
+    mesh->communicate(mu_i_par, mu_i_perp);
+    mu_i_par.applyParallelBoundary(parbc);
+    mu_i_perp.applyParallelBoundary(parbc);
+    mu_i_par = div_all(mu_i_par, rho_s0 * Omega_ci * rho_s0);
+    mu_i_perp = div_all(mu_i_perp, rho_s0 * Omega_ci * rho_s0);
+    SAVE_ONCE(mu_i_par, mu_i_perp);
+  }
+
+
   
   anomalous_Dn = optneutrals["anomalous_Dn"].doc("Anomalous neutral diffusion").withDefault(0.0);
   anomalous_D = opttransport["anomalous_D"].doc("Anomalous diffusion").withDefault(0.0);
@@ -1288,35 +1324,6 @@ int Hermes::init(bool restarting) {
   B42 = SQ_all(coord->Bxy);
 
 
-
-
-  /////////////////////////////////////////////////////////
-  // Read curvature components
-  /*
-  TRACE("Reading curvature");
-
-  try {
-    Curlb_B.covariant = false; // Contravariant
-    mesh->get(Curlb_B, "bxcv");
-    // SAVE_ONCE(Curlb_B);
-  } catch (BoutException &e) {
-    try {
-      // May be 2D, reading as 3D
-      Vector2D curv2d;
-      curv2d.covariant = false;
-      mesh->get(curv2d, "bxcv");
-      Curlb_B = curv2d;
-    } catch (BoutException &e) {
-      if (j_diamag) {
-        // Need curvature
-        throw;
-      } else {
-        output_warn.write("No curvature vector in input grid");
-        Curlb_B = 0.0;
-      }
-    }
-  }
-  */
 
   if (!use_bracket){
     TRACE("Reading curvature for the curvature drifts");
@@ -1557,6 +1564,12 @@ int Hermes::init(bool restarting) {
   alloc_all(Pi);
   alloc_all(Pe);
 
+  if (steady_state){
+    alloc_all(phi_1);
+    OPTION(optss, lam1, 1.0);
+    OPTION(optss, lam2, 1.0);
+  }
+  
   if (evolve_neutrals){
     alloc_all(Nn);
     alloc_all(NnVn);
@@ -1638,6 +1651,10 @@ int Hermes::rhs(BoutReal t) {
     if (evolve_pn){
       Pn.applyBoundary(t);
     }
+  }
+
+  if (steady_state){
+    phi_1.applyBoundary(t);
   }
   
   BOUT_FOR(i, Ne.getRegion("RGN_NOY")) {
@@ -1736,6 +1753,20 @@ int Hermes::rhs(BoutReal t) {
     }
 
   } // End
+
+
+
+
+  if (steady_state){
+    // phi_1 = lam2 * phi        
+    if (mesh->lastX()) {
+      for (int j = mesh->ystart; j <= mesh->yend; j++) {
+	for (int k = 0; k < mesh->LocalNz; k++) {
+	  phi_1(mesh->xend + 1, j, k) = lam2 * 0.5 * ( 3.0*( Te(mesh->xend + 1, j, k) + Te(mesh->xend, j, k) ) + Pi(mesh->xend + 1, j, k) + Pi(mesh->xend, j, k) );
+	}
+      }
+    }
+  }
   
   
   
@@ -1811,17 +1842,10 @@ int Hermes::rhs(BoutReal t) {
     fastest_espeed = mul_all(sqrt(mi_me),sound_speed);
   }
   
-
-
   
   if(verbose){
     debug_soundspeed = sound_speed;
   }
-  
-  // Set radial boundary conditions on Te, Ti, Vi
-  //
-
-
   
 
   if (!evolve_ti){
@@ -1834,7 +1858,7 @@ int Hermes::rhs(BoutReal t) {
   // Calculate electrostatic potential phi
 
   TRACE("Electrostatic potential");
-  if (calc_potential){
+  if (calc_potential && !steady_state){
     Field3D phi_boundary3d;
     phi_boundary3d = 0.0;
   
@@ -1926,9 +1950,6 @@ int Hermes::rhs(BoutReal t) {
 	phi = phiSolver->solve(mul_all(Vort , mul_all(coord->Bxy, coord->Bxy)), phi_boundary3d);
       }
 
-	
-      
-      // Hot ion term in vorticity
       debug_phibndry3d = phi_boundary3d;
       //phi.applyBoundary("neumann");
       mesh->communicate(phi);
@@ -1956,6 +1977,8 @@ int Hermes::rhs(BoutReal t) {
       throw BoutException("Non-Boussinesq not implemented yet");
     }
     
+  } else if (steady_state){
+    phi = div_all(phi_1, lam2);
   } else {
     phi = 0.0;
   } // End calc_potential
@@ -1968,52 +1991,60 @@ int Hermes::rhs(BoutReal t) {
   // Calculate perturbed magnetic field psi
   TRACE("Calculating psi");
 
-  
-  if (electromagnetic) {
-    if (FiniteElMass) {
-
-      Field3D ones = 1.0;
-      //Field3D tmp = -Ne*0.5*beta_e*mi_me;
-      Field3D tmp = mul_all(Ne, mul_all(-0.5, mul_all(beta_e, mi_me)));
-      //Field3D tmp = -0.5*beta_e*mi_me;
-
-      // With laplacian
-      //aparSolver->setCoefD(1.0);
-      //aparSolver->setCoefA(-Ne*0.5*beta_e*mi_me);
-      aparSolver->setCoefs(oness,tmp);
-      //psi = aparSolver->solve(-VePsi,psi);
-      psi = aparSolver->solve(-VePsi*Ne,ones);
-      mesh->communicate(psi);
+  if (!steady_state){
+    if (electromagnetic) {
+      if (FiniteElMass) {
+	
+	Field3D ones = 1.0;
+	//Field3D tmp = -Ne*0.5*beta_e*mi_me;
+	Field3D tmp = mul_all(Ne, mul_all(-0.5, mul_all(beta_e, mi_me)));
+	//Field3D tmp = -0.5*beta_e*mi_me;
+	
+	// With laplacian
+	//aparSolver->setCoefD(1.0);
+	//aparSolver->setCoefA(-Ne*0.5*beta_e*mi_me);
+	aparSolver->setCoefs(oness,tmp);
+	//psi = aparSolver->solve(-VePsi,psi);
+	psi = aparSolver->solve(-VePsi*Ne,ones);
+	mesh->communicate(psi);
       
-      psi.applyParallelBoundary(parbc);
-      
-      Ve = VePsi - 0.5 * beta_e * mi_me * psi + Vi;
-      if (!isMMS){
-	Ve.applyBoundary("neumann");
+	psi.applyParallelBoundary(parbc);
+	
+	Ve = VePsi - 0.5 * beta_e * mi_me * psi + Vi;
+	if (!isMMS){
+	  Ve.applyBoundary("neumann");
+	}
+	mesh->communicate(Ve);
+	Ve.applyParallelBoundary(parbc);
+	
+      } else {
+	throw BoutException("Running without finite electron mass is not possible anymore!");
       }
-      mesh->communicate(Ve);
-      Ve.applyParallelBoundary(parbc);
       
     } else {
-      throw BoutException("Running without finite electron mass is not possible anymore!");
-    }
+      // Electrostatic
+      zero_all(psi);
+      // No psi contribution to VePsi
+      Ve = add_all(VePsi , Vi);
+    }  
+    Jpar = sub_all(NVi,mul_all(Ne,Ve));
     
   } else {
-    // Electrostatic
-    zero_all(psi);
-    // No psi contribution to VePsi
-    Ve = add_all(VePsi , Vi);
+    nu = div_all(resistivity_multiply,mul_all(1.96,mul_all(tau_e,mi_me)));
+    Field3D gradparphi = Grad_par(phi);
+    Field3D gradparTe = Grad_par(Te);
+    Field3D gradparPi = Grad_par(Pi);
+
+    gradparphi.applyBoundary("neumann");
+    gradparTe.applyBoundary("neumann");
+    gradparPi.applyBoundary("neumann");
+    mesh->communicate(gradparphi ,gradparTe, gradparPi);
+    gradparphi.applyParallelBoundary(parbc);
+    gradparTe.applyParallelBoundary(parbc);
+    gradparPi.applyParallelBoundary(parbc);
+    Jpar = mul_all(mul_all(-1.0, Ne), div_all(gradparphi, nu)) + div_all(gradparPi, nu) + div_all(mul_all(0.71, mul_all(Ne, gradparTe)), nu);
+    Ve = sub_all(Vi, div_all(Jpar, Ne));      
   }
-
-
-  
-  Jpar = sub_all(NVi,mul_all(Ne,Ve));
-
-  /*
-  Jpar.applyBoundary("neumann");
-  mesh->communicate(Jpar);
-  Jpar.applyParallelBoundary(parbc);
-  */
 
   //////////////////////////////////////////////////////////////
   // Sheath boundary conditions on Y up and Y down
@@ -2739,7 +2770,7 @@ int Hermes::rhs(BoutReal t) {
 
   
   ddt(Vort) = 0.0;
-  if (evolve_vort){
+  if (evolve_vort && !steady_state){
     TRACE("Vorticity");
     
     if(Vort_mag){// Row 1 
@@ -3681,6 +3712,73 @@ int Hermes::rhs(BoutReal t) {
   } // End evolve_neutrals
 
 
+
+  if (steady_state){
+    // Evolve the vorticity equation
+
+    // Helpfull stuff
+    // lam1 = lam0 * lam2
+    // phi_1 = lam2 * phi    ->     phi = phi_1 / lam2
+    
+    ddt(Vort) = 0.0;
+    if (evolve_vort){
+
+      
+      if(Vort_mag){
+	TRACE("Vort_mag");
+	TE_Vort_mag = fci_curvature(add_all(Pi , Pe),use_bracket);
+	ddt(Vort) += TE_Vort_mag;
+      } //End Vort_mag
+
+      
+      if(Vort_parcurrent){
+	TRACE("Vort_parcurrent");
+	if (!use_new_div_par){
+	  TE_Vort_parcurrent = Div_par(Jpar);
+	} else {
+	  TE_Vort_parcurrent = Div_par_mod(Ne, sub_all(Vi,Ve),fastest_ispeed, use_slope_limiter);
+	}
+	ddt(Vort) += TE_Vort_parcurrent;
+      } //End Vort_parcurrent
+
+      if (Vort_anomalous){
+	TRACE("Vort anomalous");
+	if (!use_new_divagradperp){
+	  TE_Vort_anomalous = Div_a_Grad_perp_curv(mu_i_perp, Vort);
+	} else {
+	  TE_Vort_anomalous = Div_a_Grad_perp_mod(mu_i_perp, Vort);
+	}
+
+	if (!use_new_conduction){
+	  TE_Vort_anomalous +=  Div_par_K_Grad_par(mu_i_par, Vort);
+	} else {
+	  TE_Vort_anomalous += Div_par_K_Grad_par_mod(mu_i_par,Vort,false);
+	}
+	
+	ddt(Vort) += TE_Vort_anomalous;
+      }     
+      
+    } // End if evolve_vort
+
+
+    // Set the boundary for phi_1
+
+    
+    
+    ddt(phi_1) = 0.0;
+    if (!use_new_divagradperp){
+      ddt(phi_1) = lam1 * ( Div_a_Grad_perp_curv(div_all(1.0,SQ_all(coord->Bxy)), add_all(phi, Pi)) - Vort );
+    } else {
+      ddt(phi_1) = lam1 * ( Div_a_Grad_perp_mod(div_all(1.0,SQ_all(coord->Bxy)), add_all(phi, Pi)) - Vort );
+    }
+
+    
+        
+  } // End if steady_state
+
+
+
+  
   
   return 0;
 } // rhs
