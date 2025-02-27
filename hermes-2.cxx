@@ -2080,7 +2080,7 @@ int Hermes::rhs(BoutReal t) {
 	    pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
 	  } else {
 	    pnt.ynext(phi) = 2.0 * pnt.ythis(phi) - pnt.yprev(phi);
-	    phisheath = 0.0 * (pnt.ynext(phi) + pnt.ythis(phi));
+	    phisheath = 0.5 * (pnt.ynext(phi) + pnt.ythis(phi));
 	  }
 	    
 
