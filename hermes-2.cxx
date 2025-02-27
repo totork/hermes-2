@@ -1566,7 +1566,7 @@ int Hermes::init(bool restarting) {
 
   if (steady_state){
     alloc_all(phi_1);
-    phi_1 = 0.0;
+    //phi_1 = 0.0;
     OPTION(optss, lam1, 1.0);
     OPTION(optss, lam2, 1.0);
   }
@@ -2031,6 +2031,12 @@ int Hermes::rhs(BoutReal t) {
     Jpar = sub_all(NVi,mul_all(Ne,Ve));
     
   } else {
+    Te32= mul_all(Te,sqrt_all(Te));
+    Ti32= mul_all(Ti,sqrt_all(Ti));
+    const BoutReal tau_e1 = (Cs0 / rho_s0 ) * tau_e0;
+    const BoutReal tau_i1 = (Cs0 / rho_s0 ) * tau_i0;
+    tau_e = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_e0) , Te32) , Ne);
+    tau_i = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_i0) , Ti32) , Ne);
     nu = div_all(resistivity_multiply,mul_all(1.96,mul_all(tau_e,mi_me)));
     Field3D gradparphi = Grad_par(phi);
     Field3D gradparTe = Grad_par(Te);
@@ -2043,6 +2049,7 @@ int Hermes::rhs(BoutReal t) {
     gradparphi.applyParallelBoundary(parbc);
     gradparTe.applyParallelBoundary(parbc);
     gradparPi.applyParallelBoundary(parbc);
+    
     Jpar = mul_all(mul_all(-1.0, Ne), div_all(gradparphi, nu)) + div_all(gradparPi, nu) + div_all(mul_all(0.71, mul_all(Ne, gradparTe)), nu);
     Ve = sub_all(Vi, div_all(Jpar, Ne));      
   }
