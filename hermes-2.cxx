@@ -1606,7 +1606,7 @@ int Hermes::init(bool restarting) {
   set_all(zeroes, 0.0);
   // Here are some sanity checks for the flags
 
-  if (evolve_vort && !calc_potential && !isMMS){
+  if (evolve_vort && !calc_potential && !isMMS && !steady_state){
     throw BoutException("Evolving vorticity but not the potential");
   }
 
@@ -2104,10 +2104,15 @@ int Hermes::rhs(BoutReal t) {
 	  nesheath = pnt.ythis(Ne);
 	  tesheath = pnt.ythis(Te);
 	  tisheath = pnt.ythis(Ti);
-	  
 
-	  BoutReal phisheath = log(sqrt(tesheath / (tesheath + tisheath))) * tesheath;
-          pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
+	  BoutReal phisheath = 0.0;
+	  if (!evolve_vort && !steady_state){
+	    phisheath = log(sqrt(tesheath / (tesheath + tisheath))) * tesheath;
+	    pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
+	  } else {
+	    pnt.ynext(phi) = 2.0 * pnt.ythis(phi) - pnt.yprev(phi);
+	    phisheath = 0.5 * (pnt.ynext(phi) + pnt.ythis(phi));
+	  }
 
 	  BoutReal visheath = 0.0;
 	  if (!sheath_ramp){
