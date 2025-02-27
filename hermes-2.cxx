@@ -1566,6 +1566,7 @@ int Hermes::init(bool restarting) {
 
   if (steady_state){
     alloc_all(phi_1);
+    phi_1 = 0.0;
     OPTION(optss, lam1, 1.0);
     OPTION(optss, lam2, 1.0);
   }
@@ -2069,22 +2070,7 @@ int Hermes::rhs(BoutReal t) {
 	  // And ignores boundaries in the negative direction, only taking the positive one
 	  if (boundary_direction[i] > 10.9 && boundary_direction[i] < 11.1 && pnt.dir < 0.0);
 	  else{
-	    /*
-	  BoutReal decay_Ne = limitFreeScale(pnt.yprev(Ne),pnt.ythis(Ne));
-	  BoutReal decay_Te = limitFreeScale(pnt.yprev(Te),pnt.ythis(Te));
-	  BoutReal decay_Ti = limitFreeScale(pnt.yprev(Ti),pnt.ythis(Ti));
-	  if (sheath_interpolate){
-	    //pnt.ynext(Ne) = floor(pnt.ythis(Ne)*decay_Ne, floor_Ne);
-	    pnt.ynext(Ne) = floor(pnt.ythis(Ne), floor_Ne); // Not for Ne, sothat NVi does not increase if vi is constant
-            pnt.ynext(Te) = floor(pnt.ythis(Te)*decay_Te, floor_Te);
-            pnt.ynext(Ti) = floor(pnt.ythis(Ti)*decay_Ti, floor_Ti);
-	    
-	  } else {
-	    pnt.ynext(Ne) = pnt.ythis(Ne);
-            pnt.ynext(Ti) = pnt.ythis(Ti);
-            pnt.ynext(Te) = pnt.ythis(Te);
-	  }
-	    */
+
 	  pnt.ynext(Ne) = floor(pnt.ythis(Ne), floor_Ne); // Not for Ne, sothat NVi does not increase if vi is constant                                                                                                                                                         
 	  pnt.ynext(Te) = floor(pnt.ythis(Te), floor_Te);
 	  pnt.ynext(Ti) = floor(pnt.ythis(Ti), floor_Ti);
