@@ -2073,10 +2073,16 @@ int Hermes::rhs(BoutReal t) {
 	  nesheath = pnt.ythis(Ne);
 	  tesheath = pnt.ythis(Te);
 	  tisheath = pnt.ythis(Ti);
-	  
 
-	  BoutReal phisheath = log(sqrt(tesheath / (tesheath + tisheath))) * tesheath;
-          pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
+	  BoutReal phisheath = 0.0;
+	  if (!evolve_vort){
+	    phisheath = log(sqrt(tesheath / (tesheath + tisheath))) * tesheath;
+	    pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
+	  } else {
+	    pnt.ynext(phi) = 2.0 * pnt.ythis(phi) - pnt.yprev(phi);
+	    phisheath = 0.0 * (pnt.ynext(phi) + pnt.ythis(phi));
+	  }
+	    
 
 	  BoutReal visheath = 0.0;
 	  if (!sheath_ramp){
