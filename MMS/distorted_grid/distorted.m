@@ -61,6 +61,7 @@ given above
 MmsDens[x_, z_, y_, t_] = amp*Sin[2.0*Pi*kx*xn[x]]*Sin[kz*z - phz]*Cos[ky*y- phy]*Sin[omega*t - pht];
 MmsUpar[x_, z_, y_, t_]=1;
 MmsPhi[x_, y_, z_, t_] = ampphi*Sin[2.0*Pi*kxphi*xn[x]]*Sin[kzphi*z]*Cos[kyphi*y]*Sin[omega*t - pht];
+MmsDelp2Ne[x_, z_, y_, t_] = LaplacePerp[MmsDens, x, z, y, t];
 
 
 pflux[x_, z_, y_, t_]=MmsDens[x, z, y, t];

@@ -315,6 +315,12 @@ private:
   Field3D phi_solution;
   Field3D bracket_factor;
 
+  Field3D delp2_Ne;
+  Field3D inverted_Ne;
+  Field3D forward_Ne, forward_Ne_solution;
+  
+  std::unique_ptr<Laplacian> phiSolver{nullptr};
+  Field3D phiSolverbndry;
 protected:
   int init(bool UNUSED(restart)) override {
 
@@ -370,7 +376,17 @@ protected:
     dpar3D = 0.3 + 0.02 * sin(4 * zl + 0.5);
     
     SAVE_ONCE(diffusion3D, dpar3D);
+
+    phiSolver = Laplacian::create(&opt["phiSolver"]);
+
+    phiSolver->setCoefD(Field3D{1.0});
     
+    inverted_Ne = 0.0;
+    phiSolverbndry = 0.0;
+    delp2_Ne = 0.0;
+    forward_Ne = 0.0;
+    forward_Ne_solution = 0.0;
+    SAVE_REPEAT(inverted_Ne, phiSolverbndry, delp2_Ne, forward_Ne, forward_Ne_solution);
     return 0;
   }
   
@@ -386,6 +402,10 @@ protected:
     phi_solution = -0.5*cos(1.*zl)*sin(0. - 0.01*t)*sin(15.70796326794897*(-0.4 + xl))*sin(6.*yl);
     mesh->communicate(phi_solution);
 
+
+    forward_Ne_solution = (1.5707963267948968*cos(15.70796326794897*(-0.4 + xl))*cos(0.5 - 1.*yl)*sin(0. - 0.01*t)*sin(0.1 - 4*zl))/xl - 24.674011002723407*cos(0.5 - 1.*yl)*sin(0. - 0.01*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl) - (1.6*cos(0.5 - 1.*yl)*sin(0. - 0.01*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl))/power(xl,2);
+
+    
     
     Ne.applyBoundary();
       
@@ -435,6 +455,29 @@ protected:
     
     debug_arakawa = -0.01 * bracket(phi_solution, Ne, BRACKET_ARAKAWA) * bracket_factor;
     ddt(Ne) += debug_arakawa;
+
+    delp2_Ne = new_Delp2(Ne);
+    forward_Ne = phiSolver->forward(Ne);
+
+    if (mesh->lastX()) {
+      for (int j = mesh->ystart; j <= mesh->yend; j++) {
+	for (int k = 0; k < mesh->LocalNz; k++) {
+	  phiSolverbndry(mesh->xend + 1, j, k) = 0.5 * ( Ne_solution(mesh->xend + 1, j, k) + Ne_solution(mesh->xend, j, k) ) ;	    
+	}
+      }
+    }
+    
+    if (mesh->firstX()) {	 
+      for (int j = mesh->ystart; j <= mesh->yend; j++) {
+	for (int k = 0; k < mesh->LocalNz; k++) {
+	  phiSolverbndry(mesh->xstart - 1, j, k) = 0.5 * ( Ne_solution(mesh->xstart, j, k) + Ne_solution(mesh->xstart - 1, j, k) );
+	}
+      }
+    }
+
+    inverted_Ne = phiSolver->solve(delp2_Ne, phiSolverbndry);
+    
+    
     
     return 0;
   }
