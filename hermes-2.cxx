@@ -1386,7 +1386,7 @@ int Hermes::init(bool restarting) {
   Ve.setBoundary("Ve");
   nu.setBoundary("nu");
   Jpar.setBoundary("Jpar");
-
+  classical_mu_vort = 0.0;
 
   SAVE_REPEAT(Ve,Vi,Jpar);
   psi = 0.0;
@@ -1448,6 +1448,7 @@ int Hermes::init(bool restarting) {
   boundary_direction = 0.0;
   
   if (verbose) {
+    SAVE_REPEAT(classical_mu_vort);
     SAVE_REPEAT(debug_decay_Ne);
     SAVE_ONCE(boundary_direction);
     SAVE_REPEAT(Te_ythis,Te_yprev,Te_ynext);
@@ -2079,7 +2080,8 @@ int Hermes::rhs(BoutReal t) {
 	    phisheath = log(sqrt(tesheath / (tesheath + tisheath))) * tesheath;
 	    pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
 	  } else {
-	    pnt.ynext(phi) = 2.0 * pnt.ythis(phi) - pnt.yprev(phi);
+	    //pnt.ynext(phi) = 2.0 * pnt.ythis(phi) - pnt.yprev(phi);
+	    pnt.ynext(phi) = pnt.ythis(phi);
 	    phisheath = 0.5 * (pnt.ynext(phi) + pnt.ythis(phi));
 	  }
 	    
@@ -2836,6 +2838,16 @@ int Hermes::rhs(BoutReal t) {
     }
 
 
+    if (Vort_collision){
+      classical_mu_vort = mul_all(0.3, div_all(Ti, (mul_all(tau_i, B42))));
+      if (!use_new_divagradperp){
+        TE_Vort_collision = Div_a_Grad_perp_curv(classical_mu_vort , Vort);
+      } else {
+        TE_Vort_collision = Div_a_Grad_perp_mod(classical_mu_vort, Vort);
+      }
+      ddt(Vort) += TE_Vort_collision;
+      
+    }
 
     
     if (Vort_hyper){
