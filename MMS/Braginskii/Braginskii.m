@@ -153,7 +153,7 @@ vEdotGradPi[x_, y_, z_, t_] = bracketoperator[SolPi, SolPhi, x, y, z, t] * rhos0
 DelpPhi2B2[x_, y_, z_, t_] = 0.5 * laplaceperp[SolPhi, x, y, z, t] * (rhos0^2) / (B[x, y, z, t]^2);
 inv2sqb[x_, y_, z_, t_] = 0.5 / (B[x,y,z,t]^2);
 
-
+TidivtauiB2[x_, y_, z_, t_] = 3.0 * SolTi[x,y,z,t]/(10.0*taui[x,y,z,t]*(B[x,y,z,t]^2));
 
 
 
@@ -200,7 +200,8 @@ SourceVort[x_, y_, z_, t_] = D[SolVort[x,y,z,t],t]\
 	-SWVortanomalous * (rhos0^2) * divagradperp[nuanomalous3D,SolVort,x,y,z,t]/(rhos0*rhos0*Omegaci)\
 	-SWVortparcurrent * (rhos0) * divpar[SolJpar,x,y,z,t]\
 	+SWVorthyper * (rhos0^4) * (hypernu/(rhos0^4 * Omegaci)) * hyperdiffusion[SolVort,x,y,z,t]\
-	+SWVortnumdiff * (rhos0^4) * (numnu/(rhos0^4 * Omegaci)) * numericaldiffusion[SolVort,x,y,z,t];
+	+SWVortnumdiff * (rhos0^4) * (numnu/(rhos0^4 * Omegaci)) * numericaldiffusion[SolVort,x,y,z,t]\
+	-SWVortcollision * (rhos0^2)*divagradperp[TidivtauiB2,SolVort,x,y,z,t];
 SourceVePsi[x_, y_, z_, t_] = D[SolVePsi[x,y,z,t],t]\
 	+SWVePsiparpressure * mime * rhos0 * gradpar[SolPe,x,y,z,t]/SolNe[x,y,z,t]\
 	+SWVePsinumdiff * (rhos0^4)*(numnu/(rhos0^4 * Omegaci)) * numericaldiffusion[SolVe,x,y,z,t]\
