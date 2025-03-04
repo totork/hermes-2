@@ -1070,6 +1070,9 @@ int Hermes::init(bool restarting) {
   hyper_chi = opttransport["hyper_chi"].doc("hyperconductivity").withDefault(Field3D{0.0});
   hyper_nu = opttransport["hyper_nu"].doc("hyperviscosity").withDefault(Field3D{0.0});
 
+  Vort_diss = opttransport["Vort_diss"].doc("hyperviscosity").withDefault(Field3D{0.0});
+
+  
   num_D = opttransport["num_D"].doc("numerical parallel diffusion").withDefault(0.0);
   num_nu = opttransport["num_nu"].doc("numerical parallel viscosity").withDefault(0.0);
   num_chi = opttransport["num_chi"].doc("numerical parallel conductivity").withDefault(0.0);
@@ -1086,6 +1089,7 @@ int Hermes::init(bool restarting) {
   num_Vort /= (rho_s0 * rho_s0 * rho_s0 * rho_s0) * Omega_ci;
   num_VePsi /= (rho_s0 * rho_s0 * rho_s0 * rho_s0) * Omega_ci;
 
+  Vort_diss /= (rho_s0 * rho_s0 * Omega_ci);
   
   hyper_D.applyBoundary("neumann");
   hyper_chi.applyBoundary("neumann");
@@ -1095,8 +1099,9 @@ int Hermes::init(bool restarting) {
   num_nu.applyBoundary("neumann");
   num_Vort.applyBoundary("neumann");
   num_VePsi.applyBoundary("neumann");
+  Vort_diss.applyBoundary("neumann");
   
-  mesh->communicate( hyper_D , hyper_chi , hyper_nu , num_D , num_nu ,num_chi, num_Vort, num_VePsi);
+  mesh->communicate( hyper_D , hyper_chi , hyper_nu , num_D , num_nu ,num_chi, num_Vort, num_VePsi, Vort_diss);
   
   hyper_D.applyParallelBoundary(parbc);
   hyper_nu.applyParallelBoundary(parbc);
@@ -1106,7 +1111,7 @@ int Hermes::init(bool restarting) {
   num_chi.applyParallelBoundary(parbc);
   num_Vort.applyParallelBoundary(parbc);
   num_VePsi.applyParallelBoundary(parbc);
-  
+  Vort_diss.applyParallelBoundary(parbc);
   
   if (anomalous_D > 0.0) {
     // Normalise
@@ -1605,7 +1610,12 @@ int Hermes::init(bool restarting) {
     neutralSolver = Laplacian::create(&opt["neutralSolver"]);
     neutralSolver->setCoefA(oness);
   }
-
+  
+  OPTION(optnumerics, anomalous_precon , false);
+  if (anomalous_precon){
+    preconSolver = Laplacian::create(&opt["preconSolver"]);
+    preconSolver->setCoefA(oness);
+  }
   
 
   setPrecon((preconfunc)&Hermes::precon);
@@ -2880,7 +2890,7 @@ int Hermes::rhs(BoutReal t) {
 
     if (Vort_dissipation){
       TRACE("Vorticity dissipation");
-      TE_Vort_dissipation = a_nu3d * new_Delp2(Vort);
+      TE_Vort_dissipation = Vort_diss * new_Delp2(Vort);
       ddt(Vort) += TE_Vort_dissipation;
     }
     
@@ -3722,7 +3732,7 @@ int Hermes::rhs(BoutReal t) {
 
 int Hermes::precon(BoutReal t, BoutReal gamma, BoutReal delta) {
 
-  
+  /*
   neutralSolver->setCoefD(mul_all(-gamma,Dnn) );
   auto ddtNn = ddt(Nn);
   ddtNn.applyBoundary("neumann");
@@ -3730,7 +3740,16 @@ int Hermes::precon(BoutReal t, BoutReal gamma, BoutReal delta) {
   ddtNn.applyParallelBoundary("parallel_neumann_o2");
   
   ddt(Nn) = neutralSolver->solve(ddtNn, ddtNn);
-  //ddt(NnVn) = neutralSolver->solve(ddt(NnVn), ddt(NnVn));
+  */
+
+  preconSolver->setCoefD(mul_all(-gamma,a_d3d));
+  auto ddtNe = ddt(Ne);
+  ddtNe.applyBoundary("neumann");
+  mesh->communicate(ddtNe);
+  ddtNe.applyParallelBoundary("parallel_neumann_o2");
+  
+  ddt(Ne) = preconSolver->solve(ddtNe, ddtNe);
+  
   return 0;
 }
 

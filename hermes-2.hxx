@@ -185,7 +185,8 @@ private:
   bool VePsi_parefield, VePsi_parpressure, VePsi_partemp, VePsi_parcurrent, VePsi_ExB, VePsi_parflow,VePsi_hyper,VePsi_numdiff;
   bool VePsi_parallelvisc,VePsi_supsonicdampening, VePsi_anomalous;
 
-
+  Field3D Vort_diss;
+  
   
   // Field for the terms
   bool TE_Ne,TE_NVi,TE_Pe,TE_Pi,TE_Vort,TE_VePsi;
@@ -409,13 +410,13 @@ private:
   bool phi_boundary_relax; ///< Relax the boundary towards Neumann?
   BoutReal phi_boundary_timescale; ///< Relaxation timescale
   BoutReal phi_boundary_last_update; ///< The last time the boundary was updated
-  
+  bool anomalous_precon;
   bool newXZsolver; 
   std::unique_ptr<Laplacian> phiSolver{nullptr}; // Old Laplacian in X-Z
   std::unique_ptr<LaplaceXZ> newSolver{nullptr};
   //std::unique_ptr<LaplaceXZ> newaparSolver{nullptr};
   std::unique_ptr<Laplacian> neutralSolver{nullptr};
-  
+  std::unique_ptr<Laplacian> preconSolver{nullptr};
   
   bool relaxation;
   Field3D phi_1;
