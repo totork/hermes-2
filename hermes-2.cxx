@@ -683,6 +683,7 @@ int Hermes::init(bool restarting) {
   Vort_hyper = optvort["Vort_hyper"].doc("Use hyperdiffusion in vorticity").withDefault<bool>(false);
   Vort_numdiff = optvort["Vort_numdiff"].doc("Use parallel numerical diffusion in vorticity").withDefault<bool>(false);
   Vort_parflow = optvort["Vort_parflow"].doc("Use parallel ion flow in vorticity").withDefault<bool>(false);
+  Vort_dissipation = optvort["Vort_dissipation"].doc("Use dissipation in vorticity").withDefault<bool>(false);
   if (optvort["bndry_xout"] == "dirichlet"){
     Vort_dirichlet=true;
   } else {
@@ -877,9 +878,10 @@ int Hermes::init(bool restarting) {
   TE_Vort_hyper = 0.0;
   TE_Vort_numdiff = 0.0;
   TE_Vort_parflow = 0.0;
+  TE_Vort_dissipation = 0.0;
   if (TE_Vort) {
     SAVE_REPEAT(TE_Vort_mag, TE_Vort_parcurrent, TE_Vort_polarcurrent, TE_Vort_collision, TE_Vort_parviscous, TE_Vort_anomalous);
-    SAVE_REPEAT(TE_Vort_hyper, TE_Vort_numdiff,TE_Vort_parflow);
+    SAVE_REPEAT(TE_Vort_hyper, TE_Vort_numdiff,TE_Vort_parflow, TE_Vort_dissipation);
   }
 
 
@@ -2875,6 +2877,12 @@ int Hermes::rhs(BoutReal t) {
       ddt(Vort) += TE_Vort_parflow;
     }
 
+
+    if (Vort_dissipation){
+      TRACE("Vorticity dissipation");
+      TE_Vort_dissipation = a_nu3d * new_Delp2(Vort);
+      ddt(Vort) += TE_Vort_dissipation;
+    }
     
   }  //End evolve_vort
 
