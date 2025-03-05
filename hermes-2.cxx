@@ -3742,13 +3742,43 @@ int Hermes::precon(BoutReal t, BoutReal gamma, BoutReal delta) {
   ddt(Nn) = neutralSolver->solve(ddtNn, ddtNn);
   */
 
-  preconSolver->setCoefD(mul_all(-gamma,a_d3d));
-  auto ddtNe = ddt(Ne);
-  ddtNe.applyBoundary("neumann");
-  mesh->communicate(ddtNe);
-  ddtNe.applyParallelBoundary("parallel_neumann_o2");
-  
-  ddt(Ne) = preconSolver->solve(ddtNe, ddtNe);
+  if (evolve_ne && Ne_anomalous){
+    preconSolver->setCoefD(mul_all(-gamma,a_d3d));
+    auto ddtNe = ddt(Ne);
+    ddtNe.applyBoundary("neumann");
+    mesh->communicate(ddtNe);
+    ddtNe.applyParallelBoundary("parallel_neumann_o2");
+    ddt(Ne) = preconSolver->solve(ddtNe, ddtNe);
+  }
+
+  if (evolve_nvi && NVi_anomalous){
+    preconSolver->setCoefD(mul_all(-gamma,a_nu3d));
+    auto ddtNVi = ddt(NVi);
+    ddtNVi.applyBoundary("neumann");
+    mesh->communicate(ddtNVi);
+    ddtNVi.applyParallelBoundary("parallel_neumann_o2");
+    ddt(NVi) = preconSolver->solve(ddtNVi, ddtNVi);
+  }
+
+  if (evolve_te && Pe_anomalous){
+    preconSolver->setCoefD(mul_all(-gamma,a_chi3d));
+    auto ddtPe = ddt(Pe);
+    ddtPe.applyBoundary("neumann");
+    mesh->communicate(ddtPe);
+    ddtPe.applyParallelBoundary("parallel_neumann_o2");
+    ddt(Pe) = preconSolver->solve(ddtPe, ddtPe);
+  }
+
+  if (evolve_ti && Pi_anomalous){
+    preconSolver->setCoefD(mul_all(-gamma,a_chi3d));
+    auto ddtPi = ddt(Pi);
+    ddtPi.applyBoundary("neumann");
+    mesh->communicate(ddtPi);
+    ddtPi.applyParallelBoundary("parallel_neumann_o2");
+    ddt(Pi) = preconSolver->solve(ddtPi, ddtPi);
+  }
+
+
   
   return 0;
 }
