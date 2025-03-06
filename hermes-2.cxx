@@ -2031,6 +2031,7 @@ int Hermes::rhs(BoutReal t) {
     Jpar = sub_all(NVi,mul_all(Ne,Ve));
     
   } else {
+    // Calculate parallel current from steady state ohms law
     Te32= mul_all(Te,sqrt_all(Te));
     Ti32= mul_all(Ti,sqrt_all(Ti));
     const BoutReal tau_e1 = (Cs0 / rho_s0 ) * tau_e0;
