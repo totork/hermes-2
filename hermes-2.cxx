@@ -598,8 +598,12 @@ int Hermes::init(bool restarting) {
     zero_all(NnVn);
     zero_all(Pn);
   }
-  
-  
+
+
+  OPTION(optsc, phi_boundary_relax, false);
+  OPTION(optsc, phi_boundary_last_update, -1);
+  OPTION(optsc, phi_boundary_timescale, 1e-4);
+
   //////////////////////////////////////////////////////////////////////////
   
   // Get the switches for all the terms
@@ -1048,6 +1052,9 @@ int Hermes::init(bool restarting) {
   
   output.write("\t Cs={:e}, rho_s={:e}, Omega_ci={:e}\n", Cs0, rho_s0, Omega_ci);
   SAVE_ONCE(Cs0, rho_s0, Omega_ci);
+
+  phi_boundary_timescale *= Omega_ci;
+ 
   
   // Collision times
   BoutReal lambda_ei = 24. - log(sqrt(Nnorm / 1e6) / Tnorm);
