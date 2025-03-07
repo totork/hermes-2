@@ -2111,6 +2111,8 @@ int Hermes::rhs(BoutReal t) {
 	    pnt.ynext(phi) = pnt.ythis(phi);
 	    phisheath = 0.5 * (pnt.ynext(phi) + pnt.ythis(phi));
 	  }
+	  
+	  phisheath = floor(phisheath, 0.0);
 
 	  BoutReal visheath = 0.0;
 	  if (!sheath_ramp){
