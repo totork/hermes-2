@@ -1763,12 +1763,8 @@ int Hermes::rhs(BoutReal t) {
     if (mesh->lastX()) {
       for (int j = mesh->ystart; j <= mesh->yend; j++) {
 	for (int k = 0; k < mesh->LocalNz; k++) {
-	  BoutReal thiste = Te(mesh->xend, j, k);
-	  BoutReal thisti = Ti(mesh->xend, j, k);	  
-	  BoutReal phibndryval = (log(0.5 * sqrt(mi_me/PI)) + log(sqrt(thiste/(thiste + thisti)))) * thiste;
-	  BoutReal extraphi = 2.0 * phibndryval - phi(mesh->xend, j, k);
-	  phi_1(mesh->xend + 1, j, k) = lam2 * extraphi;
-	  //phi_1(mesh->xend + 1, j, k) = lam2 * 0.5 * ( 3.0*( Te(mesh->xend + 1, j, k) + Te(mesh->xend, j, k) ) + Pi(mesh->xend + 1, j, k) + Pi(mesh->xend, j, k) );
+	  // 2.83879629 =  log(0.5 * sqrt(1. / (Me_Mp * PI)))
+	  phi_1(mesh->xend + 1, j, k) = lam2 * 0.5 * ( 2.83879629*( Te(mesh->xend + 1, j, k) + Te(mesh->xend, j, k) ) );
 	}
       }
     }
@@ -2112,7 +2108,7 @@ int Hermes::rhs(BoutReal t) {
 	    phisheath = log(sqrt(tesheath / (tesheath + tisheath))) * tesheath;
 	    pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
 	  } else {
-	    pnt.ynext(phi) = 2.0 * pnt.ythis(phi) - pnt.yprev(phi);
+	    pnt.ynext(phi) = pnt.ythis(phi);
 	    phisheath = 0.5 * (pnt.ynext(phi) + pnt.ythis(phi));
 	  }
 
