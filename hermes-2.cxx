@@ -2057,7 +2057,7 @@ int Hermes::rhs(BoutReal t) {
     
     Jpar = mul_all(mul_all(-1.0, Ne), div_all(gradparphi, nu)) + div_all(gradparPi, nu) + div_all(mul_all(0.71, mul_all(Ne, gradparTe)), nu);
     if (VePsi_anomalous){
-      Jpar += (-Ne/nu) * a_nu3d * new_Delp(Ve);
+      Jpar += (-Ne/nu) * a_nu3d * new_Delp2(Ve);
     }
 
     if (VePsi_parallelvisc){
