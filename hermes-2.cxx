@@ -2056,6 +2056,23 @@ int Hermes::rhs(BoutReal t) {
     gradparPi.applyParallelBoundary(parbc);
     
     Jpar = mul_all(mul_all(-1.0, Ne), div_all(gradparphi, nu)) + div_all(gradparPi, nu) + div_all(mul_all(0.71, mul_all(Ne, gradparTe)), nu);
+    if (VePsi_anomalous){
+      Jpar += (-ne/nu) * a_nu3d * new_Delp(Ve);
+    }
+
+    if (VePsi_parallelvisc){
+      TRACE("VePsi parallel viscosity");
+      if(!use_new_conduction){
+        TE_VePsi_parallelvisc = Div_par_K_Grad_par(eta_epar,Ve);
+      } else {
+        TE_VePsi_parallelvisc = Div_par_K_Grad_par_mod(eta_epar,Ve);
+      }
+      Jpar += (-ne/nu) * TE_VePsi_parallelvisc;
+    }
+
+
+
+    
     Ve = sub_all(Vi, div_all(Jpar, Ne));      
   }
 
@@ -2108,7 +2125,7 @@ int Hermes::rhs(BoutReal t) {
 	    phisheath = log(sqrt(tesheath / (tesheath + tisheath))) * tesheath;
 	    pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
 	  } else {
-	    pnt.ynext(phi) = pnt.ythis(phi);
+	    pnt.ynext(phi) = 2.83879629 * pnt.ynext(Te);
 	    phisheath = 0.5 * (pnt.ynext(phi) + pnt.ythis(phi));
 	  }
 	  
