@@ -2065,12 +2065,28 @@ int Hermes::rhs(BoutReal t) {
     gradparPi.applyParallelBoundary(parbc);
     
     Jpar = mul_all(mul_all(-1.0, Ne), div_all(gradparphi, nu)) + div_all(gradparPi, nu) + div_all(mul_all(0.71, mul_all(Ne, gradparTe)), nu);
-
     Jpar.applyBoundary("neumann");
     mesh->communicate(Jpar);
     Jpar.applyParallelBoundary(parbc);
-
     Ve = sub_all(Vi, div_all(Jpar, Ne));
+
+    if (use_Ve_limiter){
+      
+      BOUT_FOR(i, Ne.getRegion("RGN_ALL")) {
+	BoutReal fastestvelocity = fastest_espeed[i];
+	if (Ve[i] > fastestvelocity){
+	  Ve[i] = fastestvelocity;
+	} else if (Ve[i] < -fastestvelocity) {
+	  Ve[i] = -fastestvelocity;
+	}
+      }
+      Ve.applyBoundary("neumann");
+      mesh->communicate(Ve);
+      Ve.applyParallelBoundary(parbc);
+
+      Jpar = mul_all(Ne, sub_all(Vi, Ve));
+    }
+    
 
   }
 
