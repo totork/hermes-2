@@ -2047,6 +2047,15 @@ int Hermes::rhs(BoutReal t) {
     Field3D gradparTe = Grad_par(Te);
     Field3D gradparPi = Grad_par(Pi);
 
+    if (!use_new_viscosity){
+      eta_epar = mul_all(0.7333, mul_all(mi_me,mul_all(tau_e,Pe)));
+    } else {
+      eta_epar = mul_all(div_all(4.0,3.0),mul_all(0.73,mul_all(Pe,tau_e)));
+    }
+
+
+
+    
     gradparphi.applyBoundary("neumann");
     gradparTe.applyBoundary("neumann");
     gradparPi.applyBoundary("neumann");
