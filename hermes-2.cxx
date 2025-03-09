@@ -2065,24 +2065,13 @@ int Hermes::rhs(BoutReal t) {
     gradparPi.applyParallelBoundary(parbc);
     
     Jpar = mul_all(mul_all(-1.0, Ne), div_all(gradparphi, nu)) + div_all(gradparPi, nu) + div_all(mul_all(0.71, mul_all(Ne, gradparTe)), nu);
-    if (VePsi_anomalous){
-      Jpar += (-Ne/nu) * a_nu3d * new_Delp2(Ve) * me_mi;
-    }
 
-    if (VePsi_parallelvisc){
-      TRACE("VePsi parallel viscosity");
-      if(!use_new_conduction){
-        TE_VePsi_parallelvisc = Div_par_K_Grad_par(eta_epar,Ve);
-      } else {
-        TE_VePsi_parallelvisc = Div_par_K_Grad_par_mod(eta_epar,Ve);
-      }
-      Jpar += (-Ne/nu) * TE_VePsi_parallelvisc * me_mi;
-    }
+    Jpar.applyBoundary("neumann");
+    mesh->communicate(Jpar);
+    Jpar.applyParallelBoundary(parbc);
 
+    Ve = sub_all(Vi, div_all(Jpar, Ne));
 
-
-    
-    Ve = sub_all(Vi, div_all(Jpar, Ne));      
   }
 
   //////////////////////////////////////////////////////////////
