@@ -604,6 +604,10 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, phi_boundary_last_update, -1);
   OPTION(optsc, phi_boundary_timescale, 1e-4);
 
+  if (phi_boundary_relax){
+    phi_boundary_last_update = -1.;
+  }
+  
   //////////////////////////////////////////////////////////////////////////
   
   // Get the switches for all the terms
@@ -1861,20 +1865,25 @@ int Hermes::rhs(BoutReal t) {
 
     if (boussinesq) {
       if (!isMMS){
-	if (mesh->firstX()) {
-	  Field3D averaged_phi = DC(phi);
-	  for (int j = mesh->ystart; j <= mesh->yend; j++) {
-	    for (int k = 0; k < mesh->LocalNz; k++) {
-	      if (phi_inneraverage){
-		//phi_boundary3d(mesh->xstart - 2, j, k) = Pi(mesh->xstart, j, k ) + averaged_phi(mesh->xstart, j, k);
-		phi_boundary3d(mesh->xstart - 1, j, k) = Pi(mesh->xstart, j, k ) + averaged_phi(mesh->xstart, j, k);
-	      } else {
-		phi_boundary3d(mesh->xstart - 1, j, k) = 0.5 * ( 3.0*(Te(mesh->xstart - 1, j, k) + Te(mesh->xstart, j, k)) + Pi(mesh->xstart - 1, j, k) + Pi(mesh->xstart, j, k));
+
+	if (!phi_boundary_relax){
+	  if (mesh->firstX()) {
+	    Field3D averaged_phi = DC(phi);
+	    for (int j = mesh->ystart; j <= mesh->yend; j++) {
+	      for (int k = 0; k < mesh->LocalNz; k++) {
+		if (phi_inneraverage){
+		  //phi_boundary3d(mesh->xstart - 2, j, k) = Pi(mesh->xstart, j, k ) + averaged_phi(mesh->xstart, j, k);
+		  phi_boundary3d(mesh->xstart - 1, j, k) = Pi(mesh->xstart, j, k ) + averaged_phi(mesh->xstart, j, k);
+		} else {
+		  phi_boundary3d(mesh->xstart - 1, j, k) = 0.5 * ( 3.0*(Te(mesh->xstart - 1, j, k) + Te(mesh->xstart, j, k)) + Pi(mesh->xstart - 1, j, k) + Pi(mesh->xstart, j, k));
+		}
 	      }
 	    }
 	  }
+	} else if (phi_boundary_relax){
+	  Field3D averaged_phi = DC(phi);
 	}
-    
+	
     
 	if (mesh->lastX()) {
 	  for (int j = mesh->ystart; j <= mesh->yend; j++) {
