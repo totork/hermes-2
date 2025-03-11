@@ -609,6 +609,7 @@ const Field3D Div_par_mod(const Field3D& f, const Field3D& v, const Field3D& fas
 
 
 const Field3D Div_par_ssdissipation(const Field3D& f, const Field3D& fastest){
+  // Operator that dissipates with half the sound speed out of the cell faces
     Mesh* mesh = f.getMesh();
     Field3D result{zeroFrom(f)};
     Coordinates* coord = f.getCoordinates();
