@@ -1631,6 +1631,13 @@ int Hermes::init(bool restarting) {
 
   setPrecon((preconfunc)&Hermes::precon);
 
+  if (phi_boundary_relax){
+    auto boolinnerbndryflag = opt["phiSolver"]["inner_boundary_flags"];
+    if (boolinnerbndryflag != 16){
+      output.write("\t Phi solver inner boundary flag is  = {:e}\n", boolinnerbndryflag);
+      throw BoutException("Wrong inner boundary flag in phi solver with potential relaxation");
+    }
+  }
   
   return 0;
 }
@@ -1882,7 +1889,31 @@ int Hermes::rhs(BoutReal t) {
 	  }
 	} else if (phi_boundary_relax){
 	  Field3D averaged_phi = DC(phi);
-	}
+	  if (phi_boundary_last_update < 0.0) {
+	    // First time this has been called.
+	    phi_boundary_last_update = t;
+	  } else if (t > phi_boundary_last_update){
+	    BoutReal weight = exp(-(t - phi_boundary_last_update) / phi_boundary_timescale);
+	    phi_boundary_last_update = t;
+
+	    if (mesh->firstX()) {
+	      for (int j = mesh->ystart; j <= mesh->yend; j++) {
+		for (int k = 0; k < mesh->LocalNz; k++) {
+		  BoutReal phivalue = averaged_phi(mesh->xstart, j, k);
+		  BoutReal oldvalue = 0.5 * (phi(mesh->xstart, j, k) + phi(mesh->xstart-1, j, k));
+		  BoutReal newvalue = weight * oldvalue + (1. - weight) * phivalue;
+		  BoutReal newvaluecelledge = 2.0 * newvalue - phi(mesh->xstart, j, k);
+		  phi_boundary3d(mesh->xstart - 1, j, k) = newvaluecelledge + 0.5 * (Pi(mesh->xstart - 1, j, k) + Pi(mesh->xstart, j, k));												   
+		}
+	      }
+	    } // mesh->firstX
+
+	    
+	  } // End else if (t > phi_boundary_last_update)
+	  
+
+	  
+	} // End (phi_boundary_relax)
 	
     
 	if (mesh->lastX()) {
@@ -2907,6 +2938,8 @@ int Hermes::rhs(BoutReal t) {
     if (Vort_dissipation){
       TRACE("Vorticity dissipation");
       TE_Vort_dissipation = Vort_diss * new_Delp2(Vort);
+      TE_Vort_dissipation -= Div_par_ssdissipation(Vort, fastest_espeed);
+      TE_Vort_dissipation -= Div_par_ssdissipation(mul_all(-1.0,phi), fastest_espeed);
       ddt(Vort) += TE_Vort_dissipation;
     }
     
