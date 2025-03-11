@@ -3793,7 +3793,14 @@ int Hermes::rhs(BoutReal t) {
 	}
 	
 	ddt(Vort) += TE_Vort_anomalous;
-      }     
+      }
+
+      if (Vort_hyper){
+	TRACE("Vorticity hyperdiffusion");
+	TE_Vort_hyper = hyperdissipation(hyper_nu,Vort);
+	ddt(Vort) += TE_Vort_hyper;
+      } // End Vort_hyper
+      
       
     } // End if evolve_vort
 
