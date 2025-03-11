@@ -59,6 +59,8 @@ const Field3D Div_par_K_Grad_par_mod(const Field3D& k, const Field3D& f, bool bn
 
 const Field3D Div_par_mod(const Field3D& f, const Field3D& v, const Field3D& fastest, const bool& fl);
 
+const Field3D Div_par_ssdissipation(const Field3D& f, const Field3D& fastest);
+
 const Field3D Div_par_rhie(const Field3D& f, const Field3D& v, const Field3D& P, Field3D& out_up, Field3D& out_down);
 
 const Field3D Div_par_mod(const Field3D& f, const Field3D& fastest, const bool& fl);
