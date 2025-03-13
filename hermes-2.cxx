@@ -3333,7 +3333,7 @@ int Hermes::rhs(BoutReal t) {
     } //End Pe_sources
 
 
-    if (parallel_sheaths){
+    if (parallel_sheaths && Pe_sources){
       switch (par_sheath_model) {
       case 0 :{
 	TE_Pe_sheath = sheath_dpe;
@@ -3503,11 +3503,10 @@ int Hermes::rhs(BoutReal t) {
     } // End Pi_energyexchange
 
 
-    if (parallel_sheaths){
+    if (parallel_sheaths && Pi_sources){
       switch (par_sheath_model) {
       case 0 :{
-	ddt(Pi) += sheath_dpi;
-	
+	ddt(Pi) += sheath_dpi;	
 	break;
       } // End Case 1
       } // End Swith 
