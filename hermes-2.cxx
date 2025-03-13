@@ -1768,7 +1768,20 @@ int Hermes::rhs(BoutReal t) {
 
   } // End
   
-  
+  if (use_Ve_limiter){
+    BOUT_FOR(i, Ne.getRegion("RGN_ALL")) {
+      BoutReal thisve = VePsi[i] + Vi[i];
+      BoutReal newve = 0.0;
+      BoutReal thissoundspeed = sqrt(mi_me) * sqrt(Te[i] + Ti[i] * (5. / 3));
+      if (thisve > thissoundspeed){
+	newve = thissoundspeed;
+	VePsi[i] = newve - Vi[i];	
+      } else if (thisve < (-thissoundspeed)){
+	newve = -thissoundspeed;
+	VePsi[i] = newve - Vi[i];
+      }
+    }
+  }
   
   mesh->communicate(EvolvingVars);
 
