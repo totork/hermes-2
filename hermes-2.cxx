@@ -2178,28 +2178,24 @@ int Hermes::rhs(BoutReal t) {
 	  
 
 	  BoutReal vesheath = 0.0;
-	  if (evolve_vepsi){
-	    if (!sheath_ramp){
-	      vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
-	    } else {
-	      vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath))); 
-	    }
 
-	    if (pnt.dir > 0.99 && pnt.dir < 1.01){
-	      if (pnt.ythis(Ve) > vesheath){
-		vesheath = pnt.ythis(Ve);
-	      }
-	    } else {
-	      if (pnt.ythis(Ve) < vesheath){
-		vesheath = pnt.ythis(Ve);
-	      }
-	    }
-	    
-
-	    
+	  if (!sheath_ramp){
+	    vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
 	  } else {
-	    vesheath = visheath;
+	    vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath))); 
 	  }
+
+	  if (pnt.dir > 0.99 && pnt.dir < 1.01){
+	    if (pnt.ythis(Ve) > vesheath){
+	      vesheath = pnt.ythis(Ve);
+	    }
+	  } else {
+	    if (pnt.ythis(Ve) < vesheath){
+	      vesheath = pnt.ythis(Ve);
+	    }
+	  }
+	    
+
 	  
 
 	  
