@@ -4,7 +4,7 @@
 (**)
 
 
-BeginPackage["BraginskiiMMSSlab`"]
+BeginPackage["SteadystateMMSSlab`"]
 
 (* To run the package, execute the following line in a notebook
 << BraginskiiMMS`
@@ -88,12 +88,12 @@ Switches and quantities for the density time evolution
 
 
 
-SolNe[x_, y_, z_, t_] = OffsetNe + (ampNe*Sin[2.0*Pi*kxNe*xn[x]]*Sin[2.0*Pi*kzNe*zn[z]-phzNe]+ampYNe*Sin[kyNe*y - phyNe])*Sin[2.0*Pi*omegaNe*t - phtNe];
-SolNVi[x_, y_, z_, t_] = (ampNVi*Sin[2.0*Pi*kxNVi*xn[x]]*Sin[2.0*Pi*kzNVi*zn[z]-phzNVi]+ampYNVi*Sin[kyNVi*y - phyNVi])*Sin[2.0*Pi*omegaNVi*t - phtNVi];
-SolTe[x_, y_, z_, t_] = OffsetTe + (ampTe*Sin[2.0*Pi*kxTe*xn[x]]*Sin[2.0*Pi*kzTe*zn[z]-phzTe]+ampYTe*Sin[kyTe*y - phyTe])*Sin[2.0*Pi*omegaTe*t - phtTe];
-SolTi[x_, y_, z_, t_] = OffsetTi + (ampTi*Sin[2.0*Pi*kxTi*xn[x]]*Sin[2.0*Pi*kzTi*zn[z]-phzTi]+ampYTi*Sin[kyTi*y - phyTi])*Sin[2.0*Pi*omegaTi*t - phtTi];
-SolPhi[x_, y_, z_, t_] = (ampPhi*Sin[2.0*Pi*kxPhi*xn[x]]*Sin[2.0*Pi*kzPhi*zn[z]-phzPhi]*Sin[kyPhi*y - phyPhi])*Sin[2.0*Pi*omegaPhi*t - phtPhi];
-SolPsi[x_, y_, z_, t_] = (ampPsi*Sin[2.0*Pi*kxPsi*xn[x]]*Sin[2.0*Pi*kzPsi*zn[z]-phzPsi]+ampYPsi*Sin[2.0*Pi*kxPsi*xn[x]]*Sin[kyPsi*y - phyPsi])*Sin[2.0*Pi*omegaPsi*t - phtPsi];
+SolNe[x_, y_, z_, t_] = OffsetNe + (ampNe*Sin[2.0*Pi*kxNe*xn[x]]*Sin[2.0*Pi*kzNe*zn[z]-phzNe]+ampYNe*Sin[kyNe*y - phyNe]);
+SolNVi[x_, y_, z_, t_] = (ampNVi*Sin[2.0*Pi*kxNVi*xn[x]]*Sin[2.0*Pi*kzNVi*zn[z]-phzNVi]+ampYNVi*Sin[kyNVi*y - phyNVi]);
+SolTe[x_, y_, z_, t_] = OffsetTe + (ampTe*Sin[2.0*Pi*kxTe*xn[x]]*Sin[2.0*Pi*kzTe*zn[z]-phzTe]+ampYTe*Sin[kyTe*y - phyTe]);
+SolTi[x_, y_, z_, t_] = OffsetTi + (ampTi*Sin[2.0*Pi*kxTi*xn[x]]*Sin[2.0*Pi*kzTi*zn[z]-phzTi]+ampYTi*Sin[kyTi*y - phyTi]);
+SolPhi[x_, y_, z_, t_] = (ampPhi*Sin[2.0*Pi*kxPhi*xn[x]]*Sin[2.0*Pi*kzPhi*zn[z]-phzPhi]*Sin[kyPhi*y - phyPhi]);
+SolPsi[x_, y_, z_, t_] = (ampPsi*Sin[2.0*Pi*kxPsi*xn[x]]*Sin[2.0*Pi*kzPsi*zn[z]-phzPsi]+ampYPsi*Sin[2.0*Pi*kxPsi*xn[x]]*Sin[kyPsi*y - phyPsi]);
 (*SolVe[x_, y_, z_, t_] = ampVe*Sin[2.0*Pi*kxVe*xn[x]]*Sin[kyVe*y - phyVe]*Sin[2.0*Pi*kzVe*zn[z]-phzVe]*Sin[2.0*Pi*omegaVe*t - phtVe];*)
 
 
@@ -113,7 +113,7 @@ SolVePsi[x_, y_, z_, t_] = If[SWelectromagnetic==1,
 							-(rhos0^2)/(SolNe[x,y,z,t])*laplaceperp[SolPsi,x,y,z,t]+0.5*betae*SolPsi[x,y,z,t]*mime,
 							(*-(rhos0^2)*laplaceperp[SolPsi,x,y,z,t]+0.5*betae*SolPsi[x,y,z,t]*mime,*)
 							(*-Bnorm*betae*rhos0/(2.0*SolNe[x,y,z,t])*laplaceperp[SolPsi,x,y,z,t]*(rhos0^2)+0.5*betae*SolPsi[x,y,z,t]*mime,*)														
-							(ampVePsi*Sin[2.0*Pi*kxVePsi*xn[x]]*Sin[2.0*Pi*kzVePsi*zn[z]-phzVePsi]+ampYVePsi*Sin[kyVePsi*y - phyVePsi])*Sin[2.0*Pi*omegaVePsi*t - phtVePsi]];
+							(ampVePsi*Sin[2.0*Pi*kxVePsi*xn[x]]*Sin[2.0*Pi*kzVePsi*zn[z]-phzVePsi]+ampYVePsi*Sin[kyVePsi*y - phyVePsi])];
 SolVe[x_, y_, z_, t_] = SolVePsi[x,y,z,t] - SWelectromagnetic*0.5*betae*mime*SolPsi[x,y,z,t] + SolVi[x,y,z,t];
 SolJpar[x_, y_, z_, t_] = SolNVi[x,y,z,t]-SolNe[x,y,z,t]*SolVe[x,y,z,t];
 
