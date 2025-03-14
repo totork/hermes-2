@@ -1958,6 +1958,7 @@ int Hermes::rhs(BoutReal t) {
 	for (int k = 0; k < mesh->LocalNz; k++) {
 	  // 2.83879629 =  log(0.5 * sqrt(1. / (Me_Mp * PI)))
 	  phi_1(mesh->xend + 1, j, k) = lam2 * 0.5 * ( 2.83879629*( Te(mesh->xend + 1, j, k) + Te(mesh->xend, j, k) ) );
+	  phi_1(mesh->xend + 2, j, k) = phi_1(mesh->xend + 1, j, k);
 	}
       }
     }
