@@ -819,8 +819,33 @@ int Hermes::init(bool restarting) {
   TE_Ne_numdiff = 0.0;
   TE_Ne_lowdiffuse = 0.0;
   if (TE_Ne) {
-    SAVE_REPEAT(TE_Ne_ExB, TE_Ne_mag, TE_Ne_parflow, TE_Ne_collision, TE_Ne_anomalous, TE_Ne_sources, TE_Ne_hyper, TE_Ne_numdiff);
-    SAVE_REPEAT(TE_Ne_lowdiffuse);
+    if (Ne_ExB){
+      SAVE_REPEAT(TE_Ne_ExB);
+    }
+    if (Ne_mag){
+      SAVE_REPEAT(TE_Ne_mag);
+    }
+    if (Ne_parflow){
+      SAVE_REPEAT(TE_Ne_parflow);
+    }
+    if (Ne_collision){
+      SAVE_REPEAT(TE_Ne_collision);
+    }
+    if (Ne_anomalous){
+      SAVE_REPEAT(TE_Ne_anomalous);
+    }
+    if (Ne_sources){
+      SAVE_REPEAT(TE_Ne_sources);
+    }
+    if (Ne_hyper){
+      SAVE_REPEAT(TE_Ne_hyper);
+    }
+    if (Ne_numdiff){
+      SAVE_REPEAT(TE_Ne_numdiff);
+    }
+    if (Ne_lowdiffuse){
+      SAVE_REPEAT(TE_Ne_lowdiffuse);
+    }
   }
 
 
@@ -836,8 +861,36 @@ int Hermes::init(bool restarting) {
   TE_NVi_numdiff = 0.0;
   TE_NVi_supsonicdampening = 0.0;
   if (TE_NVi) {
-    SAVE_REPEAT(TE_NVi_ExB, TE_NVi_mag, TE_NVi_parflow, TE_NVi_parpressure, TE_NVi_parviscos, TE_NVi_collision, TE_NVi_anomalous);
-    SAVE_REPEAT(TE_NVi_hyper, TE_NVi_numdiff,TE_NVi_supsonicdampening);
+    if (NVi_ExB) {
+      SAVE_REPEAT(TE_NVi_ExB);
+    }
+    if (NVi_mag) {
+      SAVE_REPEAT(TE_NVi_mag);
+    }
+    if (NVi_parflow) {
+      SAVE_REPEAT(TE_NVi_parflow);
+    }
+    if (NVi_parpressure) {
+      SAVE_REPEAT(TE_NVi_parpressure);
+    }
+    if (NVi_parviscos) {
+      SAVE_REPEAT(TE_NVi_parviscos);
+    }
+    if (NVi_collision) {
+      SAVE_REPEAT(TE_NVi_collision);
+    }
+    if (NVi_anomalous) {
+      SAVE_REPEAT(TE_NVi_anomalous);
+    }
+    if (NVi_hyper) {
+      SAVE_REPEAT(TE_NVi_hyper);
+    }
+    if (NVi_numdiff) {
+      SAVE_REPEAT(TE_NVi_numdiff);
+    }
+    if (NVi_supsonicdampening) {
+      SAVE_REPEAT(TE_NVi_supsonicdampening);
+    }
   }
 
   
@@ -859,9 +912,54 @@ int Hermes::init(bool restarting) {
   TE_Pe_sheath = 0.0;
   TE_Pe_lowdiffuse = 0.0;
   if (TE_Pe) {
-    SAVE_REPEAT(TE_Pe_ExB, TE_Pe_mag, TE_Pe_parflow, TE_Pe_conduction, TE_Pe_ohmic, TE_Pe_thermalforce, TE_Pe_thermalcurrent);
-    SAVE_REPEAT(TE_Pe_collision, TE_Pe_anomalous, TE_Pe_sources, TE_Pe_energyexchange, TE_Pe_hyper, TE_Pe_numdiff);
-    SAVE_REPEAT(TE_Pe_dampening,TE_Pe_sheath, TE_Pe_lowdiffuse);
+    if (Pe_ExB) {
+      SAVE_REPEAT(TE_Pe_ExB);
+    }
+    if (Pe_mag) {
+      SAVE_REPEAT(TE_Pe_mag);
+    }
+    if (Pe_parflow) {
+      SAVE_REPEAT(TE_Pe_parflow);
+    }
+    if (Pe_conduction) {
+      SAVE_REPEAT(TE_Pe_conduction);
+    }
+    if (Pe_ohmic) {
+      SAVE_REPEAT(TE_Pe_ohmic);
+    }
+    if (Pe_thermalforce) {
+      SAVE_REPEAT(TE_Pe_thermalforce);
+    }
+    if (Pe_thermalcurrent) {
+      SAVE_REPEAT(TE_Pe_thermalcurrent);
+    }
+    if (Pe_collision) {
+      SAVE_REPEAT(TE_Pe_collision);
+    }
+    if (Pe_anomalous) {
+      SAVE_REPEAT(TE_Pe_anomalous);
+    }
+    if (Pe_sources) {
+      SAVE_REPEAT(TE_Pe_sources);
+    }
+    if (Pe_energyexchange) {
+      SAVE_REPEAT(TE_Pe_energyexchange);
+    }
+    if (Pe_hyper) {
+      SAVE_REPEAT(TE_Pe_hyper);
+    }
+    if (Pe_numdiff) {
+      SAVE_REPEAT(TE_Pe_numdiff);
+    }
+    if (Pe_dampening) {
+      SAVE_REPEAT(TE_Pe_dampening);
+    }
+    if (parallel_sheaths && Pe_sources) {
+      SAVE_REPEAT(TE_Pe_sheath);
+    }
+    if (Pe_lowdiffuse) {
+      SAVE_REPEAT(TE_Pe_lowdiffuse);
+    }
   }
   
 
@@ -881,9 +979,48 @@ int Hermes::init(bool restarting) {
   TE_Pi_energyexchange = 0.0;
   TE_Pi_lowdiffuse = 0.0;
   if (TE_Pi) {
-    SAVE_REPEAT(TE_Pi_ExB, TE_Pi_mag, TE_Pi_parflow, TE_Pi_conduction, TE_Pi_diamagenergyexchange, TE_Pi_parviscousheat);
-    SAVE_REPEAT(TE_Pi_resistivedrift, TE_Pi_perpviscous, TE_Pi_sources, TE_Pi_hyper, TE_Pi_numdiff,TE_Pi_anomalous,TE_Pi_energyexchange);
-    SAVE_REPEAT(TE_Pi_lowdiffuse);
+    if (Pi_ExB) {
+      SAVE_REPEAT(TE_Pi_ExB);
+    }
+    if (Pi_mag) {
+      SAVE_REPEAT(TE_Pi_mag);
+    }
+    if (Pi_parflow) {
+      SAVE_REPEAT(TE_Pi_parflow);
+    }
+    if (Pi_conduction) {
+      SAVE_REPEAT(TE_Pi_conduction);
+    }
+    if (Pi_diamagenergyexchange) {
+      SAVE_REPEAT(TE_Pi_diamagenergyexchange);
+    }
+    if (Pi_parviscousheat) {
+      SAVE_REPEAT(TE_Pi_parviscousheat);
+    }
+    if (Pi_resistivedrift) {
+      SAVE_REPEAT(TE_Pi_resistivedrift);
+    }
+    if (Pi_perpviscous) {
+      SAVE_REPEAT(TE_Pi_perpviscous);
+    }
+    if (Pi_sources) {
+      SAVE_REPEAT(TE_Pi_sources);
+    }
+    if (Pi_hyper) {
+      SAVE_REPEAT(TE_Pi_hyper);
+    }
+    if (Pi_numdiff) {
+      SAVE_REPEAT(TE_Pi_numdiff);
+    }
+    if (Pi_anomalous) {
+      SAVE_REPEAT(TE_Pi_anomalous);
+    }
+    if (Pi_energyexchange) {
+      SAVE_REPEAT(TE_Pi_energyexchange);
+    }
+    if (Pi_lowdiffuse) {
+      SAVE_REPEAT(TE_Pi_lowdiffuse);
+    }
   }
 
 
@@ -898,8 +1035,33 @@ int Hermes::init(bool restarting) {
   TE_Vort_numdiff = 0.0;
   TE_Vort_parflow = 0.0;
   if (TE_Vort) {
-    SAVE_REPEAT(TE_Vort_mag, TE_Vort_parcurrent, TE_Vort_polarcurrent, TE_Vort_collision, TE_Vort_parviscous, TE_Vort_anomalous);
-    SAVE_REPEAT(TE_Vort_hyper, TE_Vort_numdiff,TE_Vort_parflow);
+    if (Vort_mag) {
+      SAVE_REPEAT(TE_Vort_mag);
+    }
+    if (Vort_parcurrent) {
+      SAVE_REPEAT(TE_Vort_parcurrent);
+    }
+    if (Vort_polarcurrent) {
+      SAVE_REPEAT(TE_Vort_polarcurrent);
+    }
+    if (Vort_collision) {
+      SAVE_REPEAT(TE_Vort_collision);
+    }
+    if (Vort_parviscous) {
+      SAVE_REPEAT(TE_Vort_parviscous);
+    }
+    if (Vort_anomalous) {
+      SAVE_REPEAT(TE_Vort_anomalous);
+    }
+    if (Vort_hyper) {
+      SAVE_REPEAT(TE_Vort_hyper);
+    }
+    if (Vort_numdiff) {
+      SAVE_REPEAT(TE_Vort_numdiff);
+    }
+    if (Vort_parflow) {
+      SAVE_REPEAT(TE_Vort_parflow);
+    }    
   }
 
 
@@ -916,8 +1078,39 @@ int Hermes::init(bool restarting) {
   TE_VePsi_supsonicdampening = 0.0;
   TE_VePsi_anomalous = 0.0;
   if (TE_VePsi) {
-    SAVE_REPEAT(TE_VePsi_parefield, TE_VePsi_parpressure, TE_VePsi_partemp, TE_VePsi_parcurrent, TE_VePsi_ExB, TE_VePsi_parflow);
-    SAVE_REPEAT(TE_VePsi_hyper, TE_VePsi_numdiff,TE_VePsi_parallelvisc,TE_VePsi_supsonicdampening, TE_VePsi_anomalous);
+    if (VePsi_parefield) {
+      SAVE_REPEAT(TE_VePsi_parefield);
+    }
+    if (VePsi_parpressure) {
+      SAVE_REPEAT(TE_VePsi_parpressure);
+    }
+    if (VePsi_partemp) {
+      SAVE_REPEAT(TE_VePsi_partemp);
+    }
+    if (VePsi_parcurrent) {
+      SAVE_REPEAT(TE_VePsi_parcurrent);
+    }
+    if (VePsi_ExB) {
+      SAVE_REPEAT(TE_VePsi_ExB);
+    }
+    if (VePsi_parflow) {
+      SAVE_REPEAT(TE_VePsi_parflow);
+    }
+    if (VePsi_hyper) {
+      SAVE_REPEAT(TE_VePsi_hyper);
+    }
+    if (VePsi_numdiff) {
+      SAVE_REPEAT(TE_VePsi_numdiff);
+    }
+    if (VePsi_parallelvisc) {
+      SAVE_REPEAT(TE_VePsi_parallelvisc);
+    }
+    if (VePsi_supsonicdampening) {
+      SAVE_REPEAT(TE_VePsi_supsonicdampening);
+    }
+    if (VePsi_anomalous) {
+      SAVE_REPEAT(TE_VePsi_anomalous);
+    }    
   }
 
 
