@@ -91,8 +91,53 @@ void MC(Stencil1D &n) {
   n.R = n.c + 0.5 * slope;
 }
 
+const Field3D Div_par_K_Grad_par_mod(const Field3D& K, const Field3D& f, bool bndry_flux) {
+  TRACE("FV::Div_par_K_Grad_par_mod");
+
+  TRACE("Check first field");
+  ASSERT2(K.getLocation() == f.getLocation());
+
+  ASSERT2(K.hasParallelSlices());
+
+  TRACE("Check second field");
+  ASSERT2(f.hasParallelSlices());
+
+  
+  Mesh* mesh = K.getMesh();
+
+  Field3D result{zeroFrom(f)};
+
+  Coordinates* coord = f.getCoordinates();
+
+  BOUT_FOR(i, result.getRegion("RGN_NOBNDRY")) {
+    // Calculate flux at upper surface
+    // coord->J.yup()[ind.yp()];
+    
+    const auto iyp = i.yp();
+    const auto iym = i.ym();
+
+    BoutReal c = 0.5 * (K[i] + K.yup()[iyp]);             // K at the upper boundary                                                                
+    BoutReal J = 0.5 * (coord->J[i] + coord->J.yup()[iyp]); // Jacobian at boundary                                                                  
+    BoutReal g_22 = 0.5 * (coord->g_22[i] + coord->g_22.yup()[iyp]);                                                                                 
+    BoutReal gradient = 2. * (f.yup()[iyp] - f[i]) / (coord->dy[i] + coord->dy[i]);                                                          
+    BoutReal flux = c * J * gradient / g_22;                                                                                                         
+    result[i] += flux / (coord->dy[i] * coord->J[i]);                                                                                                
+                                                                                                                                                     
+                                                                                                                                                  
+    // Calculate flux at lower surface                                                                                                               
+                                                                                                                                                    
+    c = 0.5 * (K[i] + K.ydown()[iym]);           // K at the lower boundary                                                                          
+    J = 0.5 * (coord->J[i] + coord->J.ydown()[iym]); // Jacobian at boundary                                                                         
+    g_22 = 0.5 * (coord->g_22[i] + coord->g_22.ydown()[iym]);                                                                                        
+    gradient = 2. * (f[i] - f.ydown()[iym]) / (coord->dy[i] + coord->dy[i]);                                                               
+    flux = c * J * gradient / g_22;                                                                                                                  
+    result[i] -= flux / (coord->dy[i] * coord->J[i]);
+    
+  }
 
 
+  return result;
+}
 
 
 // Square function for vectors
@@ -396,7 +441,7 @@ protected:
 
     Ne_solution = 0.1*cos(0.5 - 1.*yl)*sin(0. - 0.01*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl);
 
-    Ne_source = -0.0015707963267948969*cos(15.70796326794897*(-0.4 + xl))*cos(0.5 - 1.*yl)*sin(0. - 0.01*t)*sin(0.1 - 4*zl) - (1.5707963267948968*(0.001 + 0.001*xl)*cos(15.70796326794897*(-0.4 + xl))*cos(0.5 - 1.*yl)*sin(0. - 0.01*t)*sin(0.1 - 4*zl))/xl - 0.001*cos(0. - 0.01*t)*cos(0.5 - 1.*yl)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl) + 24.674011002723407*(0.001 + 0.001*xl)*cos(0.5 - 1.*yl)*sin(0. - 0.01*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl) - (1.*(0. - 1.6*(0.001 + 0.001*xl)*cos(0.5 - 1.*yl)*sin(0. - 0.01*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl)))/power(xl,2) + 0.01*((-3.1415926535897936*cos(15.70796326794897*(-0.4 + xl))*cos(0.5 - 1.*yl)*cos(0.1 - 4*zl)*cos(1.*zl)*power(sin(0. - 0.01*t),2)*sin(15.70796326794897*(-0.4 + xl))*sin(6.*yl))/xl + (0.7853981633974484*cos(15.70796326794897*(-0.4 + xl))*cos(0.5 - 1.*yl)*power(sin(0. - 0.01*t),2)*sin(15.70796326794897*(-0.4 + xl))*sin(6.*yl)*sin(0.1 - 4*zl)*sin(1.*zl))/xl) - (((-0.8*cos(0.1 - 4*zl)*sin(0. - 0.01*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.5 - 1.*yl))/(8. - 2.*power(xl,2)) - 0.1*cos(0.5 - 1.*yl)*sin(0. - 0.01*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl) - (1.6*cos(0.5 - 1.*yl)*sin(0. - 0.01*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl))/power(8. - 2.*power(xl,2),2))*(0.3 + 0.02*sin(0.5 + 4*zl)))/(1 + power(xl,2)/power(8. - 2.*power(xl,2),2));
+    Ne_source = -0.0015707963267948969*cos(15.70796326794897*(-0.4 + xl))*cos(0.5 - 1.*yl)*sin(0. - 0.01*t)*sin(0.1 - 4*zl) - (1.5707963267948968*(0.001 + 0.001*xl)*cos(15.70796326794897*(-0.4 + xl))*cos(0.5 - 1.*yl)*sin(0. - 0.01*t)*sin(0.1 - 4*zl))/xl - 0.001*cos(0. - 0.01*t)*cos(0.5 - 1.*yl)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl) + 24.674011002723407*(0.001 + 0.001*xl)*cos(0.5 - 1.*yl)*sin(0. - 0.01*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl) - (1.*(0. - 1.6*(0.001 + 0.001*xl)*cos(0.5 - 1.*yl)*sin(0. - 0.01*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl)))/power(xl,2) + 0.01*((-3.1415926535897936*cos(15.70796326794897*(-0.4 + xl))*cos(0.5 - 1.*yl)*cos(0.1 - 4*zl)*cos(1.*zl)*power(sin(0. - 0.01*t),2)*sin(15.70796326794897*(-0.4 + xl))*sin(6.*yl))/xl + (0.7853981633974484*cos(15.70796326794897*(-0.4 + xl))*cos(0.5 - 1.*yl)*power(sin(0. - 0.01*t),2)*sin(15.70796326794897*(-0.4 + xl))*sin(6.*yl)*sin(0.1 - 4*zl)*sin(1.*zl))/xl) - (((0.08*cos(0.5 + 4*zl)*((-0.4*cos(0.5 - 1.*yl)*cos(0.1 - 4*zl)*sin(0. - 0.01*t)*sin(15.70796326794897*(-0.4 + xl)))/(8. - 2.*power(xl,2)) + 0.1*sin(0. - 0.01*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.5 - 1.*yl)*sin(0.1 - 4*zl)))/sqrt(1 + power(xl,2)/power(8. - 2.*power(xl,2),2)) + ((-0.4*cos(0.1 - 4*zl)*sin(0. - 0.01*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.5 - 1.*yl) - (1.6*cos(0.5 - 1.*yl)*sin(0. - 0.01*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl))/(8. - 2.*power(xl,2)))*(0.3 + 0.02*sin(0.5 + 4*zl)))/sqrt(1 + power(xl,2)/power(8. - 2.*power(xl,2),2)))/(8. - 2.*power(xl,2)) + (((-0.4*cos(0.1 - 4*zl)*sin(0. - 0.01*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.5 - 1.*yl))/(8. - 2.*power(xl,2)) - 0.1*cos(0.5 - 1.*yl)*sin(0. - 0.01*t)*sin(15.70796326794897*(-0.4 + xl))*sin(0.1 - 4*zl))*(0.3 + 0.02*sin(0.5 + 4*zl)))/sqrt(1 + power(xl,2)/power(8. - 2.*power(xl,2),2)))/sqrt(1 + power(xl,2)/power(8. - 2.*power(xl,2),2));
     
     
     phi_solution = -0.5*cos(1.*zl)*sin(0. - 0.01*t)*sin(15.70796326794897*(-0.4 + xl))*sin(6.*yl);
@@ -450,7 +495,8 @@ protected:
     debug_diffusion = Div_a_Grad_perp_mod(diffusion3D, Ne);
     ddt(Ne) += debug_diffusion;
 
-    debug_pardiffusion = dpar3D * Grad2_par2(Ne);
+    //debug_pardiffusion = dpar3D * Grad2_par2(Ne);
+    debug_pardiffusion = Div_par_K_Grad_par_mod(dpar3D, Ne, false);
     ddt(Ne) += debug_pardiffusion;
     
     debug_arakawa = -0.01 * bracket(phi_solution, Ne, BRACKET_ARAKAWA) * bracket_factor;

@@ -65,11 +65,11 @@ MmsDelp2Ne[x_, z_, y_, t_] = LaplacePerp[MmsDens, x, z, y, t];
 
 
 pflux[x_, z_, y_, t_]=MmsDens[x, z, y, t];
-
+qcond[x_, z_, y_, t_] = Dpar[x,z,y,t]*pgrad[MmsDens,x,z,y,t];
 (*Smms[x_, z_, y_, t_]=D[MmsDens[x,z,y,t],t]-Dperp * LaplacePerp[MmsDens,x,z,y,t]-d2dpar2[MmsDens,x,z,y,t];*)
 Smms[x_, z_, y_, t_]=D[MmsDens[x,z,y,t],t]\
 				-divagradperp[Dperp,MmsDens,x,z,y,t]\
-				-d2dpar2[MmsDens,x,z,y,t]\
+				-pgrad[qcond,x,z,y,t]\
 				+scaleExB*ExBoperator[MmsDens, x, z, y, t];
 
 
