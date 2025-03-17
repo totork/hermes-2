@@ -507,6 +507,9 @@ int Hermes::init(bool restarting) {
   // Check which variables should be evolved
   OPTION(optsc, phi_inneraverage, false);
   OPTION(optsc,output_ddt,false);
+
+  OPTION(optsc, output_analysis, false);
+  
   // Electron density
   evolve_ne = optsc["evolve_ne"].doc("Evolve density?").withDefault<bool>(false);
   if (evolve_ne){
@@ -1810,6 +1813,11 @@ int Hermes::init(bool restarting) {
     neutralSolver->setCoefA(oness);
   }
 
+  output_Er = 0.0;
+  output_Ez = 0.0;
+  if (output_analysis){
+    SAVE_REPEAT(output_Er, output_Ez);
+  }
   
 
   setPrecon((preconfunc)&Hermes::precon);
@@ -3975,7 +3983,8 @@ int Hermes::rhs(BoutReal t) {
 	if (!use_new_conduction){
 	  TE_Vort_anomalous +=  Div_par_K_Grad_par(mu_i_par, Vort);
 	} else {
-	  TE_Vort_anomalous += Div_par_K_Grad_par_mod(mu_i_par,Vort,false);
+	  //TE_Vort_anomalous += Div_par_K_Grad_par_mod(mu_i_par,Vort,false);
+	  TE_Vort_anomalous += mu_i_par * Grad2_par2(Vort);
 	}
 	
 	ddt(Vort) += TE_Vort_anomalous;
@@ -4006,7 +4015,10 @@ int Hermes::rhs(BoutReal t) {
         
   } // End if steady_state
 
-
+  if (output_analysis){
+    output_Er = - DDX(phi) / sqrt(coord->g_11);
+    output_Ez = - DDZ(phi) / sqrt(coord->g_33);
+  } // End output_analysis
 
   
   
