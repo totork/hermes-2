@@ -304,6 +304,9 @@ private:
   Field3D Tn;
   Field3D Vn;
 
+  bool output_analysis;
+  Field3D output_Er, output_Ez;
+  
   bool neutralplasmainteraction;
   bool simplified_diffusion;
   
