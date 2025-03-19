@@ -1651,6 +1651,11 @@ int Hermes::init(bool restarting) {
   boundary_direction = 0.0;
   
   if (verbose) {
+
+    debug_Jpar_1 = 0.0;
+    debug_Jpar_2 = 0.0;
+    debug_Jpar_3 = 0.0;
+    SAVE_REPEAT(debug_Jpar_1, debug_Jpar_2, debug_Jpar_3);
     SAVE_REPEAT(debug_decay_Ne);
     SAVE_ONCE(boundary_direction);
     SAVE_REPEAT(Te_ythis,Te_yprev,Te_ynext);
@@ -2267,6 +2272,12 @@ int Hermes::rhs(BoutReal t) {
     gradparPi.applyParallelBoundary(parbc);
     
     Jpar = mul_all(mul_all(-1.0, Ne), div_all(gradparphi, nu)) + div_all(gradparPi, nu) + div_all(mul_all(0.71, mul_all(Ne, gradparTe)), nu);
+    if (verbose){
+      debug_Jpar_1 = mul_all(mul_all(-1.0, Ne), div_all(gradparphi, nu));
+      debug_Jpar_2 = div_all(gradparPi, nu);
+      debug_Jpar_3 = div_all(mul_all(0.71, mul_all(Ne, gradparTe)), nu);
+    }
+    
     Jpar.applyBoundary("neumann");
     mesh->communicate(Jpar);
     Jpar.applyParallelBoundary(parbc);
