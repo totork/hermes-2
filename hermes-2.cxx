@@ -1959,7 +1959,7 @@ int Hermes::rhs(BoutReal t) {
 
 
 
-  if (steady_state){
+  if (steady_state && !isMMS){
     // phi_1 = lam2 * phi        
     if (mesh->lastX()) {
       for (int j = mesh->ystart; j <= mesh->yend; j++) {
@@ -4005,12 +4005,13 @@ int Hermes::rhs(BoutReal t) {
     
     
     ddt(phi_1) = 0.0;
+    
     if (!use_new_divagradperp){
       ddt(phi_1) = lam1 * ( Div_a_Grad_perp_curv(div_all(1.0,SQ_all(coord->Bxy)), add_all(phi, Pi)) - Vort );
     } else {
       ddt(phi_1) = lam1 * ( Div_a_Grad_perp_mod(div_all(1.0,SQ_all(coord->Bxy)), add_all(phi, Pi)) - Vort );
     }
-
+    
     
         
   } // End if steady_state
