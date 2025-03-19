@@ -92,7 +92,7 @@ SolNe[x_, y_, z_, t_] = OffsetNe + (ampNe*Sin[2.0*Pi*kxNe*xn[x]]*Sin[2.0*Pi*kzNe
 SolNVi[x_, y_, z_, t_] = (ampNVi*Sin[2.0*Pi*kxNVi*xn[x]]*Sin[2.0*Pi*kzNVi*zn[z]-phzNVi]+ampYNVi*Sin[kyNVi*y - phyNVi]);
 SolTe[x_, y_, z_, t_] = OffsetTe + (ampTe*Sin[2.0*Pi*kxTe*xn[x]]*Sin[2.0*Pi*kzTe*zn[z]-phzTe]+ampYTe*Sin[kyTe*y - phyTe]);
 SolTi[x_, y_, z_, t_] = OffsetTi + (ampTi*Sin[2.0*Pi*kxTi*xn[x]]*Sin[2.0*Pi*kzTi*zn[z]-phzTi]+ampYTi*Sin[kyTi*y - phyTi]);
-SolPhi[x_, y_, z_, t_] = (ampPhi*Sin[2.0*Pi*kxPhi*xn[x]]*Sin[2.0*Pi*kzPhi*zn[z]-phzPhi]*Sin[kyPhi*y - phyPhi]);
+SolPhi[x_, y_, z_, t_] = (ampPhi*Sin[2.0*Pi*kxPhi*xn[x]]*Sin[2.0*Pi*kzPhi*zn[z]-phzPhi]+ ampYPhi*Sin[kyPhi*y - phyPhi]);
 SolPsi[x_, y_, z_, t_] = (ampPsi*Sin[2.0*Pi*kxPsi*xn[x]]*Sin[2.0*Pi*kzPsi*zn[z]-phzPsi]+ampYPsi*Sin[2.0*Pi*kxPsi*xn[x]]*Sin[kyPsi*y - phyPsi]);
 (*SolVe[x_, y_, z_, t_] = ampVe*Sin[2.0*Pi*kxVe*xn[x]]*Sin[kyVe*y - phyVe]*Sin[2.0*Pi*kzVe*zn[z]-phzVe]*Sin[2.0*Pi*omegaVe*t - phtVe];*)
 
@@ -103,7 +103,7 @@ SolPi[x_, y_, z_, t_] = SolTi[x,y,z,t]*SolNe[x,y,z,t];
 SolVi[x_, y_, z_, t_] = SolNVi[x,y,z,t]/SolNe[x,y,z,t];
 SolPipPhi[x_, y_, z_, t_] = SolPi[x,y,z,t]+SolPhi[x,y,z,t];
 SolVort[x_, y_, z_, t_] = divagradperp[invB2,SolPipPhi,x,y,z,t]*(rhos0^2);
-
+SolPhi1[x_, y_, z_, t_] = lam2 * SolPhi[x,y,z,t];
 (*
 If[SWelectromagnetic==1.0,
 	SolVePsi[x_, y_, z_, t_] = -Bnorm*betae*rhos0/(2.0*SolNe[x,y,z,t])*laplaceperp[SolPsi,x,y,z,t]*(rhos0^2)+0.5*betae*SolPsi[x,y,z,t]*mime;,
@@ -114,8 +114,16 @@ SolVePsi[x_, y_, z_, t_] = If[SWelectromagnetic==1,
 							(*-(rhos0^2)*laplaceperp[SolPsi,x,y,z,t]+0.5*betae*SolPsi[x,y,z,t]*mime,*)
 							(*-Bnorm*betae*rhos0/(2.0*SolNe[x,y,z,t])*laplaceperp[SolPsi,x,y,z,t]*(rhos0^2)+0.5*betae*SolPsi[x,y,z,t]*mime,*)														
 							(ampVePsi*Sin[2.0*Pi*kxVePsi*xn[x]]*Sin[2.0*Pi*kzVePsi*zn[z]-phzVePsi]+ampYVePsi*Sin[kyVePsi*y - phyVePsi])];
-SolVe[x_, y_, z_, t_] = SolVePsi[x,y,z,t] - SWelectromagnetic*0.5*betae*mime*SolPsi[x,y,z,t] + SolVi[x,y,z,t];
-SolJpar[x_, y_, z_, t_] = SolNVi[x,y,z,t]-SolNe[x,y,z,t]*SolVe[x,y,z,t];
+
+(*SolJpar[x_, y_, z_, t_] = SolNVi[x,y,z,t]-SolNe[x,y,z,t]*SolVe[x,y,z,t];*)
+taue[x_, y_, z_, t_] = (taue0 * (Cs0/rhos0) * (SolTe[x,y,z,t]^(1.5)))/SolNe[x,y,z,t];
+taui[x_, y_, z_, t_] = (taui0 * (Cs0/rhos0) * (SolTi[x,y,z,t]^(1.5)))/SolNe[x,y,z,t];
+nu[x_, y_, z_, t_] = resistivitymultiply / (1.96 * taue[x,y,z,t]*mime);
+SolJpar[x_, y_, z_, t_] = (-1.0 * SolNe[x,y,z,t] * gradpar[SolPhi,x,y,z,t]/nu[x,y,z,t]\
+							+ gradpar[SolPi,x,y,z,t] / nu[x,y,z,t]\
+							+0.71 * SolNe[x,y,z,t] * gradpar[SolTe,x,y,z,t]/nu[x,y,z,t])*rhos0;
+SolVe[x_, y_, z_, t_] = SolVi[x,y,z,t] - SolJpar[x,y,z,t]/SolNe[x,y,z,t];
+
 
 SolNeVi[x_, y_, z_, t_] = SolNe[x,y,z,t]*SolVi[x,y,z,t];
 SolPepPi[x_, y_, z_, t_] = SolPe[x,y,z,t]+SolPi[x,y,z,t];
@@ -128,13 +136,14 @@ SolNViVi[x_, y_, z_, t_] = SolNVi[x,y,z,t] * SolVi[x,y,z,t];
 SolNViTi[x_, y_, z_, t_] = SolNVi[x,y,z,t] * SolTi[x,y,z,t];
 SolVimVe[x_, y_, z_, t_] = SolVi[x,y,z,t] - SolVe[x,y,z,t];
 SolVemVi[x_, y_, z_, t_] = SolVe[x,y,z,t] - SolVi[x,y,z,t];
-taue[x_, y_, z_, t_] = (taue0 * (Cs0/rhos0) * (SolTe[x,y,z,t]^(1.5)))/SolNe[x,y,z,t];
-taui[x_, y_, z_, t_] = (taui0 * (Cs0/rhos0) * (SolTi[x,y,z,t]^(1.5)))/SolNe[x,y,z,t];
+
 
 kappaepar[x_, y_, z_, t_] = 3.16 * mime * SolTe[x,y,z,t] * SolNe[x,y,z,t] * taue[x,y,z,t];
 kappaipar[x_, y_, z_, t_] = 3.9 * SolTi[x,y,z,t] * SolNe[x,y,z,t] * taui[x,y,z,t];
 etaepar[x_, y_, z_, t_] = 0.733 * mime * SolNe[x,y,z,t] * SolTe[x,y,z,t] * taue[x,y,z,t];
-nu[x_, y_, z_, t_] = resistivitymultiply / (1.96 * taue[x,y,z,t]*mime);
+
+
+
 
 PitauidivB[x_, y_, z_, t_] = SolPi[x,y,z,t]*taui[x,y,z,t]/B[x,y,z,t];
 B12Vi[x_, y_, z_, t_] = SqrtB[x,y,z,t] * SolVi[x,y,z,t];
@@ -153,8 +162,8 @@ vEdotGradPi[x_, y_, z_, t_] = bracketoperator[SolPi, SolPhi, x, y, z, t] * rhos0
 DelpPhi2B2[x_, y_, z_, t_] = 0.5 * laplaceperp[SolPhi, x, y, z, t] * (rhos0^2) / (B[x, y, z, t]^2);
 inv2sqb[x_, y_, z_, t_] = 0.5 / (B[x,y,z,t]^2);
 
-
-
+muipar3D[x_, y_, z_, t_] = muipar;
+muiperp3D[x_, y_, z_, t_] = muiperp;
 
 
 SourceNe[x_, y_, z_, t_] = D[SolNe[x,y,z,t],t]\
@@ -189,30 +198,15 @@ SourcePi[x_, y_, z_, t_] = D[SolPi[x,y,z,t],t]\
 	+SWPiparflow * rhos0*(divpar[SolPiVi,x,y,z,t] + (2.0/3.0)*SolPi[x,y,z,t]*divpar[SolVi,x,y,z,t])\
 	+SWPinumdiff * (rhos0^4)*(numchi/(rhos0^4 * Omegaci)) * numericaldiffusion[SolPi,x,y,z,t]\
 	+SWPihyper * (rhos0^4)*(hyperchi/(rhos0^4 * Omegaci)) * hyperdiffusion[SolPi,x,y,z,t]\
-	-SWPianomalous * (2.0/3.0) * (divagradperp[DanomalousTi,SolNe,x,y,z,t] + divagradperp[chianomalousNe,SolTi,x,y,z,t])*(rhos0^2)/(rhos0*rhos0*Omegaci)\
+	-SWPianomalous * (2.0/3.0) * ( divagradperp[DanomalousTi,SolNe,x,y,z,t] + divagradperp[chianomalousNe,SolTi,x,y,z,t] )*(rhos0^2)/(rhos0*rhos0*Omegaci)\
 	+SWPimag * (rhos0^2) * (5.0/3.0) * curvature[SolPiTi,x,y,z,t]\
 	+SWPiExB * (rhos0^2) * (ExBoperator[SolPi,x,y,z,t]+(2.0/3.0)*SolPi[x,y,z,t]*curvature[SolPhi,x,y,z,t]);
 SourceVort[x_, y_, z_, t_] = D[SolVort[x,y,z,t],t]\
 	-SWVortmag * (rhos0^2) * curvature[SolPepPi,x,y,z,t]\
-	+If[SWjpolpi==0,
-		SWVortExB * (rhos0^2) * ExBoperator[SolVort,x,y,z,t],
-		SWVortExB * (0.5 * (rhos0^2) * ExBoperator[SolVort,x,y,z,t] + divagradperp[inv2sqb, vEdotGradPi, x,y,z,t]* (rhos0^2) + bracketoperator[DelpPhi2B2,SolPipPhi,x,y,z,t]*(rhos0^2))]\
-	-SWVortanomalous * (rhos0^2) * divagradperp[nuanomalous3D,SolVort,x,y,z,t]/(rhos0*rhos0*Omegaci)\
-	-SWVortparcurrent * (rhos0) * divpar[SolJpar,x,y,z,t]\
-	+SWVorthyper * (rhos0^4) * (hypernu/(rhos0^4 * Omegaci)) * hyperdiffusion[SolVort,x,y,z,t]\
-	+SWVortnumdiff * (rhos0^4) * (numnu/(rhos0^4 * Omegaci)) * numericaldiffusion[SolVort,x,y,z,t];
-SourceVePsi[x_, y_, z_, t_] = D[SolVePsi[x,y,z,t],t]\
-	+SWVePsiparpressure * mime * rhos0 * gradpar[SolPe,x,y,z,t]/SolNe[x,y,z,t]\
-	+SWVePsinumdiff * (rhos0^4)*(numnu/(rhos0^4 * Omegaci)) * numericaldiffusion[SolVe,x,y,z,t]\
-	+SWVePsipartemp *rhos0 * 0.71 * mime* gradpar[SolTe,x,y,z,t]\
-	-SWVePsiparcurrent * mime* nu[x,y,z,t]*(SolVi[x,y,z,t]-SolVe[x,y,z,t])\
-	-SWVePsiparflow * rhos0 * SolVi[x,y,z,t] * divpar[SolVimVe,x,y,z,t]\
-	-SWVePsiparallelvisc*divparkgradpar[etaepar,SolVe,x,y,z,t]*(rhos0^2)\
-	-SWVePsianomalous * divagradperp[nuanomalous3D,SolVe,x,y,z,t]*(rhos0^2)/(rhos0*rhos0*Omegaci)\
-	+SWVePsihyper * (rhos0^4)*(hypernu/(rhos0^4 * Omegaci)) * hyperdiffusion[SolVe,x,y,z,t]\
-	-SWVePsiparefield * rhos0 * gradpar[SolPhi,x,y,z,t]*mime\
-	+SWVePsiExB * (rhos0^2) * ExBoperator[SolVemVi,x,y,z,t];
-
+	-SWVortanomalous * (rhos0^2) * ( divagradperp[muiperp3D,SolVort,x,y,z,t] + divparkgradpar[muipar3D,SolVort,x,y,z,t] )/(rhos0*rhos0*Omegaci)\
+	-SWVortparcurrent * (rhos0) * divpar[SolJpar,x,y,z,t];
+SourceVePsi[x_, y_, z_, t_] = 0.0;
+SourcePhi1[x_, y_, z_, t_] = D[SolPhi1[x,y,z,t],t];
 Print["Finished MMS Terms"]
 
 
