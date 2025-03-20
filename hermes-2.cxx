@@ -1649,7 +1649,6 @@ int Hermes::init(bool restarting) {
   Te_yp1 = 0.0;
   Te_yp2 = 0.0;
   boundary_direction = 0.0;
-  
   if (verbose) {
 
     debug_Jpar_1 = 0.0;
@@ -1670,7 +1669,6 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT( Ne_ym2 , Ne_ym1 , Ne_yp1 , Ne_yp2, Te_ym2 , Te_ym1 , Te_yp1 , Te_yp2);
     
     SAVE_REPEAT(Jpar_sheath);
-
     
 
     if(NVi_supsonic_dissipation){
@@ -1711,6 +1709,12 @@ int Hermes::init(bool restarting) {
 	  }
 	}
   }
+
+  J_ym1 = 0.0;
+  J_yp1 = 0.0;
+  J_ym1 = coord->J.ydown();
+  J_yp1 = coord->J.yup();
+  SAVE_ONCE(J_ym1, J_yp1);
 
   
 

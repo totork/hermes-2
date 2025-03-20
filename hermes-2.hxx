@@ -139,6 +139,7 @@ private:
   Field3D Ne_ym2,Ne_ym1,Ne_yp1,Ne_yp2;
   Field3D NVi_ym2, NVi_ym1, NVi_yp1, NVi_yp2;
   Field3D Te_ym2, Te_ym1, Te_yp1, Te_yp2;
+  Field3D J_ym1, J_yp1;
   BoutReal floor_vel;
   
   // Switches for evolving variables
