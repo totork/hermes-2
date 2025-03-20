@@ -1904,7 +1904,7 @@ int Hermes::rhs(BoutReal t) {
     }
   }
   
-  if (isMMS==false && boundarydecay==true){
+  if (isMMS==false){
     if (boundarydecay==true){
       if (mesh->lastX()) {
 	int n = mesh->LocalNx;
@@ -1966,6 +1966,19 @@ int Hermes::rhs(BoutReal t) {
 	    
           }
         }
+      }
+
+      if (mesh->firstX()) {
+	for (int j = mesh->ystart; j <= mesh->yend; j++) {
+	  for (int k = 0; k < mesh->LocalNz; k++) {
+	    Ne(1, j, k) = Ne(2, j, k);
+	    Pe(1, j, k)	= Pe(2, j, k);
+	    Pi(1, j, k)	= Pi(2, j, k);
+	    NVi(1, j, k) = NVi(2, j, k);
+	    Vort(1, j, k) = Vort(2, j, k);
+	    VePsi(1, j, k) = VePsi(2, j, k);
+	  }
+	}
       }
 
     }
