@@ -1712,8 +1712,15 @@ int Hermes::init(bool restarting) {
 
   J_ym1 = 0.0;
   J_yp1 = 0.0;
-  J_ym1 = coord->J.ydown();
-  J_yp1 = coord->J.yup();
+  BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")){
+    const auto iyp = i.yp();
+    const auto iym = i.ym();
+    const auto iypp = i.ypp();
+    const auto iymm = i.ymm();
+    J_ym1[i] = coord->J.ydown()[iym];
+    J_yp1[i] = coord->J.yup()[iyp];
+  }
+  
   SAVE_ONCE(J_ym1, J_yp1);
 
   
