@@ -2972,7 +2972,7 @@ int Hermes::rhs(BoutReal t) {
     if (Ne_anomalous){// Row 4 
       TRACE("Density anomalous");
       if (use_new_divagradperp){
-	TE_Ne_anomalous = Div_a_Grad_perp_mod(a_d3d, Ne);
+	TE_Ne_anomalous = FCIDiv_a_Grad_perp(a_d3d, Ne);
       } else {
 	TE_Ne_anomalous = Div_a_Grad_perp_curv(a_d3d, Ne);
 	//TE_Ne_anomalous = a_d3d * new_Delp2(Ne); 
@@ -3384,8 +3384,8 @@ int Hermes::rhs(BoutReal t) {
 	  TE_NVi_anomalous += Div_a_Grad_perp_curv(mul_all(Ne, a_nu3d), Vi);
 	} else {
 	  
-	  TE_NVi_anomalous = Div_a_Grad_perp_mod(mul_all(Vi,a_d3d), Ne);
-	  TE_NVi_anomalous += Div_a_Grad_perp_mod(mul_all(Ne, a_nu3d), Vi);
+	  TE_NVi_anomalous = FCIDiv_a_Grad_perp(mul_all(Vi,a_d3d), Ne);
+	  TE_NVi_anomalous += FCIDiv_a_Grad_perp(mul_all(Ne, a_nu3d), Vi);
 	  
 	}
       }
@@ -3538,7 +3538,7 @@ int Hermes::rhs(BoutReal t) {
       TRACE("Pe anomalous transport");
       //TE_Pe_anomalous = FCIDiv_a_Grad_perp(mul_all(a_d3d, Te), Ne) + (2. / 3) * FCIDiv_a_Grad_perp(mul_all(a_chi3d, Ne), Te);
       if (use_new_divagradperp){
-	TE_Pe_anomalous = (2.0/3.0)*(Div_a_Grad_perp_mod(mul_all(Te,a_d3d), Ne) + Div_a_Grad_perp_mod(mul_all(Ne, a_chi3d), Te));
+	TE_Pe_anomalous = (2.0/3.0)*(FCIDiv_a_Grad_perp(mul_all(Te,a_d3d), Ne) + FCIDiv_a_Grad_perp(mul_all(Ne, a_chi3d), Te));
 	
       } else {
 	TE_Pe_anomalous = (2.0 / 3.0) * (Div_a_Grad_perp_curv(mul_all(Te,a_d3d), Ne) + Div_a_Grad_perp_curv(mul_all(Ne, a_chi3d), Te));
@@ -3725,7 +3725,7 @@ int Hermes::rhs(BoutReal t) {
     if (Pi_anomalous){
       TRACE("Ion anomalous transport");
       if (use_new_divagradperp){
-	TE_Pi_anomalous = (2.0/3.0) * (Div_a_Grad_perp_mod(mul_all(Ti,a_d3d), Ne) + Div_a_Grad_perp_mod(mul_all(Ne, a_chi3d), Ti));
+	TE_Pi_anomalous = (2.0/3.0) * (FCIDiv_a_Grad_perp(mul_all(Ti,a_d3d), Ne) + FCIDiv_a_Grad_perp(mul_all(Ne, a_chi3d), Ti));
 
       } else {
 	TE_Pi_anomalous = (2.0/3.0) * (Div_a_Grad_perp_curv(mul_all(Ti,a_d3d), Ne) + Div_a_Grad_perp_curv(mul_all(Ne, a_chi3d), Ti));
