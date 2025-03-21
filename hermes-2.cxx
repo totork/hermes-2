@@ -2956,7 +2956,7 @@ int Hermes::rhs(BoutReal t) {
 	} else if (use_rhie_interpolation){
 	  TE_Ne_parflow = -Div_par_rhie(Ne, Vi, add_all(Pe,Pi), rhie_cor_up, rhie_cor_down);
 	} else {
-	  TE_Ne_parflow = -Div_par_mod(Ne,Vi,fastest_ispeed, use_slope_limiter);
+	  TE_Ne_parflow = -Div_par_mod(Ne,Vi,fastest_espeed, use_slope_limiter);
 	}
       }
       ddt(Ne) += TE_Ne_parflow;
