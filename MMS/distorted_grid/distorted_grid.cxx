@@ -349,6 +349,10 @@ const Field3D power(const Field3D& a, const int powval){
 }
 
 
+
+
+
+
 class distorted_grid : public PhysicsModel {
 private:
     Field3D Ne;	
@@ -363,6 +367,9 @@ private:
   Field3D delp2_Ne;
   Field3D inverted_Ne;
   Field3D forward_Ne, forward_Ne_solution;
+
+
+  
   
   std::unique_ptr<Laplacian> phiSolver{nullptr};
   Field3D phiSolverbndry;
@@ -432,6 +439,10 @@ protected:
     forward_Ne = 0.0;
     forward_Ne_solution = 0.0;
     SAVE_REPEAT(inverted_Ne, phiSolverbndry, delp2_Ne, forward_Ne, forward_Ne_solution);
+
+    
+
+    
     return 0;
   }
   
@@ -493,6 +504,7 @@ protected:
     ddt(Ne) += Ne_source;
     
     debug_diffusion = Div_a_Grad_perp_mod(diffusion3D, Ne);
+
     ddt(Ne) += debug_diffusion;
 
     //debug_pardiffusion = dpar3D * Grad2_par2(Ne);
@@ -527,8 +539,10 @@ protected:
     
     return 0;
   }
-
+  
 
 };
+
+
   
 BOUTMAIN(distorted_grid);
