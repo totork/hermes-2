@@ -1999,6 +1999,14 @@ int Hermes::rhs(BoutReal t) {
 	}
       }
     }
+
+    if (mesh->firstX()) {
+        for (int j = mesh->ystart; j <= mesh->yend; j++) {
+          for (int k = 0; k < mesh->LocalNz; k++) {
+            phi_1(0, j, k) = phi_1(1, j, k);
+          }
+        }
+    }
   }
   
   
@@ -2337,7 +2345,6 @@ int Hermes::rhs(BoutReal t) {
   if (parallel_sheaths){
     switch (par_sheath_model) {
     case 0 :{
-
       sheath_ramp_factor = rampfactor(t,sheath_ramp_time);
       sheath_dpe = 0.0;
       sheath_dpi = 0.0;
@@ -3809,7 +3816,7 @@ int Hermes::rhs(BoutReal t) {
     if (Nn_perpflow){
       if (!simplified_diffusion){
 	if (use_new_divagradperp){
-	  TE_Nn_perpflow =  Div_a_Grad_perp_mod(div_all(Dnn, Tn),Pn);
+	  TE_Nn_perpflow =  FCIDiv_a_Grad_perp(div_all(Dnn, Tn),Pn);
 	} else {
 	  //TE_Nn_perpflow = div_all(Dnn, Tn) * new_Delp2(Pn);
 	  TE_Nn_perpflow = Div_a_Grad_perp_curv(div_all(Dnn, Tn),Pn);
@@ -3861,7 +3868,7 @@ int Hermes::rhs(BoutReal t) {
     if (NnVn_perpflow){
       if (!simplified_diffusion){
 	if (use_new_divagradperp){
-	  TE_NnVn_perpflow =  Div_a_Grad_perp_mod(div_all(mul_all(Vn, Dnn),Tn),Pn);
+	  TE_NnVn_perpflow =  FCIDiv_a_Grad_perp(div_all(mul_all(Vn, Dnn),Tn),Pn);
 	} else {
 	  //TE_NnVn_perpflow = Vn * Dnn / Tn * new_Delp2(Pn); 
 	  TE_NnVn_perpflow =  Div_a_Grad_perp_curv(div_all(mul_all(Vn, Dnn) ,Tn),Pn);
@@ -3924,7 +3931,7 @@ int Hermes::rhs(BoutReal t) {
       if (Pn_perpflow){
 	if (!simplified_diffusion){
 	  if (use_new_divagradperp){
-	    TE_Pn_perpflow = Div_a_Grad_perp_mod(Dnn,Pn);
+	    TE_Pn_perpflow = FCIDiv_a_Grad_perp(Dnn,Pn);
 	  } else {
 	    TE_Pn_perpflow = Div_a_Grad_perp_curv(Dnn,Pn);
 	  }
@@ -3943,7 +3950,7 @@ int Hermes::rhs(BoutReal t) {
       if (Pn_perpdiffusion){
 	if (!simplified_diffusion){
 	  if (use_new_divagradperp){
-	    TE_Pn_perpdiffusion = Div_a_Grad_perp_mod(mul_all(Dnn, Nn), Pn);
+	    TE_Pn_perpdiffusion = FCIDiv_a_Grad_perp(mul_all(Dnn, Nn), Pn);
 	  } else {
 	    TE_Pn_perpdiffusion = Div_a_Grad_perp_curv(mul_all(Dnn, Nn), Pn);
 	  }
@@ -4012,7 +4019,7 @@ int Hermes::rhs(BoutReal t) {
 	if (!use_new_divagradperp){
 	  TE_Vort_anomalous = Div_a_Grad_perp_curv(mu_i_perp, Vort);
 	} else {
-	  TE_Vort_anomalous = Div_a_Grad_perp_mod(mu_i_perp, Vort);
+	  TE_Vort_anomalous = FCIDiv_a_Grad_perp(mu_i_perp, Vort);
 	}
 
 	if (!use_new_conduction){
@@ -4044,7 +4051,7 @@ int Hermes::rhs(BoutReal t) {
     if (!use_new_divagradperp){
       ddt(phi_1) = lam1 * ( Div_a_Grad_perp_curv(div_all(1.0,SQ_all(coord->Bxy)), add_all(phi, Pi)) - Vort );
     } else {
-      ddt(phi_1) = lam1 * ( Div_a_Grad_perp_mod(div_all(1.0,SQ_all(coord->Bxy)), add_all(phi, Pi)) - Vort );
+      ddt(phi_1) = lam1 * ( FCIDiv_a_Grad_perp(div_all(1.0,SQ_all(coord->Bxy)), add_all(phi, Pi)) - Vort );
     }
     
     
