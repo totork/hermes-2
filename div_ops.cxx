@@ -1700,29 +1700,34 @@ const Field3D Div_par_K_Grad_par_mod(const Field3D& K, const Field3D& f, bool bn
 
   Coordinates* coord = f.getCoordinates();
 
-  BOUT_FOR(i, result.getRegion("RGN_NOBNDRY")) {
-    // Calculate flux at upper surface
-    // coord->J.yup()[ind.yp()];
-    
+  BOUT_FOR(i, result.getRegion("RGN_NOBNDRY")) {    
     const auto iyp = i.yp();
     const auto iym = i.ym();
 
-    BoutReal c = 0.5 * (K[i] + K.yup()[iyp]);             // K at the upper boundary                                                                
-    BoutReal J = 0.5 * (coord->J[i] + coord->J.yup()[iyp]); // Jacobian at boundary                                                                  
-    BoutReal g_22 = 0.5 * (coord->g_22[i] + coord->g_22.yup()[iyp]);                                                                                 
-    BoutReal gradient = 2. * (f.yup()[iyp] - f[i]) / (coord->dy[i] + coord->dy[i]);                                                          
-    BoutReal flux = c * J * gradient / g_22;                                                                                                         
-    result[i] += flux / (coord->dy[i] * coord->J[i]);                                                                                                
-                                                                                                                                                     
+    if (bndry_flux || mesh->periodicY(i.x()) || !mesh->lastY(i.x())
+        || (i.y() != mesh->yend)) {
+    
+      BoutReal c = 0.5 * (K[i] + K.yup()[iyp]);             // K at the upper boundary                                                                
+      BoutReal J = 0.5 * (coord->J[i] + coord->J.yup()[iyp]); // Jacobian at boundary                                                                  
+      BoutReal g_22 = 0.5 * (coord->g_22[i] + coord->g_22.yup()[iyp]);                                                                                 
+      BoutReal gradient = 2. * (f.yup()[iyp] - f[i]) / (coord->dy[i] + coord->dy[i]);                                                          
+      BoutReal flux = c * J * gradient / g_22;                                                                                                         
+      result[i] += flux / (coord->dy[i] * coord->J[i]);                                                                                                
+    }
                                                                                                                                                   
     // Calculate flux at lower surface                                                                                                               
-                                                                                                                                                    
-    c = 0.5 * (K[i] + K.ydown()[iym]);           // K at the lower boundary                                                                          
-    J = 0.5 * (coord->J[i] + coord->J.ydown()[iym]); // Jacobian at boundary                                                                         
-    g_22 = 0.5 * (coord->g_22[i] + coord->g_22.ydown()[iym]);                                                                                        
-    gradient = 2. * (f[i] - f.ydown()[iym]) / (coord->dy[i] + coord->dy[i]);                                                               
-    flux = c * J * gradient / g_22;                                                                                                                  
-    result[i] -= flux / (coord->dy[i] * coord->J[i]);
+
+    if (bndry_flux || mesh->periodicY(i.x()) || !mesh->firstY(i.x())
+        || (i.y() != mesh->ystart)) {
+    
+      BoutReal c = 0.5 * (K[i] + K.ydown()[iym]);           // K at the lower boundary                                                                          
+      BoutReal J = 0.5 * (coord->J[i] + coord->J.ydown()[iym]); // Jacobian at boundary                                                                         
+      BoutReal g_22 = 0.5 * (coord->g_22[i] + coord->g_22.ydown()[iym]);                                                                                        
+      BoutReal gradient = 2. * (f[i] - f.ydown()[iym]) / (coord->dy[i] + coord->dy[i]);                                                               
+      BoutReal flux = c * J * gradient / g_22;                                                                                                                  
+      result[i] -= flux / (coord->dy[i] * coord->J[i]);
+
+    }
     
   }
 
