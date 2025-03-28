@@ -1994,7 +1994,10 @@ int Hermes::rhs(BoutReal t) {
       for (int j = mesh->ystart; j <= mesh->yend; j++) {
 	for (int k = 0; k < mesh->LocalNz; k++) {
 	  // 2.83879629 =  log(0.5 * sqrt(1. / (Me_Mp * PI)))
-	  phi_1(mesh->xend + 1, j, k) = lam2 * 0.5 * ( 2.83879629*( Te(mesh->xend + 1, j, k) + Te(mesh->xend, j, k) ) );
+	  //phi_1(mesh->xend + 1, j, k) = lam2 * 0.5 * ( 2.83879629*( Te(mesh->xend + 1, j, k) + Te(mesh->xend, j, k) ) );
+	  BoutReal thiste = Te(mesh->xend + 1, j, k);
+	  BoutReal thisti = Ti(mesh->xend + 1, j, k);
+	  phi_1(mesh->xend + 1, j, k) = lam2 * ( (log(0.5 * sqrt(mi_me / PI)) + log(sqrt( thiste/(thiste+thisti) )) )*thiste;
 	  phi_1(mesh->xend + 2, j, k) = phi_1(mesh->xend + 1, j, k);
 	}
       }
@@ -2379,15 +2382,24 @@ int Hermes::rhs(BoutReal t) {
 	  tisheath = pnt.ythis(Ti);
 
 	  BoutReal phisheath = 0.0;
+	  /*
 	  if (!evolve_vort && !steady_state){
-	    phisheath = log(sqrt(tesheath / (tesheath + tisheath))) * tesheath;
+	    //phisheath = log(sqrt(tesheath / (tesheath + tisheath))) * tesheath;
+	    phisheath = tesheath * (log(0.5 * sqrt(mi_me / PI)) + log(sqrt(tesheath/(tesheath+tisheath))));
 	    pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
 	  } else {
 	    pnt.ynext(phi) = 2.83879629 * pnt.ynext(Te);
 	    phisheath = 0.5 * (pnt.ynext(phi) + pnt.ythis(phi));
 	  }
-	  
+	  */
+
+	  phisheath = tesheath * (log(0.5 * sqrt(mi_me / PI)) + log(sqrt(tesheath/(tesheath+tisheath))));
 	  phisheath = floor(phisheath, 0.0);
+	  pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
+
+	  if(steady_state){
+	    pnt.ynext(phi_1) = pnt.ynext(phi) * lam2;
+	  }
 
 	  BoutReal visheath = 0.0;
 	  if (!sheath_ramp){
