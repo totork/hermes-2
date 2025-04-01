@@ -1997,7 +1997,7 @@ int Hermes::rhs(BoutReal t) {
 	  //phi_1(mesh->xend + 1, j, k) = lam2 * 0.5 * ( 2.83879629*( Te(mesh->xend + 1, j, k) + Te(mesh->xend, j, k) ) );
 	  BoutReal thiste = Te(mesh->xend + 1, j, k);
 	  BoutReal thisti = Ti(mesh->xend + 1, j, k);
-	  phi_1(mesh->xend + 1, j, k) = lam2 * ( (log(0.5 * sqrt(mi_me / PI)) + log(sqrt( thiste/(thiste+thisti) )) )*thiste;
+	  phi_1(mesh->xend + 1, j, k) = lam2 * ( (log(0.5 * sqrt(mi_me / PI)) + log(sqrt( thiste/(thiste+thisti) )) ))*thiste;
 	  phi_1(mesh->xend + 2, j, k) = phi_1(mesh->xend + 1, j, k);
 	}
       }
