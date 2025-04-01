@@ -1967,7 +1967,7 @@ int Hermes::rhs(BoutReal t) {
           }
         }
       }
-
+      /*
       if (mesh->firstX()) {
 	for (int j = mesh->ystart; j <= mesh->yend; j++) {
 	  for (int k = 0; k < mesh->LocalNz; k++) {
@@ -1980,6 +1980,7 @@ int Hermes::rhs(BoutReal t) {
 	  }
 	}
       }
+      */
 
     }
 
