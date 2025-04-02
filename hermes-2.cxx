@@ -3096,7 +3096,7 @@ int Hermes::rhs(BoutReal t) {
 
     if (VePsi_dissipation){
       TRACE("VePsi dissipation");
-      TE_VePsi_dissipation -= Div_par_ssdissipation(Jpar, fastest_espeed);
+      TE_VePsi_dissipation += Div_par_ssdissipation(Jpar, fastest_espeed);
       ddt(VePsi) += TE_VePsi_dissipation;
     }
 
