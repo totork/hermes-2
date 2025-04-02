@@ -1231,7 +1231,7 @@ int Hermes::init(bool restarting) {
           .withDefault<bool>(true);
   
   OPTION(optsheath, sheath_interpolate, false);
-
+  OPTION(optsheath, sheath_simplephi, true);
   
   
   // Output additional information
@@ -1998,7 +1998,11 @@ int Hermes::rhs(BoutReal t) {
 	  //phi_1(mesh->xend + 1, j, k) = lam2 * 0.5 * ( 2.83879629*( Te(mesh->xend + 1, j, k) + Te(mesh->xend, j, k) ) );
 	  BoutReal thiste = Te(mesh->xend + 1, j, k);
 	  BoutReal thisti = Ti(mesh->xend + 1, j, k);
-	  phi_1(mesh->xend + 1, j, k) = lam2 * ( (log(0.5 * sqrt(mi_me / PI)) + log(sqrt( thiste/(thiste+thisti) )) ))*thiste;
+	  if (sheath_simplephi){
+	    phi_1(mesh->xend + 1, j, k) = lam2 * thiste * 2.83;
+	  } else {
+	    phi_1(mesh->xend + 1, j, k) = lam2 * ( (log(0.5 * sqrt(mi_me / PI)) + log(sqrt( thiste/(thiste+thisti) )) ))*thiste;
+	  }
 	  phi_1(mesh->xend + 2, j, k) = phi_1(mesh->xend + 1, j, k);
 	}
       }
@@ -2393,8 +2397,11 @@ int Hermes::rhs(BoutReal t) {
 	    phisheath = 0.5 * (pnt.ynext(phi) + pnt.ythis(phi));
 	  }
 	  */
-
-	  phisheath = tesheath * (log(0.5 * sqrt(mi_me / PI)) + log(sqrt(tesheath/(tesheath+tisheath))));
+	  if (sheath_simplephi){
+	    phisheath = 2.83*tesheath;
+	  } else {
+	    phisheath = tesheath * (log(0.5 * sqrt(mi_me / PI)) + log(sqrt(tesheath/(tesheath+tisheath))));
+	  }
 	  phisheath = floor(phisheath, 0.0);
 	  pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
 

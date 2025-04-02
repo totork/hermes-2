@@ -107,6 +107,7 @@ private:
   bool new_sheaths;
   bool sheath_interpolate;
   bool sheath_infsink;
+  bool sheath_simplephi;
   BoutReal infsink_Te, infsink_amp;
   BoutReal infsink_Ne;
   Field3D debug_sheath_infsink;
