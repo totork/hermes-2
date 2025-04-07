@@ -1134,9 +1134,9 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, use_new_divagradperp, false);
   OPTION(optnumerics, use_Delp2, false);
   OPTION(optnumerics, use_slope_limiter, false);
-
+  OPTION(optnumerics, floor_outest, false);
   OPTION(optnumerics, low_diffuse_value, 1e-3);
-
+  OPTION(optnumerics, ceil_Te, -1.0);
   OPTION(optnumerics, use_rhie_interpolation, false);
   if (use_rhie_interpolation){
     alloc_all(rhie_cor_up);
@@ -1213,6 +1213,7 @@ int Hermes::init(bool restarting) {
   OPTION(optsheath, sheath_gamma_e, 7.0);
   OPTION(optsheath, sheath_gamma_i, 3.0);
   OPTION(optsheath, sheath_infsink, false);
+  OPTION(optsheath, sheath_ceil_Te, -1.0);
   OPTION(optsheath, infsink_Te, 2.0);
   OPTION(optsheath, infsink_Ne, 1.0);
   OPTION(optsheath, infsink_amp, 1.0);
@@ -1878,13 +1879,17 @@ int Hermes::rhs(BoutReal t) {
   BOUT_FOR(i, Ne.getRegion("RGN_NOY")) {
 
 
-
+    Ne[i] = floor(Ne[i], floor_Ne);
     Vi[i] = NVi[i] / Ne[i];
     Te[i] = floor(Pe[i] / Ne[i],floor_Te);
     Ti[i] = floor(Pi[i] / Ne[i],floor_Ti);
-    
-    Ne[i] = floor(Ne[i], floor_Ne);
 
+    if (ceil_Te > 0.0){
+      if (Te[i] > ceil_Te){
+	Te[i] = ceil_Te;
+      }
+    }
+    
     NVi[i] = Ne[i] * Vi[i];
     Pe[i] = Ne[i] * Te[i];
     Pi[i] = Ne[i] * Ti[i];
@@ -1953,24 +1958,38 @@ int Hermes::rhs(BoutReal t) {
 	}
       }
     } else {
-      /*
-      if (mesh->lastX()) {
-        int n = mesh->LocalNx;
-        for (int j = mesh->ystart; j <= mesh->yend; j++) {
-          for (int k = 0; k < mesh->LocalNz; k++) {
-	    Ne(n - 1, j, k) = Ne(n - 2, j, k);
-	    Pe(n - 1, j, k) = Pe(n - 2, j, k);
-	    Pi(n - 1, j, k) = Pi(n - 2, j, k);
-	    NVi(n - 1, j, k) = NVi(n - 2, j, k);
-	    Vort(n - 1, j, k) = Vort(n - 2, j, k);
-	    VePsi(n - 1, j, k) = VePsi(n - 2, j, k);
-	    
-          }
-        }
+
+      if (floor_outest){
+	if (mesh->lastX()) {                                                                                                                        
+	  int n = mesh->LocalNx;
+	  for (int j = mesh->ystart; j <= mesh->yend; j++) {                                                                                        
+	    for (int k = 0; k < mesh->LocalNz; k++) {                                                                                               
+	      Ne(n - 1, j, k) = floor_Ne;                                                                                                    
+	      Pe(n - 1, j, k) = floor_Ne * floor_Te;                                                                                                  
+	      Pi(n - 1, j, k) = floor_Ne * floor_Ti;                                                                                                       
+	      NVi(n - 1, j, k) = 0.0;                                                                                                     
+	      Vort(n - 1, j, k) = Vort(n - 2, j, k);                                                                                                   
+	      VePsi(n - 1, j, k) = VePsi(n - 2, j, k);                                                                                                            }         
+	  }                                                                                                                                         
+	}
+      } else {
+	if (mesh->lastX()) {
+	  int n = mesh->LocalNx;
+	  for (int j = mesh->ystart; j <= mesh->yend; j++) {
+	    for (int k = 0; k < mesh->LocalNz; k++) {
+	      Ne(n - 1, j, k) = Ne(n - 2, j, k);
+	      Pe(n - 1, j, k) = Pe(n - 2, j, k);
+	      Pi(n - 1, j, k) = Pi(n - 2, j, k);
+	      NVi(n - 1, j, k) = NVi(n - 2, j, k);
+	      Vort(n - 1, j, k) = Vort(n - 2, j, k);
+	      VePsi(n - 1, j, k) = VePsi(n - 2, j, k);
+	      
+	    }
+	  }
+	}
       }
-      */
       /*
-      if (mesh->firstX()) {
+	if (mesh->firstX()) {
 	for (int j = mesh->ystart; j <= mesh->yend; j++) {
 	  for (int k = 0; k < mesh->LocalNz; k++) {
 	    Ne(0, j, k) = Ne(1, j, k);
@@ -2058,11 +2077,13 @@ int Hermes::rhs(BoutReal t) {
 
   BOUT_FOR(i, Ne.getRegion("RGN_ALL")) {
 
+    floor_all(Ne, floor_Ne, i);
+
     div_all(Te, Pe, Ne, i);
     div_all(Vi, NVi, Ne, i);
     div_all(Ti, Pi, Ne, i);
 
-    floor_all(Ne, floor_Ne, i);
+    
     floor_all(Te, floor_Te, i);
     floor_all(Ti, floor_Ti, i);
 
@@ -2417,14 +2438,16 @@ int Hermes::rhs(BoutReal t) {
 	  } else {
 	    visheath = sheath_ramp_factor * (pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath));
 	  }
-
-	  if (pnt.dir > 0.99 && pnt.dir < 1.01){
-	    if (pnt.ythis(Vi) > visheath){
-	      visheath = pnt.ythis(Vi);
-	    }
-	  } else {
-	    if (pnt.ythis(Vi) < visheath){
-	      visheath = pnt.ythis(Vi);
+	  
+	  if (sheath_allow_supersonic){
+	    if (pnt.dir > 0.99 && pnt.dir < 1.01){
+	      if (pnt.ythis(Vi) > visheath){
+		visheath = pnt.ythis(Vi);
+	      }
+	    } else {
+	      if (pnt.ythis(Vi) < visheath){
+		visheath = pnt.ythis(Vi);
+	      }
 	    }
 	  }
 
@@ -2437,14 +2460,16 @@ int Hermes::rhs(BoutReal t) {
 	  } else {
 	    vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath))); 
 	  }
-	  
-	  if (pnt.dir > 0.99 && pnt.dir < 1.01){
-	    if (pnt.ythis(Ve) > vesheath){
-	      vesheath = pnt.ythis(Ve);
-	    }
-	  } else {
-	    if (pnt.ythis(Ve) < vesheath){
-	      vesheath = pnt.ythis(Ve);
+
+	  if (sheath_allow_supersonic){
+	    if (pnt.dir > 0.99 && pnt.dir < 1.01){
+	      if (pnt.ythis(Ve) > vesheath){
+		vesheath = pnt.ythis(Ve);
+	      }
+	    } else {
+	      if (pnt.ythis(Ve) < vesheath){
+		vesheath = pnt.ythis(Ve);
+	      }
 	    }
 	  }
 

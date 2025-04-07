@@ -108,6 +108,8 @@ private:
   bool sheath_interpolate;
   bool sheath_infsink;
   bool sheath_simplephi;
+  BoutReal sheath_ceil_Te;
+  BoutReal ceil_Te;
   BoutReal infsink_Te, infsink_amp;
   BoutReal infsink_Ne;
   Field3D debug_sheath_infsink;
@@ -142,7 +144,7 @@ private:
   Field3D Te_ym2, Te_ym1, Te_yp1, Te_yp2;
   Field3D J_ym1, J_yp1;
   BoutReal floor_vel;
-  
+  bool floor_outest;
   // Switches for evolving variables
   bool evolve_plasma;   // Should plasma be evolved?
   bool show_timesteps;  // Show intermediate timesteps?
