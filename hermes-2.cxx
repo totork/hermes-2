@@ -1856,7 +1856,7 @@ int Hermes::rhs(BoutReal t) {
   // are calculated using field aligned quantities
 
 
-
+  // Just apply boundary conditions sothat no empy data
   Ne.applyBoundary(t);
   NVi.applyBoundary(t);
   Pe.applyBoundary(t);
@@ -1875,7 +1875,9 @@ int Hermes::rhs(BoutReal t) {
   if (steady_state){
     phi_1.applyBoundary(t);
   }
-  
+
+
+  // Iterate, calculate aux variables and flooring
   BOUT_FOR(i, Ne.getRegion("RGN_NOY")) {
 
 
@@ -1909,7 +1911,7 @@ int Hermes::rhs(BoutReal t) {
     }
   }
 
-
+  // Here apply the actual bcs 
   Ne.applyBoundary(t);
   NVi.applyBoundary(t);
   Pe.applyBoundary(t);
@@ -2051,7 +2053,7 @@ int Hermes::rhs(BoutReal t) {
 	}
       }
     }
-
+    
     if (mesh->firstX()) {
         for (int j = mesh->ystart; j <= mesh->yend; j++) {
           for (int k = 0; k < mesh->LocalNz; k++) {
@@ -2065,6 +2067,8 @@ int Hermes::rhs(BoutReal t) {
   
   mesh->communicate(EvolvingVars);
 
+
+  
   Ne.applyParallelBoundary(parbc);
 
   Vort.applyParallelBoundary(parbc);
