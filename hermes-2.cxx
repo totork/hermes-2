@@ -1679,11 +1679,10 @@ int Hermes::rhs(BoutReal t) {
 
 
 
+    Ne[i] = floor(Ne[i], floor_Ne);
     Vi[i] = NVi[i] / Ne[i];
     Te[i] = floor(Pe[i] / Ne[i],floor_Te);
-    Ti[i] = floor(Pi[i] / Ne[i],floor_Ti);
-    
-    Ne[i] = floor(Ne[i], floor_Ne);
+    Ti[i] = floor(Pi[i] / Ne[i],floor_Ti);    
 
     NVi[i] = Ne[i] * Vi[i];
     Pe[i] = Ne[i] * Te[i];
@@ -1821,11 +1820,13 @@ int Hermes::rhs(BoutReal t) {
 
   BOUT_FOR(i, Ne.getRegion("RGN_ALL")) {
 
+    floor_all(Ne, floor_Ne, i);
+    
     div_all(Te, Pe, Ne, i);
     div_all(Vi, NVi, Ne, i);
     div_all(Ti, Pi, Ne, i);
 
-    floor_all(Ne, floor_Ne, i);
+    
     floor_all(Te, floor_Te, i);
     floor_all(Ti, floor_Ti, i);
 
