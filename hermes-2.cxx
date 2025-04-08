@@ -1702,6 +1702,22 @@ int Hermes::rhs(BoutReal t) {
       Pn[i] = Nn[i] * Tn[i];
     }
   }
+
+  Ne.applyBoundary(t);
+  NVi.applyBoundary(t);
+  Pe.applyBoundary(t);
+  Vort.applyBoundary(t);
+  Pi.applyBoundary(t);
+  VePsi.applyBoundary(t);
+
+  if (evolve_neutrals){
+    Nn.applyBoundary(t);
+    NnVn.applyBoundary(t);
+    if (evolve_pn){
+      Pn.applyBoundary(t);
+    }
+  }
+
   
   if (isMMS==false && boundarydecay==true){
     if (boundarydecay==true){
