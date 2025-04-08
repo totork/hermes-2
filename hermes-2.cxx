@@ -1896,18 +1896,41 @@ int Hermes::rhs(BoutReal t) {
 
 
     if (evolve_neutrals){
+      Nn[i] = floor(Nn[i], floor_Nn);
+      
       Vn[i] = NnVn[i] / Nn[i];
       if (evolve_pn){
 	Tn[i] = floor(Pn[i] / Nn[i], floor_Tn);
       } else {
 	Tn[i] = Ti[i];
-      }
-      Nn[i] = floor(Nn[i], floor_Nn);
-      
+      }      
       NnVn[i] = Nn[i] * Vn[i];
       Pn[i] = Nn[i] * Tn[i];
     }
   }
+
+
+  Ne.applyBoundary(t);
+  NVi.applyBoundary(t);
+  Pe.applyBoundary(t);
+  Vort.applyBoundary(t);
+  Pi.applyBoundary(t);
+  VePsi.applyBoundary(t);
+
+  if (evolve_neutrals){
+    Nn.applyBoundary(t);
+    NnVn.applyBoundary(t);
+    if (evolve_pn){
+      Pn.applyBoundary(t);
+    }
+  }
+
+  if (steady_state){
+    phi_1.applyBoundary(t);
+  }
+  
+
+  
   
   if (isMMS==false){
     if (boundarydecay==true){
