@@ -2119,10 +2119,12 @@ int Hermes::rhs(BoutReal t) {
     mul_all(NVi, Vi, Ne, i);
 
     if(evolve_neutrals){
+
+      floor_all(Nn, floor_Nn, i);
+      
       div_all(Tn, Pn, Nn, i);
       div_all(Vn, NnVn, Nn, i);
       
-      floor_all(Nn, floor_Nn, i);
       floor_all(Tn, floor_Tn, i);
       
       mul_all(Pn, Tn, Nn, i);
@@ -3933,7 +3935,7 @@ int Hermes::rhs(BoutReal t) {
 	Field3D NnVnVn = mul_all(NnVn, Vn);
 	TE_NnVn_parflow = -Div_par(NnVnVn);
       } else {
-	TE_NnVn_parflow = -Div_par_mod(NnVn,Vn,fastest_ispeed, use_slope_limiter);
+	TE_NnVn_parflow = -Div_par_nvv_mod(Nn,Vn,fastest_ispeed);
       }
       
       ddt(NnVn) += TE_NnVn_parflow;
