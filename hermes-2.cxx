@@ -43,7 +43,7 @@
 #include "atomicpp/ImpuritySpecies.hxx"
 #include "atomicpp/Prad.hxx"
 
-std::string parbc{"parallel_neumann_o2"};
+std::string parbc{"parallel_neumann_o1"};
 
 using bout::globals::mesh;
 
@@ -1144,6 +1144,9 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(rhie_cor_up,rhie_cor_down);
   }
 
+
+
+
   
   OPTION(optsc, boussinesq, false);
   OPTION(optnumerics, check_finite, false);
@@ -1204,7 +1207,11 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, adaptive_overshoot, 1.0);
 
 
-  
+  OPTION(optnumerics, inner_Te_dirichlet, false);
+  OPTION(optnumerics, inner_Te_value, Te_target);
+
+  OPTION(optnumerics, inner_Ti_dirichlet, false);
+  OPTION(optnumerics, inner_Ti_value, Ti_target);
   
   
   // Sheath switches
@@ -1682,9 +1689,6 @@ int Hermes::init(bool restarting) {
       SAVE_REPEAT(Ve_dampening);
     }
     
-    if(kappa_limit_alpha>0.0){
-      SAVE_REPEAT(debug_denom);
-    }
     
     SAVE_REPEAT(kappa_epar,eta_epar); // Parallel electron heat conductivity
     SAVE_REPEAT(kappa_ipar); // Parallel ion heat conductivity
@@ -1695,6 +1699,11 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(a);
   }
 
+  if(kappa_limit_alpha>0.0){
+    SAVE_REPEAT(debug_denom);
+  }
+
+  
   zero_all(phi);
   zero_all(psi);
 
@@ -2072,12 +2081,42 @@ int Hermes::rhs(BoutReal t) {
   Ne.applyParallelBoundary(parbc);
 
   Vort.applyParallelBoundary(parbc);
+
+
+  
   if (evolve_te){
-    Pe.applyParallelBoundary(parbc);
+    if (inner_Te_dirichlet){
+      Pe.applyParallelBoundary();
+      for (const auto &bndry_par :
+           mesh->getBoundariesPar(BoundaryParType::xin)) {
+        for (const auto& pnt : *bndry_par) {
+          const auto i = pnt.ind();
+	  pnt.ynext(Pe) = interpolate_sheathneighbour(pnt.ythis(Pe), 0.5*(pnt.ythis(Ne)+pnt.ynext(Ne))*inner_Te_value );	  	  	  
+	}
+      }          
+    } else {
+      Pe.applyParallelBoundary();
+    }
   }
+
   if (evolve_ti){
-    Pi.applyParallelBoundary(parbc);
+    if (inner_Ti_dirichlet){
+      Pi.applyParallelBoundary();
+      for (const auto &bndry_par :
+           mesh->getBoundariesPar(BoundaryParType::xin)) {
+        for (const auto& pnt : *bndry_par) {
+          const auto i = pnt.ind();
+          pnt.ynext(Pi) = interpolate_sheathneighbour(pnt.ythis(Pi), 0.5*(pnt.ythis(Ne)+pnt.ynext(Ne))*inner_Ti_value );
+        }
+      }
+    } else {
+      Pi.applyParallelBoundary();
+    }
   }
+
+
+
+  
   NVi.applyParallelBoundary(parbc);
   
   if (evolve_vepsi){
@@ -2923,9 +2962,9 @@ int Hermes::rhs(BoutReal t) {
     mesh->communicate(denom);
     denom.applyParallelBoundary(parbc);
     
-    if (verbose){
-      debug_denom = denom;
-    }
+    
+    debug_denom = denom;
+    
       
     kappa_epar = div_all(kappa_epar,denom);
   }

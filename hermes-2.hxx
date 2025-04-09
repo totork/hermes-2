@@ -101,6 +101,12 @@ private:
   Field3D debug_Jpar_1, debug_Jpar_2, debug_Jpar_3;
   
   bool phi_inneraverage;
+
+  bool inner_Te_dirichlet;
+  BoutReal inner_Te_value;
+
+  bool inner_Ti_dirichlet;
+  BoutReal inner_Ti_value;
   
   Field3D Vi_sheath , Ve_sheath , Jpar_sheath , Ne_sheath , Te_sheath , Ti_sheath , Vort_sheath,phi_sheath;
   Field3D Te_ythis,Te_ynext,Te_yprev;
