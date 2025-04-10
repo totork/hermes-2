@@ -2182,7 +2182,8 @@ int Hermes::rhs(BoutReal t) {
   if (electromagnetic){
     fastest_espeed = sound_speed;
   } else {
-    fastest_espeed = mul_all(sqrt(mi_me),sound_speed);
+    //fastest_espeed = mul_all(sqrt(mi_me),sound_speed);
+    fastest_espeed = sound_speed;
   }
   
   
@@ -2964,9 +2965,10 @@ int Hermes::rhs(BoutReal t) {
     
     
     debug_denom = denom;
-    
-      
-    kappa_epar = div_all(kappa_epar,denom);
+
+    BOUT_FOR(i, Ne.getRegion("RGN_ALL")) {
+      div_all(kappa_epar, kappa_epar, denom, i);
+    }      
   }
 
 
