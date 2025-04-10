@@ -2219,8 +2219,8 @@ int Hermes::rhs(BoutReal t) {
   if (electromagnetic){
     fastest_espeed = sound_speed;
   } else {
-    //fastest_espeed = mul_all(sqrt(mi_me),sound_speed);
-    fastest_espeed = sound_speed;
+    fastest_espeed = mul_all(sqrt(mi_me),sound_speed);
+    //fastest_espeed = sound_speed;
   }
   
   
