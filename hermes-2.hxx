@@ -248,6 +248,7 @@ private:
   bool use_Div_parP_n;
   bool use_new_conduction;
   bool use_new_div_par;
+  bool use_H3_div_par;
   bool use_new_grad_par;
   bool use_new_divagradperp;
   bool use_new_viscosity;

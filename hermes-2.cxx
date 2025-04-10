@@ -1130,6 +1130,7 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, use_new_conduction, false);
   OPTION(optnumerics, use_new_viscosity, false);
   OPTION(optnumerics, use_new_div_par, false);
+  OPTION(optnumerics, use_H3_div_par, false);
   OPTION(optnumerics, use_new_grad_par, false);
   OPTION(optnumerics, use_new_divagradperp, false);
   OPTION(optnumerics, use_Delp2, false);
@@ -2588,7 +2589,11 @@ int Hermes::rhs(BoutReal t) {
 	    pnt.ynext(Ve) = interpolate_sheathneighbour(pnt.ythis(Ve), vesheath);
 	    pnt.ynext(Jpar) = interpolate_sheathneighbour(pnt.ythis(Jpar), jsheath);
 	    pnt.ynext(NVi) = interpolate_sheathneighbour(pnt.ythis(NVi), nvisheath);
-	    pnt.ynext(Vort) = pnt.ythis(Vort);
+	    if (Vort_dirichlet){
+	      pnt.ynext(Vort) = interpolate_sheathneighbour(pnt.ythis(Vort), 0.0);
+	    } else {
+	      pnt.ynext(Vort) = pnt.ythis(Vort);
+	    }
 	  } else {
 	    pnt.ynext(Vi) = visheath;
 	    pnt.ynext(Ve) = vesheath;
