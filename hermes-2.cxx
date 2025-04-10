@@ -1293,6 +1293,7 @@ int Hermes::init(bool restarting) {
     mu_i_perp = optss["mu_i_perp"].doc("anomalous perpendicular transport of vorticity, for the steady state solver").withDefault(Field3D{0.0});  
     mu_i_par.applyBoundary("neumann");
     mu_i_perp.applyBoundary("neumann");
+    phi_1_restart = optss["phi_1_restart"].withDefault(false);
     mesh->communicate(mu_i_par, mu_i_perp);
     mu_i_par.applyParallelBoundary(parbc);
     mu_i_perp.applyParallelBoundary(parbc);
@@ -1852,6 +1853,10 @@ int Hermes::init(bool restarting) {
 
   setPrecon((preconfunc)&Hermes::precon);
 
+  if (phi_1_restart){
+    phi_1 += lam2 * 2.83 * Pe / Ne + 2.0;
+    mesh->communicate(phi_1);
+  }
   
   return 0;
 }

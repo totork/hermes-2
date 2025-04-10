@@ -68,6 +68,8 @@ private:
   Field3D phi_1;
   BoutReal lam1, lam2;
 
+  bool phi_1_restart;
+  
   Field3D mu_i_par, mu_i_perp;
   
   Field3D Pe_yup, Pe_ydown,kappa_epar_yup,kappa_epar_ydown;
