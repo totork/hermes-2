@@ -1213,6 +1213,10 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, inner_Ti_dirichlet, false);
   OPTION(optnumerics, inner_Ti_value, Ti_target);
   
+  OPTION(optnumerics, inner_Ne_dirichlet, false);
+  OPTION(optnumerics, inner_Ne_value, Ne_target);
+
+  OPTION(optnumerics, inner_NVi_dirichlet, false);
   
   // Sheath switches
   
@@ -2078,11 +2082,24 @@ int Hermes::rhs(BoutReal t) {
 
 
   
-  Ne.applyParallelBoundary(parbc);
-
   Vort.applyParallelBoundary(parbc);
 
-
+  if (evolve_ne){
+    if (inner_Ne_dirichlet){
+      Ne.applyParallelBoundary(parbc);
+      for (const auto &bndry_par :
+           mesh->getBoundariesPar(BoundaryParType::xin)) {
+	for (const auto& pnt : *bndry_par) {
+          const auto i = pnt.ind();
+          pnt.ynext(Ne) = interpolate_sheathneighbour(pnt.ythis(Ne), inner_Ne_value );
+        }
+      }      
+    } else {
+      Ne.applyParallelBoundary(parbc);
+    }
+  }
+  
+  
   
   if (evolve_te){
     if (inner_Te_dirichlet){
@@ -2114,10 +2131,24 @@ int Hermes::rhs(BoutReal t) {
     }
   }
 
-
+  if (evolve_nvi){
+    if (inner_NVi_dirichlet){
+      NVi.applyParallelBoundary(parbc);
+      for (const auto &bndry_par :
+           mesh->getBoundariesPar(BoundaryParType::xin)) {
+        for (const auto& pnt : *bndry_par) {
+          const auto i = pnt.ind();
+          pnt.ynext(NVi) = interpolate_sheathneighbour(pnt.ythis(NVi), 0.0 );
+        }
+      }
+    } else {
+      NVi.applyParallelBoundary(parbc);
+    }
+  }
 
   
-  NVi.applyParallelBoundary(parbc);
+
+ 
   
   if (evolve_vepsi){
     VePsi.applyParallelBoundary(parbc);

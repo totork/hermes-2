@@ -105,6 +105,11 @@ private:
   bool inner_Te_dirichlet;
   BoutReal inner_Te_value;
 
+  bool inner_Ne_dirichlet;
+  BoutReal inner_Ne_value;
+
+  bool inner_NVi_dirichlet;
+  
   bool inner_Ti_dirichlet;
   BoutReal inner_Ti_value;
   
