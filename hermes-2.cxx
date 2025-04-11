@@ -1853,9 +1853,9 @@ int Hermes::init(bool restarting) {
   
 
   setPrecon((preconfunc)&Hermes::precon);
-
+  // log(0.5*sqrt(mi_me/PI))
   if (phi_1_restart){
-    phi_1 += lam2 * 2.83 * Pe / Ne + 2.0;
+    phi_1 += lam2 * log(0.5*sqrt(mi_me/PI)) * Pe / Ne + 2.0;
     mesh->communicate(phi_1);
   }
   
@@ -2064,7 +2064,7 @@ int Hermes::rhs(BoutReal t) {
 	  BoutReal thiste = Te(mesh->xend + 1, j, k);
 	  BoutReal thisti = Ti(mesh->xend + 1, j, k);
 	  if (sheath_simplephi){
-	    phi_1(mesh->xend + 1, j, k) = lam2 * thiste * 2.83;
+	    phi_1(mesh->xend + 1, j, k) = lam2 * thiste * log(0.5*sqrt(mi_me/PI));
 	  } else {
 	    phi_1(mesh->xend + 1, j, k) = lam2 * ( (log(0.5 * sqrt(mi_me / PI)) + log(sqrt( thiste/(thiste+thisti) )) ))*thiste;
 	  }
@@ -2527,7 +2527,7 @@ int Hermes::rhs(BoutReal t) {
 	  }
 	  */
 	  if (sheath_simplephi){
-	    phisheath = 2.83*tesheath;
+	    phisheath = log(0.5*sqrt(mi_me/PI))*tesheath;
 	  } else {
 	    phisheath = tesheath * (log(0.5 * sqrt(mi_me / PI)) + log(sqrt(tesheath/(tesheath+tisheath))));
 	  }
@@ -4199,7 +4199,7 @@ int Hermes::rhs(BoutReal t) {
 	  TE_Vort_anomalous +=  Div_par_K_Grad_par(mu_i_par, Vort);
 	} else {
 	  //TE_Vort_anomalous += Div_par_K_Grad_par_mod(mu_i_par,Vort,false);
-	  TE_Vort_anomalous += mu_i_par * Grad2_par2(Vort);
+	  TE_Vort_anomalous += Div_par_K_Grad_par_mod(mu_i_par, Vort);
 	}
 	
 	ddt(Vort) += TE_Vort_anomalous;
