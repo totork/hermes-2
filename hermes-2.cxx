@@ -4189,7 +4189,7 @@ int Hermes::rhs(BoutReal t) {
 	if (!use_new_div_par){
 	  TE_Vort_parcurrent = Div_par(Jpar);
 	} else if (use_H3_div_par){
-	  TE_Vort_parcurrent = Div_par_mod_H3(Ne,sub_all(Vi,Ve),fastest_espeed);
+	  TE_Vort_parcurrent = Div_par_mod_H3(Ne,sub_all(Vi,Ve),fastest_ispeed);
 	} else {
 	  TE_Vort_parcurrent = Div_par_mod(Ne, sub_all(Vi,Ve),fastest_ispeed, use_slope_limiter);
 	}
