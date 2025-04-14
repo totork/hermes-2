@@ -706,6 +706,7 @@ int Hermes::init(bool restarting) {
   Vort_hyper = optvort["Vort_hyper"].doc("Use hyperdiffusion in vorticity").withDefault<bool>(false);
   Vort_numdiff = optvort["Vort_numdiff"].doc("Use parallel numerical diffusion in vorticity").withDefault<bool>(false);
   Vort_parflow = optvort["Vort_parflow"].doc("Use parallel ion flow in vorticity").withDefault<bool>(false);
+  Vort_dissipation = optvort["Vort_dissipation"].doc("Use dissipation in vorticity").withDefault<bool>(false);
   if (optvort["bndry_xout"] == "dirichlet"){
     Vort_dirichlet=true;
   } else {
@@ -1037,6 +1038,7 @@ int Hermes::init(bool restarting) {
   TE_Vort_hyper = 0.0;
   TE_Vort_numdiff = 0.0;
   TE_Vort_parflow = 0.0;
+  TE_Vort_dissipation = 0.0;
   if (TE_Vort) {
     if (Vort_mag) {
       SAVE_REPEAT(TE_Vort_mag);
@@ -1064,7 +1066,10 @@ int Hermes::init(bool restarting) {
     }
     if (Vort_parflow) {
       SAVE_REPEAT(TE_Vort_parflow);
-    }    
+    }
+    if (Vort_dissipation) {
+      SAVE_REPEAT(TE_Vort_dissipation);
+    }
   }
 
 
@@ -1314,6 +1319,8 @@ int Hermes::init(bool restarting) {
   hyper_chi = opttransport["hyper_chi"].doc("hyperconductivity").withDefault(Field3D{0.0});
   hyper_nu = opttransport["hyper_nu"].doc("hyperviscosity").withDefault(Field3D{0.0});
 
+  Vort_diss = opttransport["Vort_diss"].doc("hyperviscosity").withDefault(Field3D{0.0});
+  
   num_D = opttransport["num_D"].doc("numerical parallel diffusion").withDefault(0.0);
   num_nu = opttransport["num_nu"].doc("numerical parallel viscosity").withDefault(0.0);
   num_chi = opttransport["num_chi"].doc("numerical parallel conductivity").withDefault(0.0);
@@ -4181,6 +4188,8 @@ int Hermes::rhs(BoutReal t) {
 	TRACE("Vort_parcurrent");
 	if (!use_new_div_par){
 	  TE_Vort_parcurrent = Div_par(Jpar);
+	} else if (use_H3_div_par){
+	  TE_Vort_parcurrent = Div_par_mod_H3(Ne,sub_all(Vi,Ve),fastest_espeed);
 	} else {
 	  TE_Vort_parcurrent = Div_par_mod(Ne, sub_all(Vi,Ve),fastest_ispeed, use_slope_limiter);
 	}
@@ -4210,6 +4219,12 @@ int Hermes::rhs(BoutReal t) {
 	TE_Vort_hyper = hyperdissipation(hyper_nu,Vort);
 	ddt(Vort) += TE_Vort_hyper;
       } // End Vort_hyper
+
+      if (Vort_dissipation){
+      TRACE("Vorticity dissipation");
+      TE_Vort_dissipation = Vort_diss * new_Delp2(Vort);    
+      ddt(Vort) += TE_Vort_dissipation;
+    }
       
       
     } // End if evolve_vort
