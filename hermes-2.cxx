@@ -3434,7 +3434,7 @@ int Hermes::rhs(BoutReal t) {
       if(!use_new_conduction){
 	TE_VePsi_parallelvisc = Div_par_K_Grad_par(eta_epar,Ve);
       } else {
-	TE_VePsi_parallelvisc = Div_par_K_Grad_par_mod(eta_epar,Ve);
+	TE_VePsi_parallelvisc = Div_par_K_Grad_par_mod(eta_epar,Ve, true);
       }
 
       if (use_viscosity_limiter){
@@ -3541,7 +3541,7 @@ int Hermes::rhs(BoutReal t) {
       if(!use_new_conduction){
 	tmp = Div_par_K_Grad_par(div_all(mul_all(Pi,tau_i),coord->Bxy),mul_all(B12,Vi));
       } else {
-	tmp = Div_par_K_Grad_par_mod(div_all(mul_all(Pi,tau_i),coord->Bxy),mul_all(B12,Vi));
+	tmp = Div_par_K_Grad_par_mod(div_all(mul_all(Pi,tau_i),coord->Bxy),mul_all(B12,Vi), true);
       }
       TE_NVi_parviscos = 1.28*B12*tmp;
       ddt(NVi) += TE_NVi_parviscos;
@@ -3670,7 +3670,7 @@ int Hermes::rhs(BoutReal t) {
       if (!use_new_conduction){
 	TE_Pe_conduction = (2.0 / 3.0) * Div_par_K_Grad_par(kappa_epar, Te);
       } else {
-	TE_Pe_conduction = (2.0/3.0) * Div_par_K_Grad_par_mod(kappa_epar,Te,false);
+	TE_Pe_conduction = (2.0/3.0) * Div_par_K_Grad_par_mod(kappa_epar,Te,true);
 	//TE_Pe_conduction = (2.0/3.0) * kappa_epar * Div_par_K_Grad_par_mod(oness,Te,false);
       }
       
@@ -3878,7 +3878,7 @@ int Hermes::rhs(BoutReal t) {
       if (!use_new_conduction){
 	TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par(kappa_ipar, Ti);
       } else {
-	TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par_mod(kappa_ipar, Ti);
+	TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par_mod(kappa_ipar, Ti, true);
       }
       ddt(Pi) += TE_Pi_conduction;
     } // End Pi_conduction 
