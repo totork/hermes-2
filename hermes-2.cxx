@@ -932,7 +932,7 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, use_new_divagradperp, false);
   OPTION(optnumerics, use_Delp2, false);
   OPTION(optnumerics, use_slope_limiter, false);
-
+  OPTION(optnumerics, use_H3_div_par, false);
   OPTION(optnumerics, low_diffuse_value, 1e-3);
 
   OPTION(optnumerics, use_rhie_interpolation, false);

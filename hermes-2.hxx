@@ -82,6 +82,7 @@ private:
   Field3D psi;        // Electromagnetic potential (-A_||)
   Field3D phi;        // Electrostatic potential
 
+  bool use_H3_div_par;
   
   // DEBUG VARIABLES
   Field3D a;

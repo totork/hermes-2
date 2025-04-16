@@ -520,6 +520,64 @@ const Field3D Div_par_nvv_mod(const Field3D& f, const Field3D& v, const Field3D&
   return result;
 }
 
+const Field3D Div_par_fvv_H3(const Field3D& f_in, const Field3D& v_in, const Field3D& wave_speed_in){
+  ASSERT1_FIELDS_COMPATIBLE(f_in, v_in);
+  Mesh* mesh = f_in.getMesh();
+  Coordinates* coord = f_in.getCoordinates();
+  ASSERT1(f_in.hasParallelSlices());
+  ASSERT1(v_in.hasParallelSlices());
+
+  const auto B = coord->Bxy;
+  const auto B_up = coord->Bxy.yup();
+  const auto B_down = coord->Bxy.ydown();
+
+  const auto f_up = f_in.yup();
+  const auto f_down = f_in.ydown();
+  
+  const auto v_up = v_in.yup();
+  const auto v_down = v_in.ydown();
+    
+  const auto g_22 = coord->g_22;
+  const auto dy = coord->dy;
+
+  Field3D result{emptyFrom(f_in)};
+  BOUT_FOR(i, f_in.getRegion("RGN_NOBNDRY")) {
+    const auto iyp = i.yp();
+    const auto iym = i.ym();
+
+      // Maximum local wave speed
+    const BoutReal amax = BOUTMAX(wave_speed_in[i],
+                                    fabs(v_in[i]),
+                                    fabs(v_up[iyp]),
+                                    fabs(v_down[iym]));
+
+    result[i] = (0.5 * (f_in[i] * v_in[i] * (v_in[i] + amax) +
+                          f_up[iyp] * v_up[iyp] * (v_up[iyp] - amax))
+                   * (coord->J[i] + coord->J.yup()[iyp]) / (sqrt(g_22[i]) + sqrt(coord->g_22.yup()[iyp]))
+                   -
+                   0.5 * (f_in[i] * v_in[i] * (v_in[i] - amax) +
+                          f_down[iym] * v_down[iym] * (v_down[iym] + amax))
+                   * (coord->J[i] + coord->J.ydown()[iym]) / (sqrt(g_22[i]) + sqrt(coord->g_22.ydown()[iym])))
+        / (dy[i] * coord->J[i]);
+
+#if CHECK > 0
+    if(!std::isfinite(result[i])) {
+      throw BoutException("Non-finite value in Div_par_fvv at {}\n"
+                            "fup {} vup {} fdown {} vdown {} amax {}\n",
+                            "B {} Bup {} Bdown {} dy {} sqrt(g_22} {}",
+                            i,
+                            f_up[i], v_up[i], f_down[i], v_down[i], amax,
+                            B[i], B_up[i], B_down[i], dy[i], sqrt(g_22[i]));
+    }
+#endif
+  }
+  return result;
+}
+
+
+
+
+
 
 
 const Field3D Div_par_mod(const Field3D& f, const Field3D& v, const Field3D& fastest, const bool& fl) {
@@ -608,74 +666,70 @@ const Field3D Div_par_mod(const Field3D& f, const Field3D& v, const Field3D& fas
 }
 
 
-const Field3D Div_par_ssdissipation(const Field3D& f, const Field3D& fastest){
-  // Operator that dissipates with half the sound speed out of the cell faces
-    Mesh* mesh = f.getMesh();
-    Field3D result{zeroFrom(f)};
-    Coordinates* coord = f.getCoordinates();
-    for (const auto& ind : f.getRegion("RGN_NOBNDRY")) {
-      const auto iyp = ind.yp();
-      const auto iypp = ind.ypp();
-      const auto iym = ind.ym();
-      const auto iymm = ind.ymm();
-      // MinMod slope limiter
-      BoutReal fi = minmod(2.0*(f.yup()[iyp] - f[ind]) , 2.0*(f[ind] - f.ydown()[iym]), 0.5*(f.yup()[iyp] - f.ydown()[iym]) );
-      BoutReal fiR = f[ind] + fi/2.0;
-      BoutReal fiL = f[ind] - fi/2.0;      
-      BoutReal g_22up = 0.5 * ( sqrt(coord->g_22[ind]) + sqrt(coord->g_22.yup()[iyp]) );
-      BoutReal g_22down = 0.5 * ( sqrt(coord->g_22[ind]) + sqrt(coord->g_22.ydown()[iym]) );
-      BoutReal J_up = 0.5 * (coord->J[ind] + coord->J.yup()[iyp]);
-      BoutReal J_down = 0.5 * (coord->J[ind] + coord->J.ydown()[iym]);
-
-
-      BoutReal amax_up = fastest[ind];
-      BoutReal amax_down = fastest[ind];
-      
-
-      BoutReal flux_up = 0.5 * amax_up * fiR  * J_up / g_22up;
-      BoutReal flux_down =  -0.5 * amax_down * fiL * J_down / g_22down;  // signs are switched compared to other, but the difference is also switched so it
-      // should work fine
-
-      //BoutReal flux_up = 0.5 * fiR * (viR + amax_up) * J_up / g_22up;
-      //BoutReal flux_down = 0.5 * fiL * (viL - amax_down) * J_down / g_22down;
-      
-      result[ind] += flux_up / (coord->dy[ind]*coord->J[ind]);
-      result[ind] -= flux_down / (coord->dy[ind]*coord->J[ind]);
-    }
-    return result;
-
-}
-
-
-
-
 const Field3D Div_par_mod(const Field3D& f, const Field3D& fastest, const bool& fl){
   Mesh* mesh = f.getMesh();
   Field3D result{zeroFrom(f)};
   Coordinates* coord = f.getCoordinates();
 
   BOUT_FOR(i, result.getRegion("RGN_NOBNDRY")) {
-    // Calculate flux at upper surface                                                                                                                
-    // coord->J.yup()[ind.yp()];                                                                                                                      
-    
+      // Calculate flux at upper surface                                                                                                                
+      // coord->J.yup()[ind.yp()];                                                                                                                      
+
+      const auto iyp = i.yp();
+      const auto iym = i.ym();
+      BoutReal c = 0.5 * (f[i] + f.yup()[iyp]);             // K at the upper boundary                                                               
+      BoutReal J = 0.5 * (coord->J[i] + coord->J.yup()[iyp]); // Jacobian at boundary                                                                
+      BoutReal sqrtg_22 = sqrt(0.5 * (coord->g_22[i] + coord->g_22.yup()[iyp]));
+      BoutReal flux = c * J / sqrtg_22;
+      result[i] += flux / (coord->dy[i] * coord->J[i]);
+      // Calculate flux at lower surface                                                                                                             
+      c = 0.5 * (f[i] + f.ydown()[iym]);           // K at the lower boundary                                                                        
+      J = 0.5 * (coord->J[i] + coord->J.ydown()[iym]); // Jacobian at boundary                                                                       
+      sqrtg_22 = sqrt(0.5 * (coord->g_22[i] + coord->g_22.ydown()[iym]));
+      flux = c * J / sqrtg_22;
+      result[i] -= flux / (coord->dy[i] * coord->J[i]);
+
+    }
+    return result;
+}
+
+
+const Field3D Div_par_mod_H3(const Field3D& f_in, const Field3D& v_in, const Field3D& wave_speed_in){
+
+  Coordinates* coord = f_in.getCoordinates();
+  ASSERT1(f_in.hasParallelSlices());
+  ASSERT1(v_in.hasParallelSlices());
+
+  const auto& f_up = f_in.yup();
+  const auto& f_down = f_in.ydown();
+  
+  const auto& v_up = v_in.yup();
+  const auto& v_down = v_in.ydown();
+  
+  Field3D result{emptyFrom(f_in)};
+  BOUT_FOR(i, f_in.getRegion("RGN_NOBNDRY")) {
     const auto iyp = i.yp();
     const auto iym = i.ym();
-    BoutReal c = 0.5 * (f[i] + f.yup()[iyp]);             // K at the upper boundary                                                               
-    BoutReal J = 0.5 * (coord->J[i] + coord->J.yup()[iyp]); // Jacobian at boundary                                                                
-    BoutReal sqrtg_22 = sqrt(0.5 * (coord->g_22[i] + coord->g_22.yup()[iyp]));
-    BoutReal flux = c * J / sqrtg_22;
-    result[i] += flux / (coord->dy[i] * coord->J[i]);
-      // Calculate flux at lower surface                                                                                                             
-    c = 0.5 * (f[i] + f.ydown()[iym]);           // K at the lower boundary                                                                        
-    J = 0.5 * (coord->J[i] + coord->J.ydown()[iym]); // Jacobian at boundary                                                                       
-    sqrtg_22 = sqrt(0.5 * (coord->g_22[i] + coord->g_22.ydown()[iym]));
-    flux = c * J / sqrtg_22;
-    result[i] -= flux / (coord->dy[i] * coord->J[i]);
     
+    // Maximum local wave speed
+    const BoutReal amax = BOUTMAX(wave_speed_in[i],
+                                    fabs(v_in[i]),
+                                    fabs(v_up[iyp]),
+                                    fabs(v_down[iym]));
+
+    result[i] = (0.5 * (f_in[i] * (v_in[i] + amax) +
+                          f_up[iyp] * (v_up[iyp] - amax))
+                   * (coord->J[i] + coord->J.yup()[iyp]) / (sqrt(coord->g_22[i]) + sqrt(coord->g_22.yup()[iyp]))
+                   -
+                   0.5 * (f_in[i] * (v_in[i] - amax) +
+                          f_down[iym] * (v_down[iym] + amax))
+                   * (coord->J[i] + coord->J.ydown()[iym]) / (sqrt(coord->g_22[i]) + sqrt(coord->g_22.ydown()[iym])))
+        / (coord->dy[i] * coord->J[i]);
   }
   return result;
-  
+
 }
+
 
 
 
@@ -689,35 +743,9 @@ const Field3D Grad_par_mod(const Field3D& f){
     const auto iyp = ind.yp();
     const auto iypp = ind.ypp();
     const auto iym = ind.ym();
-    const auto iymm = ind.ymm();/*
+    const auto iymm = ind.ymm();
     BoutReal fi = minmod(2.0*(f.yup()[iyp] - f[ind]) , 2.0*(f[ind] - f.ydown()[iym]), 0.5*(f.yup()[iyp] - f.ydown()[iym]) );
     result[ind] += fi/(coord->dy[ind]*sqrt(coord->g_22[ind]));
-
-    */
-
-    /*
-    BoutReal si = (f.yup()[iyp] - f.ydown()[iym]) / (2.0 * coord->dy[ind]*sqrt(coord->g_22[ind]));
-    BoutReal sip = (f.yup()[iyp] - f[ind]) / (coord->dy[ind]*sqrt(coord->g_22[ind]));
-    BoutReal sim = (f[ind] - f.ydown()[iym]) / (coord->dy[ind]*sqrt(coord->g_22[ind]));
-    BoutReal newsi = 0.0;
-    if (si < 0.0){
-      newsi =   -BOUTMAX(0.0, BOUTMIN(2.0 * fabs(sip), 2.0 * fabs(sim), fabs(si)));
-    } else if (si > 0.0){
-      newsi =   BOUTMAX(0.0, BOUTMIN(2.0 * fabs(sip), 2.0 * fabs(sim), fabs(si)));
-    }
-    */
-
-    BoutReal si = (f.yup()[iyp] - f.ydown()[iym]) / (2.0 * coord->dy[ind]*sqrt(coord->g_22[ind]));                                                                                                                
-    BoutReal sip = (f.yup()[iyp] - f[ind]) / (coord->dy[ind]*sqrt(coord->g_22[ind]));                                                                                                                             
-    BoutReal sim = (f[ind] - f.ydown()[iym]) / (coord->dy[ind]*sqrt(coord->g_22[ind]));
-    
-    
-    BoutReal r = sim / (sip + 0.0001);
-    BoutReal vanleer = (r+fabs(r)) / (1.0 + fabs(r));
-    
-    BoutReal newsi = minmod(sip,sim);
-    
-    result[ind] += newsi;
   }  
   return result;
 }
@@ -1768,29 +1796,34 @@ const Field3D Div_par_K_Grad_par_mod(const Field3D& K, const Field3D& f, bool bn
 
   Coordinates* coord = f.getCoordinates();
 
-  BOUT_FOR(i, result.getRegion("RGN_NOBNDRY")) {
-    // Calculate flux at upper surface
-    // coord->J.yup()[ind.yp()];
-    
+  BOUT_FOR(i, result.getRegion("RGN_NOBNDRY")) {    
     const auto iyp = i.yp();
     const auto iym = i.ym();
 
-    BoutReal c = 0.5 * (K[i] + K.yup()[iyp]);             // K at the upper boundary                                                                
-    BoutReal J = 0.5 * (coord->J[i] + coord->J.yup()[iyp]); // Jacobian at boundary                                                                  
-    BoutReal g_22 = 0.5 * (coord->g_22[i] + coord->g_22.yup()[iyp]);                                                                                 
-    BoutReal gradient = 2. * (f.yup()[iyp] - f[i]) / (coord->dy[i] + coord->dy[i]);                                                          
-    BoutReal flux = c * J * gradient / g_22;                                                                                                         
-    result[i] += flux / (coord->dy[i] * coord->J[i]);                                                                                                
-                                                                                                                                                     
+    if (bndry_flux || mesh->periodicY(i.x()) || !mesh->lastY(i.x())
+        || (i.y() != mesh->yend)) {
+    
+      BoutReal c = 0.5 * (K[i] + K.yup()[iyp]);             // K at the upper boundary                                                                
+      BoutReal J = 0.5 * (coord->J[i] + coord->J.yup()[iyp]); // Jacobian at boundary                                                                  
+      BoutReal g_22 = 0.5 * (coord->g_22[i] + coord->g_22.yup()[iyp]);                                                                                 
+      BoutReal gradient = 2. * (f.yup()[iyp] - f[i]) / (coord->dy[i] + coord->dy[i]);                                                          
+      BoutReal flux = c * J * gradient / g_22;                                                                                                         
+      result[i] += flux / (coord->dy[i] * coord->J[i]);                                                                                                
+    }
                                                                                                                                                   
     // Calculate flux at lower surface                                                                                                               
-                                                                                                                                                    
-    c = 0.5 * (K[i] + K.ydown()[iym]);           // K at the lower boundary                                                                          
-    J = 0.5 * (coord->J[i] + coord->J.ydown()[iym]); // Jacobian at boundary                                                                         
-    g_22 = 0.5 * (coord->g_22[i] + coord->g_22.ydown()[iym]);                                                                                        
-    gradient = 2. * (f[i] - f.ydown()[iym]) / (coord->dy[i] + coord->dy[i]);                                                               
-    flux = c * J * gradient / g_22;                                                                                                                  
-    result[i] -= flux / (coord->dy[i] * coord->J[i]);
+
+    if (bndry_flux || mesh->periodicY(i.x()) || !mesh->firstY(i.x())
+        || (i.y() != mesh->ystart)) {
+    
+      BoutReal c = 0.5 * (K[i] + K.ydown()[iym]);           // K at the lower boundary                                                                          
+      BoutReal J = 0.5 * (coord->J[i] + coord->J.ydown()[iym]); // Jacobian at boundary                                                                         
+      BoutReal g_22 = 0.5 * (coord->g_22[i] + coord->g_22.ydown()[iym]);                                                                                        
+      BoutReal gradient = 2. * (f[i] - f.ydown()[iym]) / (coord->dy[i] + coord->dy[i]);                                                               
+      BoutReal flux = c * J * gradient / g_22;                                                                                                                  
+      result[i] -= flux / (coord->dy[i] * coord->J[i]);
+
+    }
     
   }
 
