@@ -2979,8 +2979,12 @@ int Hermes::rhs(BoutReal t) {
   
   TRACE("Parallel heat conduction");
   
-  kappa_epar = mul_all(mul_all(mul_all(mul_all(3.16, mi_me), Te), Ne), tau_e);
-
+  //kappa_epar = mul_all(mul_all(mul_all(mul_all(3.16, mi_me), Te), Ne), tau_e);
+  kappa_epar = 3.16 * mi_me * Te * Ne * tau_e;
+  kappa_epar.applyBoundary("neumann");
+  mesh->communicate(kappa_epar);
+  kappa_epar.applyParallelBoundary(parbc);
+  
   if (kappa_limit_alpha > 0.0) {
     TRACE("electron heat flux limiter");
     /*
