@@ -2746,6 +2746,8 @@ int Hermes::rhs(BoutReal t) {
 	if (!use_new_div_par){
 	  Field3D neve = mul_all(Ne,Ve);
 	  TE_Ne_parflow = -Div_par(neve);
+	} else if (use_H3_div_par){
+	  TE_Ne_parflow = -Div_par_mod_H3(Ne, Ve, fastest_espeed);
 	} else if(use_rhie_interpolation){
 	  TE_Ne_parflow = -Div_par_rhie(Ne, Ve, add_all(Pe,Pi), rhie_cor_up, rhie_cor_down);
 	} else {
@@ -2756,6 +2758,8 @@ int Hermes::rhs(BoutReal t) {
 	if (!use_new_div_par){
 	  Field3D nevi = mul_all(Ne,Vi);
 	  TE_Ne_parflow = -Div_par(nevi);
+	} else if (use_H3_div_par){
+	  TE_Ne_parflow = -Div_par_mod_H3(Ne, Vi, fastest_espeed);
 	} else if (use_rhie_interpolation){
 	  TE_Ne_parflow = -Div_par_rhie(Ne, Vi, add_all(Pe,Pi), rhie_cor_up, rhie_cor_down);
 	} else {
@@ -2853,6 +2857,8 @@ int Hermes::rhs(BoutReal t) {
       TRACE("Vort_parcurrent");
       if (!use_new_div_par){
 	TE_Vort_parcurrent = Div_par(Jpar);
+      } else if (use_H3_div_par){
+	TE_Vort_parcurrent = Div_par_mod_H3(Ne, sub_all(Vi,Ve), fastest_espeed);
       } else {
 	TE_Vort_parcurrent = Div_par_mod(Ne, sub_all(Vi,Ve),fastest_ispeed, use_slope_limiter);
       }
@@ -2972,7 +2978,6 @@ int Hermes::rhs(BoutReal t) {
       TRACE("Vorticity dissipation");
       TE_Vort_dissipation = Vort_diss * new_Delp2(Vort);
       TE_Vort_dissipation -= Div_par_ssdissipation(Vort, fastest_espeed);
-      //TE_Vort_dissipation -= Div_par_ssdissipation(mul_all(-1.0,phi), fastest_espeed);
       ddt(Vort) += TE_Vort_dissipation;
     }
     
@@ -3116,13 +3121,11 @@ int Hermes::rhs(BoutReal t) {
 
     if (VePsi_dissipation){
       TRACE("VePsi dissipation");
-      TE_VePsi_dissipation += Div_par_ssdissipation(Jpar, fastest_espeed);
+      TE_VePsi_dissipation -= Div_par_ssdissipation(sub_all(Ve, Vi), fastest_espeed);
       ddt(VePsi) += TE_VePsi_dissipation;
+      
     }
-
-
-    
-        
+            
   } //End evolve_vepsi
 
   
@@ -3165,6 +3168,8 @@ int Hermes::rhs(BoutReal t) {
       if(!use_new_div_par){
 	auto nvivi = mul_all(NVi,Vi);
 	TE_NVi_parflow = -Div_par(nvivi);
+      } else if (use_H3_div_par){
+	TE_NVi_parflow = -Div_par_fvv_H3(Ne, Vi, fastest_ispeed);
       } else if (use_rhie_interpolation){
 	TE_NVi_parflow = -Div_par_rhie(NVi, Vi, add_all(Pe,Pi), rhie_cor_up, rhie_cor_down);
       } else {
@@ -3303,6 +3308,8 @@ int Hermes::rhs(BoutReal t) {
       if(!use_new_div_par){
 	Field3D peve = mul_all(Pe,Ve);
 	TE_Pe_parflow = -Div_par(peve) - (2. / 3) * Pe * Div_par(Ve);
+      } else if (use_H3_div_par){
+	TE_Pe_parflow = -Div_par_mod_H3(Pe,Ve,fastest_espeed) - (2. / 3) * Pe * Div_par(Ve);
       } else if(use_rhie_interpolation){
 	TE_Pe_parflow = -Div_par_rhie(Pe, Ve, add_all(Pe,Pi), rhie_cor_up,rhie_cor_down ) -
 	  2.0/3.0 * Pe * Div_par_rhie(oness, Ve, add_all(Pe,Pi), rhie_cor_up, rhie_cor_down);
@@ -3353,6 +3360,8 @@ int Hermes::rhs(BoutReal t) {
       if (!use_new_div_par){
 	Field3D tejpar = mul_all(Te,Jpar);
 	TE_Pe_thermalcurrent = (2. / 3) * 0.71 * Div_par(tejpar);
+      } else if (use_H3_div_par){
+	TE_Pe_thermalcurrent = (2. / 3) * 0.71 * Div_par_mod_H3(Te,Jpar,fastest_espeed);
       } else {
 	TE_Pe_thermalcurrent = (2. / 3) * 0.71 * Div_par_mod(Te,Jpar,fastest_espeed, use_slope_limiter);
       }
@@ -3494,6 +3503,9 @@ int Hermes::rhs(BoutReal t) {
 	Field3D pivi = mul_all(Pi,Vi);
 	TE_Pi_parflow = -Div_par(pivi);
 	TE_Pi_parflow += -(2. / 3) * Pi * Div_par(Vi);
+      } else if (use_H3_div_par){
+	TE_Pi_parflow = -Div_par_mod_H3(Pi,Vi,fastest_ispeed);
+        TE_Pi_parflow += -(2. / 3) * Pi * Div_par(Vi);
       } else if (use_rhie_interpolation){
 	TE_Pi_parflow = -Div_par_rhie(Pi,Vi,add_all(Pi,Pe), rhie_cor_up, rhie_cor_down);
 	TE_Pi_parflow += -2.0/3.0 * Pi * Div_par_rhie(oness, Vi, add_all(Pi,Pe), rhie_cor_up, rhie_cor_down);
