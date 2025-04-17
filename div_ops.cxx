@@ -71,6 +71,41 @@ const Field3D Div_par_diffusion_index(const Field3D &f, bool bndry_flux) {
   return result;
 }
 
+
+//////////////////////////////////////////////////////////////////////////////////////////
+
+const Field3D Div_par_ssdissipation(const Field3D& f, const Field3D& fastest){
+ 
+
+  // Operator that dissipates with half the sound speed out of the cell faces 
+    Mesh* mesh = f.getMesh(); 
+    Field3D result{zeroFrom(f)}; 
+    Coordinates* coord = f.getCoordinates(); 
+    for (const auto& ind : f.getRegion("RGN_NOBNDRY")) { 
+      const auto iyp = ind.yp(); 
+      const auto iypp = ind.ypp(); 
+      const auto iym = ind.ym(); 
+      const auto iymm = ind.ymm(); 
+      // MinMod slope limiter 
+      BoutReal fi = minmod(2.0*(f.yup()[iyp] - f[ind]) , 2.0*(f[ind] - f.ydown()[iym]), 0.5*(f.yup()[iyp] - f.ydown()[iym]) ); 
+      BoutReal fiR = f[ind] + fi/2.0; 
+      BoutReal fiL = f[ind] - fi/2.0;       
+      BoutReal g_22up = 0.5 * ( sqrt(coord->g_22[ind]) + sqrt(coord->g_22.yup()[iyp]) ); 
+      BoutReal g_22down = 0.5 * ( sqrt(coord->g_22[ind]) + sqrt(coord->g_22.ydown()[iym]) ); 
+      BoutReal J_up = 0.5 * (coord->J[ind] + coord->J.yup()[iyp]);
+      BoutReal J_down = 0.5 * (coord->J[ind] + coord->J.ydown()[iym]);
+      BoutReal amax_up = fastest[ind];      
+      BoutReal amax_down = fastest[ind];
+      BoutReal flux_up = 0.5 * amax_up * fiR  * J_up / g_22up;       
+      BoutReal flux_down =  -0.5 * amax_down * fiL * J_down / g_22down;
+      result[ind] += flux_up / (coord->dy[ind]*coord->J[ind]); 
+      result[ind] -= flux_down / (coord->dy[ind]*coord->J[ind]); 
+    }
+    return result;
+}
+
+
+
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // XPPM methods
 
