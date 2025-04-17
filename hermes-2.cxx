@@ -4225,11 +4225,17 @@ int Hermes::rhs(BoutReal t) {
       } // End Vort_hyper
 
       if (Vort_dissipation){
-      TRACE("Vorticity dissipation");
-      TE_Vort_dissipation = Vort_diss * new_Delp2(Vort);
-      TE_Vort_dissipation += -Div_par_ssdissipation(Vort, fastest_espeed);
-      ddt(Vort) += TE_Vort_dissipation;
-    }
+	TRACE("Vorticity dissipation");
+	TE_Vort_dissipation = Vort_diss * new_Delp2(Vort);
+	TE_Vort_dissipation += -Div_par_ssdissipation(Vort, fastest_espeed);
+	ddt(Vort) += TE_Vort_dissipation;
+      }
+
+      if (Vort_numdiff){
+	TRACE("Vorticity numerical parallel diffusion");
+	TE_Vort_numdiff = numericaldissipation(num_Vort,Vort);
+	ddt(Vort) += TE_Vort_numdiff;
+      } // End Vort_numdiff
       
       
     } // End if evolve_vort
