@@ -4226,7 +4226,8 @@ int Hermes::rhs(BoutReal t) {
 
       if (Vort_dissipation){
       TRACE("Vorticity dissipation");
-      TE_Vort_dissipation = Vort_diss * new_Delp2(Vort);    
+      TE_Vort_dissipation = Vort_diss * new_Delp2(Vort);
+      TE_Vort_dissipation += -Div_par_ssdissipation(Vort, fastest_espeed);
       ddt(Vort) += TE_Vort_dissipation;
     }
       
