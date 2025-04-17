@@ -74,6 +74,8 @@ private:
 
   Field3D solution_psi;
 
+
+  BoutReal lambda_sheath;
   
   // Auxilliary variables
   Field3D Te;         // Electron temperature

@@ -1642,6 +1642,9 @@ int Hermes::init(bool restarting) {
       throw BoutException("Wrong inner boundary flag in phi solver with potential relaxation");
     }
   }
+
+  lambda_sheath = log(0.5*sqrt(mi_me/PI));
+  
   
   return 0;
 }
@@ -1719,7 +1722,7 @@ int Hermes::rhs(BoutReal t) {
   }
 
   
-  if (isMMS==false && boundarydecay==true){
+  if (isMMS==false){
     if (boundarydecay==true){
       if (mesh->lastX()) {
 	int n = mesh->LocalNx;
@@ -1863,7 +1866,7 @@ int Hermes::rhs(BoutReal t) {
     }
     
 
-    sound_speed[i] =  sqrt(Te[i] + Ti[i] * (5. / 3));
+    sound_speed[i] =  sqrt(Te[i] );
   }
   
   sound_speed.applyBoundary("neumann");
@@ -1953,7 +1956,7 @@ int Hermes::rhs(BoutReal t) {
 	if (mesh->lastX()) {
 	  for (int j = mesh->ystart; j <= mesh->yend; j++) {
 	    for (int k = 0; k < mesh->LocalNz; k++) {
-	      phi_boundary3d(mesh->xend + 1, j, k) = 0.5 * ( 3.0*( Te(mesh->xend + 1, j, k) + Te(mesh->xend, j, k) ) + Pi(mesh->xend + 1, j, k) + Pi(mesh->xend, j, k) );	    
+	      phi_boundary3d(mesh->xend + 1, j, k) = 0.5 * ( lambda_sheath*( Te(mesh->xend + 1, j, k) + Te(mesh->xend, j, k) ) + Pi(mesh->xend + 1, j, k) + Pi(mesh->xend, j, k) );	    
 	    }
 	  }
 	}
@@ -2181,9 +2184,9 @@ int Hermes::rhs(BoutReal t) {
 
 	  BoutReal visheath = 0.0;
 	  if (!sheath_ramp){
-	    visheath = pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath);
+	    visheath = pnt.dir * sqrt(tesheath);
 	  } else {
-	    visheath = sheath_ramp_factor * (pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath));
+	    visheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath));
 	  }
 
 	  if (pnt.dir > 0.99 && pnt.dir < 1.01){
