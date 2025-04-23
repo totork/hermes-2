@@ -1860,6 +1860,8 @@ int Hermes::init(bool restarting) {
   
 
   setPrecon((preconfunc)&Hermes::precon);
+  lambda_sheath = log(0.5*sqrt(mi_me/PI));
+  SAVE_ONCE(lambda_sheath);
   // log(0.5*sqrt(mi_me/PI))
   if (phi_1_restart){
     phi_1 += lam2 * log(0.5*sqrt(mi_me/PI)) * Pe / Ne + 2.0;
@@ -2071,9 +2073,9 @@ int Hermes::rhs(BoutReal t) {
 	  BoutReal thiste = Te(mesh->xend + 1, j, k);
 	  BoutReal thisti = Ti(mesh->xend + 1, j, k);
 	  if (sheath_simplephi){
-	    phi_1(mesh->xend + 1, j, k) = lam2 * thiste * log(0.5*sqrt(mi_me/PI));
+	    phi_1(mesh->xend + 1, j, k) = lam2 * thiste * lambda_sheath;
 	  } else {
-	    phi_1(mesh->xend + 1, j, k) = lam2 * ( (log(0.5 * sqrt(mi_me / PI)) + log(sqrt( thiste/(thiste+thisti) )) ))*thiste;
+	    phi_1(mesh->xend + 1, j, k) = lam2 * ( (lambda_sheath + log(sqrt( thiste/(thiste+thisti) )) ))*thiste;
 	  }
 	  phi_1(mesh->xend + 2, j, k) = phi_1(mesh->xend + 1, j, k);
 	}
@@ -2534,9 +2536,9 @@ int Hermes::rhs(BoutReal t) {
 	  }
 	  */
 	  if (sheath_simplephi){
-	    phisheath = log(0.5*sqrt(mi_me/PI))*tesheath;
+	    phisheath = lambda_sheath*tesheath;
 	  } else {
-	    phisheath = tesheath * (log(0.5 * sqrt(mi_me / PI)) + log(sqrt(tesheath/(tesheath+tisheath))));
+	    phisheath = tesheath * (lambda_sheath + log(sqrt(tesheath/(tesheath+tisheath))));
 	  }
 	  phisheath = floor(phisheath, 0.0);
 	  pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);

@@ -67,7 +67,7 @@ private:
 
   Field3D phi_1;
   BoutReal lam1, lam2;
-
+  BoutReal lambda_sheath;
   bool phi_1_restart;
   
   Field3D mu_i_par, mu_i_perp;
