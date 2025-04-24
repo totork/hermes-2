@@ -1862,11 +1862,11 @@ int Hermes::init(bool restarting) {
   
 
   setPrecon((preconfunc)&Hermes::precon);
-  lambda_sheath = log(0.5*sqrt(mi_me/PI));
+  lambda_sheath = log(sqrt(mi_me/(2.0*PI)));
   SAVE_ONCE(lambda_sheath);
   // log(0.5*sqrt(mi_me/PI))
   if (phi_1_restart){
-    phi_1 += lam2 * log(0.5*sqrt(mi_me/PI)) * Pe / Ne + 2.0;
+    phi_1 += lam2 * lambda_sheath * Pe / Ne + 2.0;
     mesh->communicate(phi_1);
   }
   
