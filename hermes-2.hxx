@@ -202,6 +202,7 @@ private:
   // Vorticity
   bool Vort_mag, Vort_parcurrent, Vort_polarcurrent, Vort_collision, Vort_parviscous;
   bool Vort_anomalous,Vort_hyper,Vort_numdiff, Vort_parflow, Vort_dissipation;
+  bool Vort_dissipation_par,Vort_dissipation_perp;
   bool poloidal_flows;
   bool Vort_dirichlet;
   // Electron velocity
