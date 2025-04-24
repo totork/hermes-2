@@ -2220,7 +2220,7 @@ int Hermes::rhs(BoutReal t) {
     }
     
 
-    sound_speed[i] =  sqrt(Te[i] + Ti[i] * (5. / 3));
+    sound_speed[i] =  sqrt(Te[i] + Ti[i] );
   }
   
   sound_speed.applyBoundary("neumann");
@@ -2550,11 +2550,20 @@ int Hermes::rhs(BoutReal t) {
 	  }
 
 	  BoutReal visheath = 0.0;
-	  if (!sheath_ramp){
-	    visheath = pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath);
+	  if (sheath_simplephi){
+	    if (!sheath_ramp){
+              visheath = pnt.dir * sqrt(tesheath);
+            } else {
+              visheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath));
+            }	    
 	  } else {
-	    visheath = sheath_ramp_factor * (pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath));
+	    if (!sheath_ramp){
+	      visheath = pnt.dir * sqrt(tisheath + tesheath);
+	    } else {
+	      visheath = sheath_ramp_factor * (pnt.dir * sqrt(tisheath + tesheath));
+	    }  
 	  }
+
 	  
 	  if (sheath_allow_supersonic){
 	    if (pnt.dir > 0.99 && pnt.dir < 1.01){
@@ -2571,11 +2580,18 @@ int Hermes::rhs(BoutReal t) {
 	  
 
 	  BoutReal vesheath = 0.0;
-
-	  if (!sheath_ramp){
-	    vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
+	  if (sheath_simplephi){
+	    if (!sheath_ramp){
+	      vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
+	    } else {
+	      vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath)));
+	    }
 	  } else {
-	    vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath))); 
+	    if (!sheath_ramp){
+	      vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
+	    } else {
+	      vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath)));
+	    }
 	  }
 
 	  if (sheath_allow_supersonic){
