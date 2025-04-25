@@ -1643,7 +1643,7 @@ int Hermes::init(bool restarting) {
     }
   }
 
-  lambda_sheath = log(0.5*sqrt(mi_me/PI));
+  lambda_sheath = log(sqrt(mi_me/(2.0*PI)));
   
   
   return 0;
@@ -2176,9 +2176,8 @@ int Hermes::rhs(BoutReal t) {
 	    phisheath = log(sqrt(tesheath / (tesheath + tisheath))) * tesheath;
 	    pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
 	  } else {
-	    //pnt.ynext(phi) = 2.0 * pnt.ythis(phi) - pnt.yprev(phi);
-	    pnt.ynext(phi) = pnt.ythis(phi);
-	    phisheath = 0.5 * (pnt.ynext(phi) + pnt.ythis(phi));
+	    phisheath = lambda_sheath * tesheath;
+	    pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi), phisheath);
 	  }
 	    
 
@@ -2226,7 +2225,7 @@ int Hermes::rhs(BoutReal t) {
 	  
 	  const BoutReal jsheath = nesheath * (visheath - vesheath);
 	  const BoutReal nvisheath = nesheath * visheath;
-
+	  
 	  if (sheath_interpolate){
 	    pnt.ynext(Vi) = interpolate_sheathneighbour(pnt.ythis(Vi), visheath);
 	    pnt.ynext(Ve) = interpolate_sheathneighbour(pnt.ythis(Ve), vesheath);
@@ -2858,7 +2857,7 @@ int Hermes::rhs(BoutReal t) {
       if (!use_new_div_par){
 	TE_Vort_parcurrent = Div_par(Jpar);
       } else if (use_H3_div_par){
-	TE_Vort_parcurrent = Div_par_mod_H3(Ne, sub_all(Vi,Ve), fastest_espeed);
+	TE_Vort_parcurrent = Div_par_mod_H3(Ne, sub_all(Vi,Ve), fastest_ispeed);
       } else {
 	TE_Vort_parcurrent = Div_par_mod(Ne, sub_all(Vi,Ve),fastest_ispeed, use_slope_limiter);
       }
