@@ -1580,7 +1580,14 @@ int Hermes::init(bool restarting) {
   //////////////////////////////////////////////////////////////
   // Electromagnetic fields
 
-  SAVE_REPEAT(phi,psi);
+  if (electromagnetic){
+    SAVE_REPEAT(psi);
+  }
+
+  if ((calc_potential) || (steady_state)){
+    SAVE_REPEAT(phi);
+  }
+  
   opt["phiSolver"].setConditionallyUsed();
   optsc["newXZsolver"].setConditionallyUsed();
 
@@ -1753,11 +1760,11 @@ int Hermes::init(bool restarting) {
   
 
   
-  if (evolve_te && parallel_sheaths){
+  if (evolve_te && parallel_sheaths && verbose){
     SAVE_REPEAT(sheath_dpe);
   }
 
-  if (evolve_ti && parallel_sheaths){
+  if (evolve_ti && parallel_sheaths && verbose){
     SAVE_REPEAT(sheath_dpi);
   }
   zero_all(Ve);
