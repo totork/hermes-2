@@ -1613,8 +1613,10 @@ int Hermes::init(bool restarting) {
   nu.setBoundary("nu");
   Jpar.setBoundary("Jpar");
 
-
-  SAVE_REPEAT(Ve,Vi,Jpar);
+  if ((evolve_vepsi) || (steady_state)){
+    SAVE_REPEAT(Jpar, Ve);
+  }
+  SAVE_REPEAT(Vi);
   psi = 0.0;
   nu = 0.0;
   kappa_epar = 0.0;
