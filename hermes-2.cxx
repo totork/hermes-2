@@ -3738,7 +3738,9 @@ int Hermes::rhs(BoutReal t) {
 	Field3D tejpar = mul_all(Te,Jpar);
 	TE_Pe_thermalcurrent = (2. / 3) * 0.71 * Div_par(tejpar);
       } else if (use_H3_div_par){
-	TE_Pe_thermalcurrent = (2. / 3) * 0.71 * Div_par_mod_H3(Te,Jpar,fastest_espeed);
+	//TE_Pe_thermalcurrent = (2. / 3) * 0.71 * Div_par_mod_H3(Te,Jpar,fastest_espeed);
+	Field3D tejpar = mul_all(Te,Jpar);
+        TE_Pe_thermalcurrent = (2. / 3) * 0.71 * Div_par(tejpar);
       } else {
 	TE_Pe_thermalcurrent = (2. / 3) * 0.71 * Div_par_mod(Te,Jpar,fastest_espeed, use_slope_limiter);
       }
