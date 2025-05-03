@@ -121,6 +121,7 @@ private:
   bool sheath_interpolate;
   bool sheath_infsink;
   bool sheath_simplephi;
+  bool sheath_floating;
   BoutReal sheath_ceil_Te;
   BoutReal ceil_Te;
   BoutReal infsink_Te, infsink_amp;

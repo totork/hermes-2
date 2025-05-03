@@ -1235,6 +1235,7 @@ int Hermes::init(bool restarting) {
   OPTION(optsheath, sheath_ceil_Te, -1.0);
   OPTION(optsheath, infsink_Te, 2.0);
   OPTION(optsheath, infsink_Ne, 1.0);
+  OPTION(optsheath, sheath_floating, true);
   OPTION(optsheath, infsink_amp, 1.0);
   OPTION(optsheath, neutral_vwall, 1. / 3);  // 1/3rd Franck-Condon energy at wall
   OPTION(optsheath, sheath_yup, true);       // Apply sheath at yup?
@@ -2536,24 +2537,22 @@ int Hermes::rhs(BoutReal t) {
 	  tisheath = pnt.ythis(Ti);
 
 	  BoutReal phisheath = 0.0;
-	  /*
-	  if (!evolve_vort && !steady_state){
-	    //phisheath = log(sqrt(tesheath / (tesheath + tisheath))) * tesheath;
-	    phisheath = tesheath * (log(0.5 * sqrt(mi_me / PI)) + log(sqrt(tesheath/(tesheath+tisheath))));
+	  if (sheath_floating){
+	    // Set potential to be zero current
+	    if (sheath_simplephi){
+	      phisheath = lambda_sheath*tesheath;
+	    } else {
+	      phisheath = tesheath * (lambda_sheath + log(sqrt(tesheath/(tesheath+tisheath))));
+	    }
+	    phisheath = floor(phisheath, 0.0);
 	    pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
 	  } else {
-	    pnt.ynext(phi) = 2.83879629 * pnt.ynext(Te);
-	    phisheath = 0.5 * (pnt.ynext(phi) + pnt.ythis(phi));
+	    // Assuming zero gradient of potential into the sheath
+	    phisheath = pnt.ythis(phi);
+	    pnt.ynext(phi) = phisheath;
 	  }
-	  */
-	  if (sheath_simplephi){
-	    phisheath = lambda_sheath*tesheath;
-	  } else {
-	    phisheath = tesheath * (lambda_sheath + log(sqrt(tesheath/(tesheath+tisheath))));
-	  }
-	  phisheath = floor(phisheath, 0.0);
-	  pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
 
+	  
 	  if(steady_state){
 	    pnt.ynext(phi_1) = pnt.ynext(phi) * lam2;
 	  }
