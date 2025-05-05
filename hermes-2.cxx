@@ -3719,7 +3719,7 @@ int Hermes::rhs(BoutReal t) {
 
     if (Pe_ohmic){//Row 4 Term 3
       TRACE("Pe_ohmic");
-      TE_Pe_ohmic = nu * Jpar * (Jpar) / Ne;
+      TE_Pe_ohmic = (2.0/3.0) * nu * Jpar * (Jpar) / Ne;
       ddt(Pe) += TE_Pe_ohmic;
     } // End Pe_ohmic
 
