@@ -559,14 +559,12 @@ int Hermes::init(bool restarting) {
   // Electron velocity + mag. potential
 
   evolve_vepsi = optsc["evolve_vepsi"].doc("Evolve electron velocity?").withDefault<bool>(false);
-  if (evolve_vepsi && !steady_state) {
+  if (evolve_vepsi ) {
     SOLVE_FOR(VePsi);
     EvolvingVars.add(VePsi);
     if (output_ddt) {
       SAVE_REPEAT(ddt(VePsi));
-    }
-  } else if (evolve_vepsi && steady_state){
-    throw BoutException("Evolving vepsi and steady state is not compatible");
+    } 
   } else {
     zero_all(VePsi);
   }
@@ -2435,7 +2433,7 @@ int Hermes::rhs(BoutReal t) {
     if (electromagnetic){
 
       
-      psi = VePsi / (0.5 * mi_me * beta_e);
+      psi = VePsi / (0.5 * beta_e * mi_me);
 
       Jpar = Div_a_Grad_perp_curv(oness, psi);
 
