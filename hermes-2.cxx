@@ -2238,7 +2238,7 @@ int Hermes::rhs(BoutReal t) {
   
   fastest_ispeed = sound_speed;
   if (electromagnetic){
-    fastest_espeed = sound_speed;
+    fastest_espeed = mul_all(sqrt(mi_me),sound_speed);
   } else {
     fastest_espeed = mul_all(sqrt(mi_me),sound_speed);
     //fastest_espeed = sound_speed;
@@ -2432,64 +2432,66 @@ int Hermes::rhs(BoutReal t) {
     Jpar = sub_all(NVi,mul_all(Ne,Ve));
     
   } else {
-    // Calculate parallel current from steady state ohms law
-    Te32= mul_all(Te,sqrt_all(Te));
-    Ti32= mul_all(Ti,sqrt_all(Ti));
-    const BoutReal tau_e1 = (Cs0 / rho_s0 ) * tau_e0;
-    const BoutReal tau_i1 = (Cs0 / rho_s0 ) * tau_i0;
-    tau_e = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_e0) , Te32) , Ne);
-    tau_i = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_i0) , Ti32) , Ne);
-    nu = div_all(resistivity_multiply,mul_all(1.96,mul_all(tau_e,mi_me)));
-    Field3D gradparphi = Grad_par(phi);
-    Field3D gradparTe = Grad_par(Te);
-    Field3D gradparPi = Grad_par(Pi);
+    if (electromagnetic){
 
-    if (!use_new_viscosity){
-      eta_epar = mul_all(0.7333, mul_all(mi_me,mul_all(tau_e,Pe)));
-    } else {
-      eta_epar = mul_all(div_all(4.0,3.0),mul_all(0.73,mul_all(Pe,tau_e)));
-    }
-
-
-
-    
-    gradparphi.applyBoundary("neumann");
-    gradparTe.applyBoundary("neumann");
-    gradparPi.applyBoundary("neumann");
-    mesh->communicate(gradparphi ,gradparTe, gradparPi);
-    gradparphi.applyParallelBoundary(parbc);
-    gradparTe.applyParallelBoundary(parbc);
-    gradparPi.applyParallelBoundary(parbc);
-    
-    Jpar = mul_all(mul_all(-1.0, Ne), div_all(gradparphi, nu)) + div_all(gradparPi, nu) + div_all(mul_all(0.71, mul_all(Ne, gradparTe)), nu);
-    if (verbose){
-      debug_Jpar_1 = mul_all(mul_all(-1.0, Ne), div_all(gradparphi, nu));
-      debug_Jpar_2 = div_all(gradparPi, nu);
-      debug_Jpar_3 = div_all(mul_all(0.71, mul_all(Ne, gradparTe)), nu);
-    }
-    
-    Jpar.applyBoundary("neumann");
-    mesh->communicate(Jpar);
-    Jpar.applyParallelBoundary(parbc);
-    Ve = sub_all(Vi, div_all(Jpar, Ne));
-
-    if (use_Ve_limiter){
       
-      BOUT_FOR(i, Ne.getRegion("RGN_ALL")) {
-	BoutReal fastestvelocity = fastest_espeed[i];
-	if (Ve[i] > fastestvelocity){
-	  Ve[i] = fastestvelocity;
-	} else if (Ve[i] < -fastestvelocity) {
-	  Ve[i] = -fastestvelocity;
-	}
-      }
-      Ve.applyBoundary("neumann");
-      mesh->communicate(Ve);
-      Ve.applyParallelBoundary(parbc);
+      psi = VePsi / (0.5 * mi_me * beta_e);
 
-      Jpar = mul_all(Ne, sub_all(Vi, Ve));
-    }
+      Jpar = Div_a_Grad_perp_curv(oness, psi);
+
+      Jpar.applyBoundary("neumann_o2");
+
+      mesh->communicate(Jpar);
+
+      Jpar.applyParallelBoundary(parbc);
+
+      Ve = sub_all(Vi, div_all(Jpar, Ne));
+
+      
+    } else {
     
+    // Calculate parallel current from steady state ohms law
+      Te32= mul_all(Te,sqrt_all(Te));
+      Ti32= mul_all(Ti,sqrt_all(Ti));
+      const BoutReal tau_e1 = (Cs0 / rho_s0 ) * tau_e0;
+      const BoutReal tau_i1 = (Cs0 / rho_s0 ) * tau_i0;
+      tau_e = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_e0) , Te32) , Ne);
+      tau_i = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_i0) , Ti32) , Ne);
+      nu = div_all(resistivity_multiply,mul_all(1.96,mul_all(tau_e,mi_me)));
+      Field3D gradparphi = Grad_par(phi);
+      Field3D gradparTe = Grad_par(Te);
+      Field3D gradparPi = Grad_par(Pi);
+      
+      if (!use_new_viscosity){
+	eta_epar = mul_all(0.7333, mul_all(mi_me,mul_all(tau_e,Pe)));
+      } else {
+	eta_epar = mul_all(div_all(4.0,3.0),mul_all(0.73,mul_all(Pe,tau_e)));
+      }
+      
+
+
+    
+      gradparphi.applyBoundary("neumann");
+      gradparTe.applyBoundary("neumann");
+      gradparPi.applyBoundary("neumann");
+      mesh->communicate(gradparphi ,gradparTe, gradparPi);
+      gradparphi.applyParallelBoundary(parbc);
+      gradparTe.applyParallelBoundary(parbc);
+      gradparPi.applyParallelBoundary(parbc);
+    
+      Jpar = mul_all(mul_all(-1.0, Ne), div_all(gradparphi, nu)) + div_all(gradparPi, nu) + div_all(mul_all(0.71, mul_all(Ne, gradparTe)), nu);
+      if (verbose){
+	debug_Jpar_1 = mul_all(mul_all(-1.0, Ne), div_all(gradparphi, nu));
+	debug_Jpar_2 = div_all(gradparPi, nu);
+	debug_Jpar_3 = div_all(mul_all(0.71, mul_all(Ne, gradparTe)), nu);
+      }
+    
+      Jpar.applyBoundary("neumann");
+      mesh->communicate(Jpar);
+      Jpar.applyParallelBoundary(parbc);
+      Ve = sub_all(Vi, div_all(Jpar, Ne));
+
+    }
 
   }
 
