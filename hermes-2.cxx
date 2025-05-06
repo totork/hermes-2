@@ -2079,7 +2079,7 @@ int Hermes::rhs(BoutReal t) {
       //aparSolver->setCoefA(-Ne*0.5*beta_e*mi_me);
       aparSolver->setCoefs(oness,tmp);
       //psi = aparSolver->solve(-VePsi,psi);
-      psi = aparSolver->solve(-VePsi*Ne,ones);
+      psi = aparSolver->solve(-VePsi*Ne,psi);
       mesh->communicate(psi);
       
       psi.applyParallelBoundary(parbc);
@@ -2176,7 +2176,8 @@ int Hermes::rhs(BoutReal t) {
 	    phisheath = log(sqrt(tesheath / (tesheath + tisheath))) * tesheath;
 	    pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
 	  } else {
-	    phisheath = lambda_sheath * tesheath;
+	    //phisheath = lambda_sheath * tesheath;
+	    phisheath = pnt.ythis(phi);
 	    pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi), phisheath);
 	  }
 	    
@@ -2405,14 +2406,15 @@ int Hermes::rhs(BoutReal t) {
               
 	    //BoutReal phisheath = log(sqrt(tesheath / (tesheath + tisheath))) * tesheath;
 	    // Extrapolate sheath
-	    pnt.ynext(phi) = 2.0 * pnt.ythis(phi) - pnt.yprev(phi);
+	    pnt.ynext(phi) = pnt.ythis(phi);
+	    //pnt.ynext(phi) = 2.0 * pnt.ythis(phi) - pnt.yprev(phi);
 	    BoutReal phisheath = 0.5 * (pnt.ynext(phi) + pnt.ythis(phi));
 
 	    BoutReal visheath = 0.0;
 	    if (!sheath_ramp){
-	      visheath = pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath);
+	      visheath = pnt.dir * sqrt(tesheath);
 	    } else {
-	      visheath = sheath_ramp_factor * (pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath));
+	      visheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath));
 	    }	    
 	    if (pnt.dir > 0.99 && pnt.dir < 1.01){
 	      if (pnt.ythis(Vi) > visheath){
@@ -3092,22 +3094,6 @@ int Hermes::rhs(BoutReal t) {
     } // End VePsi_parallelvisc
 
 
-    if (VePsi_supsonicdampening){
-      TE_VePsi_supsonicdampening = 0.0;
-      BOUT_FOR(i, VePsi.getRegion("RGN_NOBNDRY")){
-	if(Ve[i] < (-Ve_supsonic_cut*sqrt(mi_me)*sound_speed[i])){
-	  //BoutReal tmp = abs(Ve[i]) - Ve_supsonic_cut*sqrt(mi_me)*sound_speed[i];
-	  BoutReal tmp = abs(Ve[i])/(Ve_supsonic_cut*sqrt(mi_me)*sound_speed[i]);
-	  TE_VePsi_supsonicdampening[i] = Ve_supsonic_factor * (floor(exp(tmp)-1.0,0.0));
-	} else if (Ve[i] > (Ve_supsonic_cut*sqrt(mi_me)*sound_speed[i])){
-	  //BoutReal tmp = abs(Ve[i]) - Ve_supsonic_cut*sqrt(mi_me)*sound_speed[i];
-	  BoutReal tmp = abs(Ve[i])/(Ve_supsonic_cut*sqrt(mi_me)*sound_speed[i]);
-	  TE_VePsi_supsonicdampening[i] = -Ve_supsonic_factor * (floor(exp(tmp)-1.0,0.0));
-	}
-      }
-      ddt(VePsi) += TE_VePsi_supsonicdampening;      
-    } // End VePsi_supsonicdampening
-
     if (VePsi_anomalous){
       TRACE("VePsi anomalous");
       if (!use_new_divagradperp){
@@ -3121,8 +3107,7 @@ int Hermes::rhs(BoutReal t) {
     if (VePsi_dissipation){
       TRACE("VePsi dissipation");
       TE_VePsi_dissipation -= Div_par_ssdissipation(sub_all(Ve, Vi), fastest_espeed);
-      ddt(VePsi) += TE_VePsi_dissipation;
-      
+      ddt(VePsi) += TE_VePsi_dissipation;      
     }
             
   } //End evolve_vepsi
@@ -3323,8 +3308,7 @@ int Hermes::rhs(BoutReal t) {
       TRACE("Pe_conduction");
       
       if (!use_new_conduction){
-	//TE_Pe_conduction = (2.0 / 3.0) * Div_par_K_Grad_par(kappa_epar, Te);
-	TE_Pe_conduction = (2.0/3.0) * kappa_epar * Grad2_par2(Te);
+	TE_Pe_conduction = (2.0 / 3.0) * Div_par_K_Grad_par(kappa_epar, Te);
       } else {
 	TE_Pe_conduction = (2.0/3.0) * Div_par_K_Grad_par_mod(kappa_epar,Te,false);
       }
@@ -3340,7 +3324,7 @@ int Hermes::rhs(BoutReal t) {
 
     if (Pe_ohmic){//Row 4 Term 3
       TRACE("Pe_ohmic");
-      TE_Pe_ohmic = nu * Jpar * (Jpar) / Ne;
+      TE_Pe_ohmic = (2.0/3.0) * nu * Jpar * (Jpar) / Ne;
       ddt(Pe) += TE_Pe_ohmic;
     } // End Pe_ohmic
 
@@ -3360,7 +3344,9 @@ int Hermes::rhs(BoutReal t) {
 	Field3D tejpar = mul_all(Te,Jpar);
 	TE_Pe_thermalcurrent = (2. / 3) * 0.71 * Div_par(tejpar);
       } else if (use_H3_div_par){
-	TE_Pe_thermalcurrent = (2. / 3) * 0.71 * Div_par_mod_H3(Te,Jpar,fastest_espeed);
+	//TE_Pe_thermalcurrent = (2. / 3) * 0.71 * Div_par_mod_H3(Te,Jpar,fastest_espeed);
+	Field3D tejpar = mul_all(Te,Jpar);
+	TE_Pe_thermalcurrent = (2. / 3) * 0.71 * Div_par(tejpar);
       } else {
 	TE_Pe_thermalcurrent = (2. / 3) * 0.71 * Div_par_mod(Te,Jpar,fastest_espeed, use_slope_limiter);
       }
