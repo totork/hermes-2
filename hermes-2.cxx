@@ -3476,22 +3476,6 @@ int Hermes::rhs(BoutReal t) {
     } // End VePsi_parallelvisc
 
 
-    if (VePsi_supsonicdampening){
-      TE_VePsi_supsonicdampening = 0.0;
-      BOUT_FOR(i, VePsi.getRegion("RGN_NOBNDRY")){
-	if(Ve[i] < (-Ve_supsonic_cut*sqrt(mi_me)*sound_speed[i])){
-	  //BoutReal tmp = abs(Ve[i]) - Ve_supsonic_cut*sqrt(mi_me)*sound_speed[i];
-	  BoutReal tmp = abs(Ve[i])/(Ve_supsonic_cut*sqrt(mi_me)*sound_speed[i]);
-	  TE_VePsi_supsonicdampening[i] = Ve_supsonic_factor * (floor(exp(tmp)-1.0,0.0));
-	} else if (Ve[i] > (Ve_supsonic_cut*sqrt(mi_me)*sound_speed[i])){
-	  //BoutReal tmp = abs(Ve[i]) - Ve_supsonic_cut*sqrt(mi_me)*sound_speed[i];
-	  BoutReal tmp = abs(Ve[i])/(Ve_supsonic_cut*sqrt(mi_me)*sound_speed[i]);
-	  TE_VePsi_supsonicdampening[i] = -Ve_supsonic_factor * (floor(exp(tmp)-1.0,0.0));
-	}
-      }
-      ddt(VePsi) += TE_VePsi_supsonicdampening;      
-    } // End VePsi_supsonicdampening
-
     if (VePsi_anomalous){
       TRACE("VePsi anomalous");
       if (!use_new_divagradperp){
