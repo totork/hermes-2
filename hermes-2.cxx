@@ -2437,7 +2437,7 @@ int Hermes::rhs(BoutReal t) {
 
       Jpar = Div_a_Grad_perp_curv(oness, psi);
 
-      Jpar.applyBoundary("neumann_o2");
+      Jpar.applyBoundary("neumann");
 
       mesh->communicate(Jpar);
 
