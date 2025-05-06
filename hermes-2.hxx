@@ -178,6 +178,9 @@ private:
   
 
   BoutReal low_diffuse_value;
+  BoutReal low_diffuse_value_Ne;
+  BoutReal low_diffuse_value_Ti;
+  BoutReal low_diffuse_value_Te;
   // All variables for the rhie chow velocity correction
   
   bool use_rhie_interpolation;

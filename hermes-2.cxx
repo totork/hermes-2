@@ -1142,6 +1142,9 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, use_slope_limiter, false);
   OPTION(optnumerics, floor_outest, false);
   OPTION(optnumerics, low_diffuse_value, 1e-3);
+  OPTION(optnumerics, low_diffuse_value_Ne, low_diffuse_value);
+  OPTION(optnumerics, low_diffuse_value_Te, low_diffuse_value);
+  OPTION(optnumerics, low_diffuse_value_Ti, low_diffuse_value_Te);
   OPTION(optnumerics, ceil_Te, -1.0);
   OPTION(optnumerics, use_rhie_interpolation, false);
   if (use_rhie_interpolation){
@@ -3222,10 +3225,10 @@ int Hermes::rhs(BoutReal t) {
 
     if (Ne_lowdiffuse){
       if (use_new_divagradperp){
-        TE_Ne_lowdiffuse = Div_a_Grad_perp_mod(div_all(mul_all(low_diffuse_value, a_d3d), Ne), Ne);
+	TE_Ne_lowdiffuse = (low_diffuse_value_Ne * a_d3d / Ne) * new_Delp2(Ne);
       } else {
         //TE_Ne_lowdiffuse = Div_a_Grad_perp_curv(div_all(mul_all(low_diffuse_value, a_d3d), Ne), Ne);
-	TE_Ne_lowdiffuse = (low_diffuse_value * a_d3d / Ne) * new_Delp2(Ne);
+	TE_Ne_lowdiffuse = (low_diffuse_value_Ne * a_d3d / Ne) * new_Delp2(Ne);
       }
       ddt(Ne) += TE_Ne_lowdiffuse;
     } // End Ne_lowdiffuse
@@ -3813,10 +3816,10 @@ int Hermes::rhs(BoutReal t) {
 
     if (Pe_lowdiffuse){
       if (use_new_divagradperp){
-        TE_Pe_lowdiffuse = Ne * Div_a_Grad_perp_mod(div_all(mul_all(low_diffuse_value, a_chi3d), Te), Te);
+	TE_Pe_lowdiffuse =  low_diffuse_value_Te * a_chi3d / Te * new_Delp2(Te);
       } else {
         //TE_Pe_lowdiffuse = Ne * Div_a_Grad_perp_curv(div_all(mul_all(low_diffuse_value, a_chi3d), Te), Te);
-	TE_Pe_lowdiffuse =  low_diffuse_value * a_chi3d / Te * new_Delp2(Te);
+	TE_Pe_lowdiffuse =  low_diffuse_value_Te * a_chi3d / Te * new_Delp2(Te);
       }
       ddt(Pe) += TE_Pe_lowdiffuse;
     } // End Pe_lowdiffuse
@@ -3970,7 +3973,7 @@ int Hermes::rhs(BoutReal t) {
 
     if (Pi_lowdiffuse){
       if (use_new_divagradperp){
-	TE_Pi_lowdiffuse = Ne * Div_a_Grad_perp_mod(div_all(mul_all(low_diffuse_value, a_chi3d), Ti), Ti);
+	TE_Pi_lowdiffuse = low_diffuse_value_Ti * a_chi3d / Ti * new_Delp2(Ti);
       } else {
         //TE_Pi_lowdiffuse = Ne * Div_a_Grad_perp_curv(div_all(mul_all(low_diffuse_value, a_chi3d), Ti), Ti);
 	TE_Pi_lowdiffuse = low_diffuse_value * a_chi3d / Ti * new_Delp2(Ti);
