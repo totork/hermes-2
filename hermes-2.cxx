@@ -1874,7 +1874,7 @@ int Hermes::rhs(BoutReal t) {
   
   fastest_ispeed = sound_speed;
   if (electromagnetic){
-    fastest_espeed = sound_speed;
+    fastest_espeed = mul_all(sqrt(mi_me),sound_speed);
   } else {
     fastest_espeed = mul_all(sqrt(mi_me),sound_speed);
   }
@@ -2079,7 +2079,7 @@ int Hermes::rhs(BoutReal t) {
       //aparSolver->setCoefA(-Ne*0.5*beta_e*mi_me);
       aparSolver->setCoefs(oness,tmp);
       //psi = aparSolver->solve(-VePsi,psi);
-      psi = aparSolver->solve(-VePsi*Ne,psi);
+      psi = aparSolver->solve(-VePsi*Ne,oness);
       mesh->communicate(psi);
       
       psi.applyParallelBoundary(parbc);
