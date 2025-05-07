@@ -1663,6 +1663,17 @@ int Hermes::rhs(BoutReal t) {
 
 
 
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Stuff that can happen without anything before 
+
+  const BoutReal tau_e1 = (Cs0 / rho_s0 ) * tau_e0;
+  const BoutReal tau_i1 = (Cs0 / rho_s0 ) * tau_i0;
+
+  /////////////////////////////////////////////////////////////////////////////////////
+
+
+  
+
   Ne.applyBoundary(t);
   NVi.applyBoundary(t);
   Pe.applyBoundary(t);
@@ -2090,21 +2101,52 @@ int Hermes::rhs(BoutReal t) {
       }
       mesh->communicate(Ve);
       Ve.applyParallelBoundary(parbc);
-      
+      Jpar = sub_all(NVi,mul_all(Ne,Ve));
     } else {
       throw BoutException("Running without finite electron mass is not possible anymore!");
     }
     
   } else {
+    if (FiniteElMass){
+      
     // Electrostatic
-    zero_all(psi);
-    // No psi contribution to VePsi
-    Ve = add_all(VePsi , Vi);
+      zero_all(psi);
+      // No psi contribution to VePsi
+      Ve = add_all(VePsi , Vi);
+      Jpar = sub_all(NVi,mul_all(Ne,Ve));
+      
+    } else {
+      
+      Te32= mul_all(Te,sqrt_all(Te));
+      Ti32= mul_all(Ti,sqrt_all(Ti));
+      tau_e = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_e0) , Te32) , Ne);
+      tau_i = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_i0) , Ti32) , Ne);
+      nu = div_all(resistivity_multiply,mul_all(1.96,mul_all(tau_e,mi_me)));
+      Field3D gradparphi = Grad_par(phi);
+      Field3D gradparTe = Grad_par(Te);
+      Field3D gradparPi = Grad_par(Pi);
+
+      gradparphi.applyBoundary("neumann");
+      gradparTe.applyBoundary("neumann");
+      gradparPi.applyBoundary("neumann");
+      mesh->communicate(gradparphi ,gradparTe, gradparPi);
+      gradparphi.applyParallelBoundary(parbc);
+      gradparTe.applyParallelBoundary(parbc);
+      gradparPi.applyParallelBoundary(parbc);
+
+      Jpar = mul_all(mul_all(-1.0, Ne), div_all(gradparphi, nu)) + div_all(gradparPi, nu) + div_all(mul_all(0.71, mul_all(Ne, gradparTe)), nu);
+
+      Jpar.applyBoundary("neumann");
+      mesh->communicate(Jpar);
+      Jpar.applyParallelBoundary(parbc);
+      Ve = sub_all(Vi, div_all(Jpar, Ne));      
+      
+    }
   }
 
 
   
-  Jpar = sub_all(NVi,mul_all(Ne,Ve));
+
 
   /*
   Jpar.applyBoundary("neumann");
@@ -2604,9 +2646,6 @@ int Hermes::rhs(BoutReal t) {
   
   TRACE("Collisions");
 
-  const BoutReal tau_e1 = (Cs0 / rho_s0 ) * tau_e0;
-  const BoutReal tau_i1 = (Cs0 / rho_s0 ) * tau_i0;
-  
   tau_e = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_e0) , Te32) , Ne);
   tau_i = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_i0) , Ti32) , Ne);
   
