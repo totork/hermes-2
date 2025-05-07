@@ -57,6 +57,8 @@ private:
 
 const Field3D Div_par_K_Grad_par_mod(const Field3D& k, const Field3D& f, bool bndry_flux = false);
 
+const Field3D Div_par_K_Grad_par_map(const Field3D& flux);
+
 const Field3D Div_par_mod(const Field3D& f, const Field3D& v, const Field3D& fastest, const bool& fl);
 
 const Field3D Div_par_rhie(const Field3D& f, const Field3D& v, const Field3D& P, Field3D& out_up, Field3D& out_down);
