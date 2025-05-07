@@ -1133,6 +1133,7 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, pe_bndry_flux, false);
   OPTION(optnumerics, vort_bndry_flux, false);
   OPTION(optnumerics, use_new_conduction, false);
+  OPTION(optnumerics, use_div_par_q, false);
   OPTION(optnumerics, use_new_viscosity, false);
   OPTION(optnumerics, use_new_div_par, false);
   OPTION(optnumerics, use_H3_div_par, false);
@@ -1851,6 +1852,9 @@ int Hermes::init(bool restarting) {
     SAVE_ONCE(xl,yl,zl);
 
   }
+  set_all(heatflux_e, 1.0);
+  set_all(heatflux_i, 1.0);
+  
   set_all(oness, 1.0);
   set_all(zeroes, 0.0);
   // Here are some sanity checks for the flags
@@ -3110,6 +3114,21 @@ int Hermes::rhs(BoutReal t) {
   // tau_i
 
 
+  if (use_div_par_q){
+    if (Pe_conduction){
+      heatflux_e = kappa_epar * Grad_par(Te);
+      heatflux_e.applyBoundary("neumann");
+      mesh->communicate(heatflux_e);
+      heatflux_e.applyParallelBoundary(parbc);
+    }
+
+    if (Pi_conduction){
+      heatflux_i = kappa_ipar *	Grad_par(Ti);
+      heatflux_i.applyBoundary("neumann");
+      mesh->communicate(heatflux_i);
+      heatflux_i.applyParallelBoundary(parbc);
+    }
+  }
   
   
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////                                                                                                                                                                
@@ -3688,6 +3707,8 @@ int Hermes::rhs(BoutReal t) {
       
       if (!use_new_conduction){
 	TE_Pe_conduction = (2.0 / 3.0) * Div_par_K_Grad_par(kappa_epar, Te);
+      } else if(use_div_par_q) {
+	TE_Pe_conduction = (2.0/3.0) * Div_par(heatflux_e);
       } else {
 	TE_Pe_conduction = (2.0/3.0) * Div_par_K_Grad_par_mod(kappa_epar,Te,true);
 	//TE_Pe_conduction = (2.0/3.0) * kappa_epar * Div_par_K_Grad_par_mod(oness,Te,false);
@@ -3898,6 +3919,8 @@ int Hermes::rhs(BoutReal t) {
       TRACE("Pi thermal conduction");
       if (!use_new_conduction){
 	TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par(kappa_ipar, Ti);
+      } else if(use_div_par_q) {
+        TE_Pi_conduction = (2.0/3.0) * Div_par(heatflux_i);
       } else {
 	TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par_mod(kappa_ipar, Ti, true);
       }
