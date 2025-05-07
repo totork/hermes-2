@@ -1645,6 +1645,12 @@ int Hermes::init(bool restarting) {
 
   lambda_sheath = log(sqrt(mi_me/(2.0*PI)));
   
+  OPTION(optsc, test_profiles, false);
+  if (test_profiles){
+    Ne = 3.0 * Ti + Ti;
+  }
+
+
   
   return 0;
 }
