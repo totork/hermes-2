@@ -926,6 +926,7 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, pe_bndry_flux, false);
   OPTION(optnumerics, vort_bndry_flux, false);
   OPTION(optnumerics, use_new_conduction, false);
+  OPTION(optnumerics, use_conduction_map, false);
   OPTION(optnumerics, use_new_viscosity, false);
   OPTION(optnumerics, use_new_div_par, false);
   OPTION(optnumerics, use_new_grad_par, false);
@@ -1421,6 +1422,8 @@ int Hermes::init(bool restarting) {
   debug_vesheath = 0.0;
   debug_sheathexp = 0.0;
   debug_decay_Ne = 0.0;
+
+  set_all(qi, 0.0);
   
   debug_soundspeed = 0.0;
   debug_VePsisheath = 0.0;
@@ -1646,9 +1649,6 @@ int Hermes::init(bool restarting) {
   lambda_sheath = log(sqrt(mi_me/(2.0*PI)));
   
   OPTION(optsc, test_profiles, false);
-  if (test_profiles){
-    Ne = 3.0 * Ti + Ti;
-  }
 
 
   
@@ -1659,7 +1659,6 @@ int Hermes::rhs(BoutReal t) {
   if (show_timesteps) {
     printf("TIME = %e\r", t);
   }
-
 
   Coordinates *coord = mesh->getCoordinates();
   
@@ -2752,6 +2751,13 @@ int Hermes::rhs(BoutReal t) {
   // tau_i
 
 
+  if (use_conduction_map){
+    qi = kappa_ipar * Grad_par(Ti);
+    qi.applyBoundary("neumann");
+    mesh->communicate(qi);
+    qi.applyParallelBoundary(parbc);
+  }
+
   
   
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////                                                                                                                                                                
@@ -3564,6 +3570,9 @@ int Hermes::rhs(BoutReal t) {
       if (!use_new_conduction){
 	//TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par(kappa_ipar, Ti);
 	TE_Pi_conduction = (2.0/3.0) * kappa_ipar * Grad2_par2(Ti);
+      } else if (use_conduction_map){
+	//TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par_map(qi);
+	TE_Pi_conduction = (2. / 3) * Div_par(qi);
       } else {
 	TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par_mod(kappa_ipar, Ti);
       }

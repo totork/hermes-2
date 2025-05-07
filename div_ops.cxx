@@ -1808,6 +1808,32 @@ inline BoutReal dagp_fv::zflux(const Field3D &a, const Field3D &f,
 } // namespace FCI
 
 
+const Field3D Div_par_K_Grad_par_map(const Field3D& flux){
+  Mesh* mesh = flux.getMesh();
+
+  Field3D result{zeroFrom(flux)};
+
+  Coordinates* coord = flux.getCoordinates();
+
+  BOUT_FOR(i, result.getRegion("RGN_NOBNDRY")) {
+    const auto iyp = i.yp();
+    const auto iym = i.ym();
+
+    BoutReal J = 0.5 * (coord->J[i] + coord->J.yup()[iyp]);
+    BoutReal g_22 = 0.5 * (sqrt(coord->g_22[i]) + sqrt(coord->g_22.yup()[iyp]));
+    
+    BoutReal flux_up = 0.5 * (flux.yup()[iyp] + flux[i]) * J / (g_22);
+
+    J = 0.5 * (coord->J[i] + coord->J.ydown()[iym]);
+    g_22 = 0.5 * (sqrt(coord->g_22[i]) + sqrt(coord->g_22.ydown()[iym]));
+    
+    BoutReal flux_down = 0.5 * (flux.ydown()[iym] + flux[i]) * J / (g_22);
+
+    result[i] = (flux_up - flux_down) / (coord->dy[i] * coord->J[i]);
+    
+  }
+  return result;
+}
 
 
 

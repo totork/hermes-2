@@ -85,7 +85,7 @@ private:
   Field3D phi;        // Electrostatic potential
 
   bool use_H3_div_par;
-  
+  bool use_conduction_map;
   // DEBUG VARIABLES
   Field3D a;
   Field3D b;
@@ -345,7 +345,7 @@ private:
   BoutReal Ve_supsonic_cut;
   Field3D Ve_dampening;
   
-  
+  Field3D qi;
   // Sources and profiles
   
   bool ramp_mesh;   // Use Ne,Pe in the grid file for starting ramp target
