@@ -3708,7 +3708,7 @@ int Hermes::rhs(BoutReal t) {
       if (!use_new_conduction){
 	TE_Pe_conduction = (2.0 / 3.0) * Div_par_K_Grad_par(kappa_epar, Te);
       } else if(use_div_par_q) {
-	TE_Pe_conduction = (2.0/3.0) * Div_par(heatflux_e);
+	TE_Pe_conduction = (2.0/3.0) * Div_par_K_Grad_par_map(heatflux_e);
       } else {
 	TE_Pe_conduction = (2.0/3.0) * Div_par_K_Grad_par_mod(kappa_epar,Te,true);
 	//TE_Pe_conduction = (2.0/3.0) * kappa_epar * Div_par_K_Grad_par_mod(oness,Te,false);
@@ -3920,7 +3920,7 @@ int Hermes::rhs(BoutReal t) {
       if (!use_new_conduction){
 	TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par(kappa_ipar, Ti);
       } else if(use_div_par_q) {
-        TE_Pi_conduction = (2.0/3.0) * Div_par(heatflux_i);
+        TE_Pi_conduction = (2.0/3.0) * Div_par_K_Grad_par_map(heatflux_i);
       } else {
 	TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par_mod(kappa_ipar, Ti, true);
       }
