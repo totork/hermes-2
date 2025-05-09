@@ -3963,7 +3963,7 @@ int Hermes::rhs(BoutReal t) {
       } else {
         tmp = Div_par_K_Grad_par_mod(div_all(mul_all(Pi,tau_i),coord->Bxy),mul_all(B12,Vi), true);
       }
-      Pi_parviscousheat = -Vi * 1.28*B12*tmp;
+      TE_Pi_parviscousheat = -Vi * 1.28*B12*tmp;
       ddt(Pi) += Pi_parviscousheat;      
       
     }
