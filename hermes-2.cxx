@@ -2107,8 +2107,16 @@ int Hermes::rhs(BoutReal t) {
       mesh->communicate(Ve);
       Ve.applyParallelBoundary(parbc);
       Jpar = sub_all(NVi,mul_all(Ne,Ve));
-    } else {
-      throw BoutException("Running without finite electron mass is not possible anymore!");
+      
+    } else { // Electromagnetic NO e mass
+      
+      psi = VePsi / (0.5 * beta_e * mi_me);
+      Jpar = Div_a_Grad_perp_curv(oness, psi);
+      Jpar.applyBoundary("free_o2");
+      mesh->communicate(Jpar);
+      Jpar.applyParallelBoundary(parbc);
+      Ve = sub_all(Vi, div_all(Jpar, Ne));
+
     }
     
   } else {
@@ -3029,7 +3037,7 @@ int Hermes::rhs(BoutReal t) {
     if (Vort_dissipation){
       TRACE("Vorticity dissipation");
       TE_Vort_dissipation = Vort_diss * new_Delp2(Vort);
-      TE_Vort_dissipation -= Div_par_ssdissipation(Vort, fastest_espeed);
+      //TE_Vort_dissipation -= Div_par_ssdissipation(Vort, fastest_espeed);
       ddt(Vort) += TE_Vort_dissipation;
     }
     
