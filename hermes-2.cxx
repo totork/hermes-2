@@ -3015,48 +3015,32 @@ int Hermes::rhs(BoutReal t) {
   TRACE("Parallel heat conduction");
   
   //kappa_epar = mul_all(mul_all(mul_all(mul_all(3.16, mi_me), Te), Ne), tau_e);
-  kappa_epar = 3.16 * mi_me * Te * Ne * tau_e;
-  kappa_epar.applyBoundary("neumann");
-  mesh->communicate(kappa_epar);
-  kappa_epar.applyParallelBoundary(parbc);
-  
-  if (kappa_limit_alpha > 0.0) {
-    TRACE("electron heat flux limiter");
-    /*
-     * Flux limiter, as used in SOLPS.
-     *
-     * Calculate the heat flux from Spitzer-Harm and flux limit
-     *
-     * Typical value of alpha ~ 0.2 for electrons
-     *
-     * R.Schneider et al. Contrib. Plasma Phys. 46, No. 1-2, 3 – 191 (2006)
-     * DOI 10.1002/ctpp.200610001
-     */
+  if (kappa_limit_alpha <= 0.0){
+    kappa_epar = 3.16 * mi_me * Te * Ne * tau_e;
+    kappa_epar.applyBoundary("neumann");
+    mesh->communicate(kappa_epar);
+    kappa_epar.applyParallelBoundary(parbc);
+  } else {
+    kappa_epar = 3.16 * mi_me * Te * Ne * tau_e;
     
     Field3D gradTe = Grad_par(Te);
-    
     gradTe.applyBoundary("neumann");
     mesh->communicate(gradTe);
     gradTe.applyParallelBoundary(parbc);
-    
-    Field3D q_SH = mul_all(kappa_epar,gradTe);      
-    Field3D q_fl = mul_all(kappa_limit_alpha,mul_all(sqrt(mi_me),mul_all(Ne,Te32)));
-    Field3D one;
-    set_all(one, 1.0);
 
-    Field3D denom = one + abs(div_all(q_SH,q_fl));
+    
+    Field3D q_SH = kappa_epar * gradTe;
+    Field3D q_fl = kappa_limit_alpha * sqrt(mi_me) * Ne * Te32;
+    
+    Field3D denom = 1.0 + abs(q_SH / q_fl);
 
-    denom.applyBoundary("neumann");
-    mesh->communicate(denom);
-    denom.applyParallelBoundary(parbc);
-    
-    
     debug_denom = denom;
-
-    BOUT_FOR(i, Ne.getRegion("RGN_ALL")) {
-      div_all(kappa_epar, kappa_epar, denom, i);
-    }      
+    kappa_epar = kappa_epar / denom;
+    kappa_epar.applyBoundary("neumann");
+    mesh->communicate(kappa_epar);
+    kappa_epar.applyParallelBoundary(parbc);    
   }
+
 
 
   
