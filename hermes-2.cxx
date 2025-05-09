@@ -3954,6 +3954,20 @@ int Hermes::rhs(BoutReal t) {
       ddt(Pi) += TE_Pi_energyexchange;
     } // End Pi_energyexchange
 
+    
+    if(Pi_parviscousheat){
+
+      Field3D tmp = 0.0;
+      if(!use_new_conduction){
+        tmp = Div_par_K_Grad_par(div_all(mul_all(Pi,tau_i),coord->Bxy),mul_all(B12,Vi));
+      } else {
+        tmp = Div_par_K_Grad_par_mod(div_all(mul_all(Pi,tau_i),coord->Bxy),mul_all(B12,Vi), true);
+      }
+      Pi_parviscousheat = -Vi * 1.28*B12*tmp;
+      ddt(Pi) += Pi_parviscousheat;      
+      
+    }
+    
 
     if (parallel_sheaths && Pi_sources){
       switch (par_sheath_model) {
