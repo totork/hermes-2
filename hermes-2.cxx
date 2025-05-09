@@ -604,9 +604,19 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, phi_boundary_last_update, -1);
   OPTION(optsc, phi_boundary_timescale, 1e-4);
 
+
+  OPTION(optsc, phi_sheath_relax, false);
+  OPTION(optsc, phi_sheath_last_update, -1);
+  OPTION(optsc, phi_sheath_timescale, 1e-6);
+  
   if (phi_boundary_relax){
     phi_boundary_last_update = -1.;
   }
+
+  if (phi_sheath_relax){
+    phi_sheath_last_update = -1.;
+  }
+  
   
   //////////////////////////////////////////////////////////////////////////
   
@@ -1063,7 +1073,7 @@ int Hermes::init(bool restarting) {
   SAVE_ONCE(Cs0, rho_s0, Omega_ci);
 
   phi_boundary_timescale *= Omega_ci;
- 
+  phi_sheath_timescale *= Omega_ci;
   
   // Collision times
   BoutReal lambda_ei = 24. - log(sqrt(Nnorm / 1e6) / Tnorm);
@@ -1646,6 +1656,15 @@ int Hermes::init(bool restarting) {
     }
   }
 
+  if (phi_sheath_relax){
+    auto boolinnerbndryflag = opt["phiSolver"]["outer_boundary_flags"];
+    if (boolinnerbndryflag != 16){
+      output.write("\t Phi solver outer boundary flag is  = {:e}\n", boolinnerbndryflag);
+      throw BoutException("Wrong outer boundary flag in phi solver with potential relaxation");
+    }
+  }
+  
+
   lambda_sheath = log(sqrt(mi_me/(2.0*PI)));
   
   OPTION(optsc, test_profiles, false);
@@ -1968,14 +1987,38 @@ int Hermes::rhs(BoutReal t) {
 	  
 	} // End (phi_boundary_relax)
 	
-    
-	if (mesh->lastX()) {
-	  for (int j = mesh->ystart; j <= mesh->yend; j++) {
-	    for (int k = 0; k < mesh->LocalNz; k++) {
-	      phi_boundary3d(mesh->xend + 1, j, k) = 0.5 * ( lambda_sheath*( Te(mesh->xend + 1, j, k) + Te(mesh->xend, j, k) ) + Pi(mesh->xend + 1, j, k) + Pi(mesh->xend, j, k) );	    
+	if (!phi_sheath_relax){
+	  if (mesh->lastX()) {
+	    for (int j = mesh->ystart; j <= mesh->yend; j++) {
+	      for (int k = 0; k < mesh->LocalNz; k++) {
+		phi_boundary3d(mesh->xend + 1, j, k) = 0.5 * ( lambda_sheath*( Te(mesh->xend + 1, j, k) + Te(mesh->xend, j, k) ) + Pi(mesh->xend + 1, j, k) + Pi(mesh->xend, j, k) );	    
+	      }
 	    }
 	  }
-	}
+	} else if (phi_sheath_relax){
+
+          if (phi_sheath_last_update < 0.0) {
+            // First time this has been called.                                                                                                                                                           
+            phi_sheath_last_update = t;
+          } else if (t > phi_sheath_last_update){
+            BoutReal weight = exp(-(t - phi_sheath_last_update) / phi_sheath_timescale);
+            phi_sheath_last_update = t;
+            if (mesh->lastX()) {
+	      for (int j = mesh->ystart; j <= mesh->yend; j++) {
+		for (int k = 0; k < mesh->LocalNz; k++) {
+		  BoutReal phivalue = 0.5 * ( lambda_sheath*( Te(mesh->xend + 1, j, k) + Te(mesh->xend, j, k) ));
+		  BoutReal oldvalue = 0.5 * ( phi(mesh->xend + 1, j, k) + phi(mesh->xend, j, k) );
+		  BoutReal newvalue = weight * oldvalue + (1. - weight) * phivalue;
+		  BoutReal newvaluecelledge = 2.0 * newvalue - phi(mesh->xend, j, k);
+		  phi_boundary3d(mesh->xend + 1, j, k) = newvaluecelledge + 0.5 * (Pi(mesh->xend + 1, j, k) + Pi(mesh->xend, j, k));
+		}
+	      }
+
+            } // mesh->firstX                                                                                                                                                                             
+          }
+	  
+	  
+	} // End else if (phi_sheath_relax)
 
 	
 	

@@ -413,8 +413,11 @@ private:
   Field2D phi2D;        // Axisymmetric phi
 
   bool phi_boundary_relax; ///< Relax the boundary towards Neumann?
+  bool phi_sheath_relax;
   BoutReal phi_boundary_timescale; ///< Relaxation timescale
   BoutReal phi_boundary_last_update; ///< The last time the boundary was updated
+  BoutReal phi_sheath_timescale;
+  BoutReal phi_sheath_last_update;
   bool anomalous_precon;
   bool newXZsolver; 
   std::unique_ptr<Laplacian> phiSolver{nullptr}; // Old Laplacian in X-Z
