@@ -597,7 +597,7 @@ int Hermes::init(bool restarting) {
   // Neutrals
 
   evolve_neutrals = optsc["evolve_neutrals"].doc("Evolve neutrals?").withDefault<bool>(false);
-  evolve_pn = optsc["evolve_pn"].doc("Evolve neutrals?").withDefault<bool>(false);
+  evolve_pn = optsc["evolve_pn"].doc("Evolve neutrals?").withDefault<bool>(true);
   if (evolve_neutrals) {
     SOLVE_FOR(Nn);
     SOLVE_FOR(NnVn);
@@ -1838,9 +1838,8 @@ int Hermes::init(bool restarting) {
     alloc_all(Dnn);
     if (verbose){
       SAVE_REPEAT(Sneutral,Fn,Rn,Qin,Riz,Rrc,Rcx,Recycling_flux);
-      SAVE_REPEAT(Dnn);
     }
-    
+    SAVE_REPEAT(Dnn);
   }
 
 
@@ -2592,20 +2591,20 @@ int Hermes::rhs(BoutReal t) {
 	    }
 	  }
 
-	  
+	  // lambda_sheath = log( sqrt( mi_me/(2*PI) ) )
 
 	  BoutReal vesheath = 0.0;
 	  if (sheath_simplephi){
 	    if (!sheath_ramp){
-	      vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
+	      vesheath = pnt.dir * sqrt(tesheath) * sqrt(mi_me/(2.0*PI)) * exp(-(phisheath/tesheath));
 	    } else {
-	      vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath)));
+	      vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * sqrt(mi_me/(2.0*PI)) * exp(-(phisheath/tesheath)));
 	    }
 	  } else {
 	    if (!sheath_ramp){
-	      vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
+	      vesheath = pnt.dir * sqrt(tesheath) * sqrt(mi_me/(2.0*PI)) * exp(-(phisheath/tesheath));
 	    } else {
-	      vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath)));
+	      vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * sqrt(mi_me/(2.0*PI))  * exp(-(phisheath/tesheath)));
 	    }
 	  }
 
@@ -4027,6 +4026,8 @@ int Hermes::rhs(BoutReal t) {
       
       if (!use_new_div_par){
 	TE_Nn_parflow = -Div_par(NnVn);
+      } else if (use_H3_div_par){
+	TE_Nn_parflow = -Div_par_mod_H3(Nn, Vn, fastest_espeed);
       } else {
 	TE_Nn_parflow = -Div_par_mod(Nn,Vn,fastest_ispeed, use_slope_limiter);
       }
@@ -4080,6 +4081,8 @@ int Hermes::rhs(BoutReal t) {
       if (!use_new_div_par){
 	Field3D NnVnVn = mul_all(NnVn, Vn);
 	TE_NnVn_parflow = -Div_par(NnVnVn);
+      } else if (use_H3_div_par){
+        TE_NnVn_parflow = -Div_par_fvv_H3(Nn,Vn,fastest_ispeed);
       } else {
 	TE_NnVn_parflow = -Div_par_nvv_mod(Nn,Vn,fastest_ispeed);
       }
@@ -4144,6 +4147,8 @@ int Hermes::rhs(BoutReal t) {
 	if (!use_new_div_par){
 	  Field3D PnVn = mul_all(Pn, Vn);
 	  TE_Pn_parflow = -Div_par(PnVn);
+	} else if (use_H3_div_par){
+	  TE_Pn_parflow = -Div_par_mod_H3(Pn, Vn, fastest_espeed);
 	} else {
 	  TE_Pn_parflow = -Div_par_mod(Pn, Vn, fastest_ispeed, use_slope_limiter);
 	}
