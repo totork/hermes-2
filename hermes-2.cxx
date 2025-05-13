@@ -2489,9 +2489,10 @@ int Hermes::rhs(BoutReal t) {
 		phisheath = tesheath * (lambda_sheath + log(sqrt(tesheath/(tesheath+tisheath))));
 	      }
 	      phisheath = floor(phisheath, 0.0);
+	      debug_phisheath[i] = phisheath;
 	      pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
 	    } else {
-	      
+	      debug_phisheath[i] = phisheath;
 	      phisheath = interpolate_sheathneighbour(pnt.yprev(phi),pnt.ythis(phi));
 	      pnt.ynext(phi) = phisheath;
 	    }
@@ -2599,7 +2600,7 @@ int Hermes::rhs(BoutReal t) {
 	  BoutReal tesheath =  0.5 * (pnt.ythis(Te)+pnt.ynext(Te));
 	  BoutReal tisheath = 0.5 * (pnt.ythis(Te)+pnt.ynext(Te));
 	  
-	  BoutReal phisheath = 0.5 * (pnt.ythis(phi)+pnt.ynext(phi));
+	  BoutReal phisheath = debug_phisheath[i];
 
 
 	  BoutReal visheath = 0.0;
@@ -2688,7 +2689,6 @@ int Hermes::rhs(BoutReal t) {
 	    Te_yprev[i] = pnt.yprev(Te);
 	    debug_visheath[i] = visheath;
 	    debug_vesheath[i] = vesheath;
-	    debug_phisheath[i] = phisheath;
 	    Te_sheath[i] = tesheath;
 	  }
 	  
