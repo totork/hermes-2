@@ -2443,72 +2443,131 @@ int Hermes::rhs(BoutReal t) {
     }  
     Jpar = sub_all(NVi,mul_all(Ne,Ve));
     
-  } else {
-    if (electromagnetic){
-
-      
-      psi = VePsi / (0.5 * beta_e * mi_me);
-
-      Jpar = Div_a_Grad_perp_curv(oness, psi);
-
-      Jpar.applyBoundary("neumann");
-
-      mesh->communicate(Jpar);
-
-      Jpar.applyParallelBoundary(parbc);
-
-      Ve = sub_all(Vi, div_all(Jpar, Ne));
-
-      
-    } else {
-    
-    // Calculate parallel current from steady state ohms law
-      Te32= mul_all(Te,sqrt_all(Te));
-      Ti32= mul_all(Ti,sqrt_all(Ti));
-      const BoutReal tau_e1 = (Cs0 / rho_s0 ) * tau_e0;
-      const BoutReal tau_i1 = (Cs0 / rho_s0 ) * tau_i0;
-      tau_e = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_e0) , Te32) , Ne);
-      tau_i = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_i0) , Ti32) , Ne);
-      nu = div_all(resistivity_multiply,mul_all(1.96,mul_all(tau_e,mi_me)));
-      Field3D gradparphi = Grad_par(phi);
-      Field3D gradparTe = Grad_par(Te);
-      Field3D gradparPi = Grad_par(Pi);
-      
-      if (!use_new_viscosity){
-	eta_epar = mul_all(0.7333, mul_all(mi_me,mul_all(tau_e,Pe)));
-      } else {
-	eta_epar = mul_all(div_all(4.0,3.0),mul_all(0.73,mul_all(Pe,tau_e)));
-      }
-      
-
-
-    
-      gradparphi.applyBoundary("neumann");
-      gradparTe.applyBoundary("neumann");
-      gradparPi.applyBoundary("neumann");
-      mesh->communicate(gradparphi ,gradparTe, gradparPi);
-      gradparphi.applyParallelBoundary(parbc);
-      gradparTe.applyParallelBoundary(parbc);
-      gradparPi.applyParallelBoundary(parbc);
-    
-      Jpar = mul_all(mul_all(-1.0, Ne), div_all(gradparphi, nu)) + div_all(gradparPi, nu) + div_all(mul_all(0.71, mul_all(Ne, gradparTe)), nu);
-      if (verbose){
-	debug_Jpar_1 = mul_all(mul_all(-1.0, Ne), div_all(gradparphi, nu));
-	debug_Jpar_2 = div_all(gradparPi, nu);
-	debug_Jpar_3 = div_all(mul_all(0.71, mul_all(Ne, gradparTe)), nu);
-      }
-    
-      Jpar.applyBoundary("neumann");
-      mesh->communicate(Jpar);
-      Jpar.applyParallelBoundary(parbc);
-      Ve = sub_all(Vi, div_all(Jpar, Ne));
-
-    }
-
-  }
+  } 
 
   //////////////////////////////////////////////////////////////
   // Sheath boundary conditions on Y up and Y down
+
+
+
+  // Set NONDERIVED variables first for the correct calculation of Jpar
+
+  
+
+  if (parallel_sheaths){
+    switch(par_sheath_model){
+
+    case 0: {
+
+      for (const auto &bndry_par :
+           mesh->getBoundariesPar(BoundaryParType::xout)) {
+        for (const auto& pnt : *bndry_par) {
+          const auto i = pnt.ind();
+
+          if (boundary_direction[i] > 10.9 && boundary_direction[i] < 11.1 && pnt.dir < 0.0);
+          else{
+	    
+	    pnt.ynext(Ne) = floor(pnt.ythis(Ne), floor_Ne); // Not for Ne, sothat NVi does not increase if vi is constant
+	    pnt.ynext(Te) = floor(pnt.ythis(Te), floor_Te);
+	    pnt.ynext(Ti) = floor(pnt.ythis(Ti), floor_Ti);	    
+	    pnt.ynext(Pi) = pnt.ynext(Ne)*pnt.ynext(Ti);
+	    pnt.ynext(Pe) = pnt.ynext(Ne)*pnt.ynext(Te);
+
+
+	    BoutReal tesheath = 0.5 * (pnt.ythis(Te)+pnt.ynext(Te));
+	    BoutReal tisheath = 0.5 * (pnt.ythis(Ti)+pnt.ynext(Ti));
+	    BoutReal phisheath = 0.0;
+	    if (sheath_floating){
+	      
+	      if (sheath_simplephi){
+		phisheath = lambda_sheath*tesheath;
+	      } else {
+		phisheath = tesheath * (lambda_sheath + log(sqrt(tesheath/(tesheath+tisheath))));
+	      }
+	      phisheath = floor(phisheath, 0.0);
+	      pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
+	    } else {
+	      
+	      phisheath = interpolate_sheathneighbour(pnt.yprev(phi),pnt.ythis(phi));
+	      pnt.ynext(phi) = phisheath;
+	    }
+
+	    if(steady_state){
+	      pnt.ynext(phi_1) = pnt.ynext(phi) * lam2;
+	    }	    	    
+	  }
+	}
+      }            
+      break;
+    }
+      
+    } //end switch(par_sheath_model)
+  } // end if (paralell_sheaths)
+  
+
+
+  if (steady_state){
+    if (electromagnetic){
+      psi = VePsi / (0.5 * beta_e * mi_me);
+      Jpar = Div_a_Grad_perp_curv(oness, psi);
+      Jpar.applyBoundary("neumann");
+      mesh->communicate(Jpar);
+      Jpar.applyParallelBoundary(parbc);
+      Ve = sub_all(Vi, div_all(Jpar, Ne));
+    } else {
+
+      if (FiniteElMass){
+	
+	zero_all(psi);
+	Ve = add_all(VePsi , Vi);
+	Jpar = sub_all(NVi,mul_all(Ne,Ve));
+	
+      } else {
+      
+	Te32= mul_all(Te,sqrt_all(Te));
+	Ti32= mul_all(Ti,sqrt_all(Ti));
+	const BoutReal tau_e1 = (Cs0 / rho_s0 ) * tau_e0;
+	const BoutReal tau_i1 = (Cs0 / rho_s0 ) * tau_i0;
+	tau_e = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_e0) , Te32) , Ne);
+	tau_i = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_i0) , Ti32) , Ne);
+	nu = div_all(resistivity_multiply,mul_all(1.96,mul_all(tau_e,mi_me)));
+	Field3D gradparphi = Grad_par(phi);
+	Field3D gradparTe = Grad_par(Te);
+	Field3D gradparPi = Grad_par(Pi);
+	
+	if (!use_new_viscosity){
+	  eta_epar = mul_all(0.7333, mul_all(mi_me,mul_all(tau_e,Pe)));
+	} else {
+	  eta_epar = mul_all(div_all(4.0,3.0),mul_all(0.73,mul_all(Pe,tau_e)));
+	}
+
+
+
+
+	gradparphi.applyBoundary("neumann");
+	gradparTe.applyBoundary("neumann");
+	gradparPi.applyBoundary("neumann");
+	mesh->communicate(gradparphi ,gradparTe, gradparPi);
+	gradparphi.applyParallelBoundary(parbc);
+	gradparTe.applyParallelBoundary(parbc);
+	gradparPi.applyParallelBoundary(parbc);
+	
+	Jpar = mul_all(mul_all(-1.0, Ne), div_all(gradparphi, nu)) + div_all(gradparPi, nu) + div_all(mul_all(0.71, mul_all(Ne, gradparTe)), nu);
+	if (verbose){
+	  debug_Jpar_1 = mul_all(mul_all(-1.0, Ne), div_all(gradparphi, nu));
+	  debug_Jpar_2 = div_all(gradparPi, nu);
+	  debug_Jpar_3 = div_all(mul_all(0.71, mul_all(Ne, gradparTe)), nu);
+	}
+
+	Jpar.applyBoundary("neumann");
+	mesh->communicate(Jpar);
+	Jpar.applyParallelBoundary(parbc);
+	Ve = sub_all(Vi, div_all(Jpar, Ne));
+
+      }
+    }
+
+  }
 
 
   
@@ -2529,47 +2588,15 @@ int Hermes::rhs(BoutReal t) {
 	  // And ignores boundaries in the negative direction, only taking the positive one
 	  if (boundary_direction[i] > 10.9 && boundary_direction[i] < 11.1 && pnt.dir < 0.0);
 	  else{
-
-	  pnt.ynext(Ne) = floor(pnt.ythis(Ne), floor_Ne); // Not for Ne, sothat NVi does not increase if vi is constant                                                                                                                                                         
-	  pnt.ynext(Te) = floor(pnt.ythis(Te), floor_Te);
-	  pnt.ynext(Ti) = floor(pnt.ythis(Ti), floor_Ti);
-
-	  
-	  pnt.ynext(Pi) = pnt.ynext(Ne)*pnt.ynext(Ti);
-	  pnt.ynext(Pe) = pnt.ynext(Ne)*pnt.ynext(Te);
-
 	  
 	  TRACE("Sheath offset==2, interpolate sheath values");
 
-	  BoutReal nesheath = 0.0;
-	  BoutReal tesheath = 0.0;
-	  BoutReal tisheath = 0.0;
-
-
-	  nesheath = pnt.ythis(Ne);
-	  tesheath = pnt.ythis(Te);
-	  tisheath = pnt.ythis(Ti);
-
-	  BoutReal phisheath = 0.0;
-	  if (sheath_floating){
-	    // Set potential to be zero current
-	    if (sheath_simplephi){
-	      phisheath = lambda_sheath*tesheath;
-	    } else {
-	      phisheath = tesheath * (lambda_sheath + log(sqrt(tesheath/(tesheath+tisheath))));
-	    }
-	    phisheath = floor(phisheath, 0.0);
-	    pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
-	  } else {
-	    // Assuming zero gradient of potential into the sheath
-	    phisheath = pnt.ythis(phi);
-	    pnt.ynext(phi) = phisheath;
-	  }
-
+	  BoutReal nesheath = 0.5 * (pnt.ythis(Ne)+pnt.ynext(Ne));
+	  BoutReal tesheath =  0.5 * (pnt.ythis(Te)+pnt.ynext(Te));
+	  BoutReal tisheath = 0.5 * (pnt.ythis(Te)+pnt.ynext(Te));
 	  
-	  if(steady_state){
-	    pnt.ynext(phi_1) = pnt.ynext(phi) * lam2;
-	  }
+	  BoutReal phisheath = 0.5 * (pnt.ythis(phi)+pnt.ynext(phi));
+
 
 	  BoutReal visheath = 0.0;
 	  if (sheath_simplephi){
@@ -2731,15 +2758,7 @@ int Hermes::rhs(BoutReal t) {
 
 	  
       break;
-    } // End case 0
-    case 1:{
-      throw BoutException("Not implemented case 1");
-      break;
-    } // End case 1
-    case 2:{
-      throw BoutException("Not implemented case 2");
-      break;
-    }
+    } 
       
     default: {
       throw BoutException("Not implemented");
