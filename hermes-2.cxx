@@ -1238,6 +1238,7 @@ int Hermes::init(bool restarting) {
   OPTION(optsheath, infsink_Te, 2.0);
   OPTION(optsheath, infsink_Ne, 1.0);
   OPTION(optsheath, sheath_floating, true);
+  OPTION(optsheath, sheath_floating_perp, false);
   OPTION(optsheath, infsink_amp, 1.0);
   OPTION(optsheath, neutral_vwall, 1. / 3);  // 1/3rd Franck-Condon energy at wall
   OPTION(optsheath, sheath_yup, true);       // Apply sheath at yup?
@@ -1684,6 +1685,7 @@ int Hermes::init(bool restarting) {
   Te_yp1 = 0.0;
   Te_yp2 = 0.0;
   boundary_direction = 0.0;
+  SAVE_ONCE(boundary_direction);
   if (verbose) {
 
     debug_Jpar_1 = 0.0;
@@ -1691,7 +1693,6 @@ int Hermes::init(bool restarting) {
     debug_Jpar_3 = 0.0;
     SAVE_REPEAT(debug_Jpar_1, debug_Jpar_2, debug_Jpar_3);
     SAVE_REPEAT(debug_decay_Ne);
-    SAVE_ONCE(boundary_direction);
     SAVE_REPEAT(Te_ythis,Te_yprev,Te_ynext);
 
     SAVE_REPEAT(eta_limit_denom);
@@ -2086,17 +2087,24 @@ int Hermes::rhs(BoutReal t) {
 	for (int k = 0; k < mesh->LocalNz; k++) {
 	  // 2.83879629 =  log(0.5 * sqrt(1. / (Me_Mp * PI)))
 	  //phi_1(mesh->xend + 1, j, k) = lam2 * 0.5 * ( 2.83879629*( Te(mesh->xend + 1, j, k) + Te(mesh->xend, j, k) ) );
-	  BoutReal thiste = Te(mesh->xend + 1, j, k);
-	  BoutReal thisti = Ti(mesh->xend + 1, j, k);
-	  if (sheath_simplephi){
-	    phi_1(mesh->xend + 1, j, k) = lam2 * thiste * lambda_sheath;
+	  if (sheath_floating_perp){
+	    BoutReal thiste = Te(mesh->xend + 1, j, k);
+	    BoutReal thisti = Ti(mesh->xend + 1, j, k);
+	    if (sheath_simplephi){
+	      phi_1(mesh->xend + 1, j, k) = lam2 * thiste * lambda_sheath;
+	    } else {
+	      phi_1(mesh->xend + 1, j, k) = lam2 * ( (lambda_sheath + log(sqrt( thiste/(thiste+thisti) )) ))*thiste;
+	    }
 	  } else {
-	    phi_1(mesh->xend + 1, j, k) = lam2 * ( (lambda_sheath + log(sqrt( thiste/(thiste+thisti) )) ))*thiste;
+	    phi_1(mesh->xend + 1, j, k) = phi_1(mesh->xend, j, k);
 	  }
+	  
 	  phi_1(mesh->xend + 2, j, k) = phi_1(mesh->xend + 1, j, k);
 	}
+        
       }
     }
+  
     
     if (mesh->firstX()) {
         for (int j = mesh->ystart; j <= mesh->yend; j++) {
@@ -4274,7 +4282,7 @@ int Hermes::rhs(BoutReal t) {
 	  TE_Vort_dissipation += Vort_diss * new_Delp2(Vort);
 	}      
 	if (Vort_dissipation_par){
-	  TE_Vort_dissipation += -Div_par_ssdissipation(Vort, fastest_espeed);
+	  TE_Vort_dissipation += -Div_par_ssdissipation(Vort, fastest_ispeed);
         }
 	ddt(Vort) += TE_Vort_dissipation;
       }
