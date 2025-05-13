@@ -2492,8 +2492,8 @@ int Hermes::rhs(BoutReal t) {
 	      debug_phisheath[i] = phisheath;
 	      pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
 	    } else {
-	      debug_phisheath[i] = phisheath;
 	      phisheath = interpolate_sheathneighbour(pnt.yprev(phi),pnt.ythis(phi));
+	      debug_phisheath[i] = phisheath;
 	      pnt.ynext(phi) = phisheath;
 	    }
 
