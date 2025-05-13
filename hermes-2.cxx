@@ -728,7 +728,7 @@ int Hermes::init(bool restarting) {
   VePsi_parallelvisc = optvepsi["VePsi_parallelvisc"].doc("Use parallel viscosity as diffusion in electron velocity").withDefault<bool>(false);
   VePsi_supsonicdampening = optvepsi["VePsi_supsonicdampening"].doc("Use supersonic dampening in electron velocity").withDefault<bool>(false);
   VePsi_anomalous = optvepsi["VePsi_anomalous"].doc("Use anomalous transport in electron velocity").withDefault<bool>(false);
-  
+  VePsi_dissipation = optvepsi["VePsi_dissipation"].doc("Use parallel dissipation in electron velocity").withDefault<bool>(false);
   // Initialize the corresponding fields
 
   TE_Ne = optsc["TE_Ne"].doc("Save all terms in time evolution of density").withDefault<bool>(false);
@@ -1085,6 +1085,7 @@ int Hermes::init(bool restarting) {
   TE_VePsi_parallelvisc = 0.0;
   TE_VePsi_supsonicdampening = 0.0;
   TE_VePsi_anomalous = 0.0;
+  TE_VePsi_dissipation = 0.0;
   if (TE_VePsi) {
     if (VePsi_parefield) {
       SAVE_REPEAT(TE_VePsi_parefield);
@@ -1118,7 +1119,10 @@ int Hermes::init(bool restarting) {
     }
     if (VePsi_anomalous) {
       SAVE_REPEAT(TE_VePsi_anomalous);
-    }    
+    }
+    if (VePsi_dissipation) {
+      SAVE_REPEAT(TE_VePsi_dissipation);
+    }
   }
 
 
@@ -3328,6 +3332,13 @@ int Hermes::rhs(BoutReal t) {
 	TE_VePsi_anomalous = Div_a_Grad_perp_mod(a_nu3d, Ve);
       }
       ddt(VePsi) += TE_VePsi_anomalous;
+    }
+
+    if (VePsi_dissipation){
+
+      TE_VePsi_dissipation += -Div_par_ssdissipation(VePsi, fastest_espeed);
+
+      ddt(VePsi) += TE_VePsi_dissipation;
     }
 
         
