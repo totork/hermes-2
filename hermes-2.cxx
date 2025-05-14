@@ -2302,9 +2302,9 @@ int Hermes::rhs(BoutReal t) {
 	  BoutReal vesheath = 0.0;
 
 	  if (!sheath_ramp){
-	    vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
+	    vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (sqrt(2.0*PI))) * exp(-(phisheath/tesheath));
 	  } else {
-	    vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath))); 
+	    vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (sqrt(2.0*PI))) * exp(-(phisheath/tesheath))); 
 	  }
 
 	  if (pnt.dir > 0.99 && pnt.dir < 1.01){
@@ -3080,7 +3080,7 @@ int Hermes::rhs(BoutReal t) {
     if (Vort_dissipation){
       TRACE("Vorticity dissipation");
       TE_Vort_dissipation = Vort_diss * new_Delp2(Vort);
-      //TE_Vort_dissipation -= Div_par_ssdissipation(Vort, fastest_espeed);
+      TE_Vort_dissipation -= Div_par_ssdissipation(Vort, fastest_espeed);
       ddt(Vort) += TE_Vort_dissipation;
     }
     
