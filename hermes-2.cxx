@@ -703,8 +703,9 @@ int Hermes::init(bool restarting) {
   Vort_parflow = optvort["Vort_parflow"].doc("Use parallel ion flow in vorticity").withDefault<bool>(false);
   Vort_dissipation = optvort["Vort_dissipation"].doc("Use dissipation in vorticity").withDefault<bool>(false);
   Vort_sheathdissipation = optvort["Vort_sheathdissipation"].doc("Use sheath dissipation in vorticity").withDefault<bool>(false);
+  Vort_dissipation_par = optvort["Vort_dissipation"].doc("Use dissipation in vorticity").withDefault<bool>(false);
 
-  
+  OPTION(optvort, Vort_dissipation_espeed, false);
   
   if (optvort["bndry_xout"] == "dirichlet"){
     Vort_dirichlet=true;
@@ -907,6 +908,7 @@ int Hermes::init(bool restarting) {
   if (TE_Vort) {
     SAVE_REPEAT(TE_Vort_mag, TE_Vort_parcurrent, TE_Vort_polarcurrent, TE_Vort_collision, TE_Vort_parviscous, TE_Vort_anomalous);
     SAVE_REPEAT(TE_Vort_hyper, TE_Vort_numdiff,TE_Vort_parflow, TE_Vort_dissipation, TE_Vort_sheathdissipation);
+    SAVE_REPEAT(TE_Vort_dissipation_par);
   }
 
 
@@ -2918,8 +2920,16 @@ int Hermes::rhs(BoutReal t) {
     if (Vort_dissipation){
       TRACE("Vorticity dissipation");
       TE_Vort_dissipation = Vort_diss * new_Delp2(Vort);
-      TE_Vort_dissipation -= Div_par_ssdissipation(Vort, fastest_espeed);
       ddt(Vort) += TE_Vort_dissipation;
+    }
+
+    if (Vort_dissipation_par){
+      if (Vort_dissipation_espeed){
+	TE_Vort_dissipation_par	= Div_par_ssdissipation(Vort, fastest_espeed);
+      } else {
+	TE_Vort_dissipation_par = Div_par_ssdissipation(Vort, fastest_ispeed);
+      }
+      ddt(Vort) += TE_Vort_dissipation_par;
     }
     
   }  //End evolve_vort
