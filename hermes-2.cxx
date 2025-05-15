@@ -2357,6 +2357,30 @@ int Hermes::rhs(BoutReal t) {
 	  }
 	  
 	  if (abs(pnt.offset())==1){	              	   	    
+
+	    if (Vort_sheathdissipation){
+              BoutReal dissvel = 0.0;
+              const auto iyp = i.yp();
+              const auto iym = i.ym();
+              if (sheathdissipation_espeed){
+                dissvel = fastest_espeed[i];
+              } else {
+                dissvel = fastest_ispeed[i];
+              }
+
+              if (pnt.dir > 0.5) {
+                BoutReal g_22up = 0.5 * (sqrt(coord->g_22[i]) + sqrt(coord->g_22.yup()[iyp]));
+                BoutReal Jup  = 0.5 * (sqrt(coord->J[i]) + sqrt(coord->J.yup()[iyp]));
+                BoutReal fluxup = 0.5 * dissvel * Vort[i] * Jup / g_22up;
+
+                TE_Vort_sheathdissipation[i] = fluxup / (coord->dy[i]*coord->J[i]);
+              } else {
+                BoutReal g_22down = 0.5 * (sqrt(coord->g_22[i]) + sqrt(coord->g_22.ydown()[iym]));
+                BoutReal Jdown  = 0.5 * (sqrt(coord->J[i]) + sqrt(coord->J.ydown()[iym]));
+                BoutReal fluxdown= -0.5 * dissvel * Vort[i] * Jdown / g_22down;
+                TE_Vort_sheathdissipation[i] = -fluxdown / (coord->dy[i]*coord->J[i]);
+              }
+            }
 	    
 
 	    TRACE("Sheath offset==1, sheath power calculation");
@@ -2427,228 +2451,7 @@ int Hermes::rhs(BoutReal t) {
 	  
       break;
     } // End case 0
-    case 1:{
-      // This is meant to conserve kinetic energy  at the sheath boundary
-      // Temperature is also maintained
-      // Density is this changed to account for the change in momentum
-      sheath_ramp_factor = rampfactor(t,sheath_ramp_time);
-      sheath_dpe = 0.0;
-      sheath_dpi = 0.0;
-      Recycling_flux = 0.0;
-      for (const auto &bndry_par :
-           mesh->getBoundariesPar(BoundaryParType::xout)) {
-        for (const auto& pnt : *bndry_par) {
-          const auto i = pnt.ind();
-          // This if statement catech double boundaries                                                                                              
-          // And ignores boundaries in the negative direction, only taking the positive one                                                          
-          if (boundary_direction[i] > 10.9 && boundary_direction[i] < 11.1 && pnt.dir < 0.0);
-          else{
-	    
-	    BoutReal kin_E = pnt.ythis(Ne) * pnt.ythis(Vi) * pnt.ythis(Vi);
-	    BoutReal tesheath = pnt.ythis(Te);
-	    BoutReal tisheath = pnt.ythis(Ti);
-	    BoutReal phisheath = log(sqrt(tesheath / (tesheath + tisheath))) * tesheath;
-	    pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
-
-	    
-	    BoutReal visheath = 0.0;
-	    if (!sheath_ramp){
-	      visheath = pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath);
-	    } else {
-	      visheath = sheath_ramp_factor * (pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath));
-	    }
-	    BoutReal vesheath = 0.0;
-	    if (evolve_vepsi){
-	      if (!sheath_ramp){
-		vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
-	      } else {
-		vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath)));
-	      }
-	    } else {
-	      vesheath = visheath;
-	    }
-
-	    BoutReal nesheath = floor(kin_E / (visheath*visheath), floor_Ne);
-	    const BoutReal jsheath = nesheath * (visheath - vesheath);
-	    const BoutReal nvisheath = nesheath * visheath;
-	    
-
-	    
-	  } // End if (boundary_direction[i]
-
-	} // End for (const auto& pnt : *bndry_par)
-	
-      } // End for (const auto &bndry_par
-      
-      
-      
-      break;
-    } // End case 1
-    case 2:{
-      // This case should use an exponential decay into the sheath
-      // Just like Hermes-3
-      sheath_ramp_factor = rampfactor(t,sheath_ramp_time);
-      sheath_dpe = 0.0;
-      sheath_dpi = 0.0;
-      Recycling_flux = 0.0;
-      TE_Vort_sheathdissipation = 0.0;
-      for (const auto &bndry_par :
-           mesh->getBoundariesPar(BoundaryParType::xout)) {
-        for (const auto& pnt : *bndry_par) {
-          const auto i = pnt.ind();
-          // This if statement catech double boundaries                                                                                              
-          // And ignores boundaries in the negative direction, only taking the positive one                                                          
-          if (boundary_direction[i] > 10.9 && boundary_direction[i] < 11.1 && pnt.dir < 0.0);
-          else{
-
-	    
-	    pnt.ynext(Ne) = floor(SQ(pnt.ythis(Ne))/pnt.yprev(Ne), floor_Ne); 
-            pnt.ynext(Te) = floor(SQ(pnt.ythis(Te))/pnt.yprev(Te), floor_Te);
-            pnt.ynext(Ti) = floor(SQ(pnt.ythis(Ti))/pnt.yprev(Ti), floor_Ti);
-
-	    BoutReal nesheath = 0.5 * (pnt.ynext(Ne) + pnt.ythis(Ne));
-	    BoutReal tesheath =	0.5 * (pnt.ynext(Te) + pnt.ythis(Te));
-	    BoutReal tisheath =	0.5 * (pnt.ynext(Ti) + pnt.ythis(Ti));
-              
-	    //BoutReal phisheath = log(sqrt(tesheath / (tesheath + tisheath))) * tesheath;
-	    // Extrapolate sheath
-	    pnt.ynext(phi) = pnt.ythis(phi);
-	    //pnt.ynext(phi) = 2.0 * pnt.ythis(phi) - pnt.yprev(phi);
-	    BoutReal phisheath = 0.5 * (pnt.ynext(phi) + pnt.ythis(phi));
-
-	    BoutReal visheath = 0.0;
-	    if (!sheath_ramp){
-	      visheath = pnt.dir * sqrt(tesheath);
-	    } else {
-	      visheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath));
-	    }	    
-	    if (pnt.dir > 0.99 && pnt.dir < 1.01){
-	      if (pnt.ythis(Vi) > visheath){
-		visheath = pnt.ythis(Vi);
-	      }
-	    } else {
-	      if (pnt.ythis(Vi) < visheath){
-		visheath = pnt.ythis(Vi);
-	      }
-	    }
-	    
-	    BoutReal vesheath = 0.0;
-	    if (evolve_vepsi){
-	      if (!sheath_ramp){
-		vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
-	      } else {
-		vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath)));
-	      }
-	      if (pnt.dir > 0.99 && pnt.dir < 1.01){
-		if (pnt.ythis(Ve) > vesheath){
-		  vesheath = pnt.ythis(Ve);
-		}
-	      } else {
-		if (pnt.ythis(Ve) < vesheath){
-		  vesheath = pnt.ythis(Ve);
-		}
-	      }
-	    } else {
-	      vesheath = visheath;
-	    }
-
-	    const BoutReal jsheath = nesheath * (visheath - vesheath);
-	    const BoutReal nvisheath = nesheath * visheath;
-
-	    pnt.ynext(Vi) = 2.0 * visheath - pnt.ythis(Vi);
-	    pnt.ynext(Ve) = 2.0	* vesheath - pnt.ythis(Ve);
-	    pnt.ynext(Jpar) = pnt.ynext(Ne) * (pnt.ynext(Vi) - pnt.ynext(Ve));
-	    pnt.ynext(NVi) = pnt.ynext(Ne) * pnt.ynext(Vi);
-	    	    
-
-	    
-	  if (abs(pnt.offset())==1){	              	   	    
-	    if (Vort_sheathdissipation){
-	      BoutReal dissvel = 0.0;
-	      const auto iyp = i.yp();
-	      const auto iym = i.ym();
-	      if (sheathdissipation_espeed){
-		dissvel = fastest_espeed[i];
-	      } else {
-		dissvel = fastest_ispeed[i];
-	      }
-
-	      if (pnt.dir > 0.5) {
-		BoutReal g_22up = 0.5 * (sqrt(coord->g_22[i]) + sqrt(coord->g_22.yup()[iyp]));
-		BoutReal Jup  = 0.5 * (sqrt(coord->J[i]) + sqrt(coord->J.yup()[iyp]));
-		BoutReal fluxup = 0.5 * dissvel * Vort[i] * Jup / g_22up;
-
-		TE_Vort_sheathdissipation[i] = fluxup / (coord->dy[i]*coord->J[i]);
-	      } else {
-		BoutReal g_22down = 0.5 * (sqrt(coord->g_22[i]) + sqrt(coord->g_22.ydown()[iym]));
-		BoutReal Jdown  = 0.5 * (sqrt(coord->J[i]) + sqrt(coord->J.ydown()[iym]));
-		BoutReal fluxdown= -0.5 * dissvel * Vort[i] * Jdown / g_22down;
-		TE_Vort_sheathdissipation[i] = -fluxdown / (coord->dy[i]*coord->J[i]);
-	      }
-
-	      
-	    }
-
-	    TRACE("Sheath offset==1, sheath power calculation");
-
-            const BoutReal q_e = floor( (sheath_gamma_e - 1.5) * tesheath * nesheath * vesheath * pnt.dir , 0.0);                                                                                         
-            const BoutReal flux_e = q_e * coord->J[i] / sqrt(coord->g_22[i]);
-	    BoutReal power_e = 0.0;
-                                                                                                                                                                                                          
-            const BoutReal q_i = floor( (sheath_gamma_i - 1.0) * tisheath * nesheath * visheath * pnt.dir , 0.0);                                                                                         
-            const BoutReal flux_i = q_i * coord->J[i] / sqrt(coord->g_22[i]);
-	    BoutReal power_i = 0.0;
-
-	    if (!sheath_ramp){
-	      power_e = flux_e / (coord->dy[i] * coord->J[i]);
-	      power_i = flux_i / (coord->dy[i] * coord->J[i]);
-	    } else {
-	      power_e = sheath_ramp_factor * (flux_e / (coord->dy[i] * coord->J[i]));
-              power_i = sheath_ramp_factor * (flux_i / (coord->dy[i] * coord->J[i]));
-	    }
-	    
-	    sheath_dpi[i] -= (3.0/2.0) * power_i;                                                                                                                                                         
-	    sheath_dpe[i] -= (3.0/2.0) * power_e;
-
-	    if (evolve_neutrals && Recycling_coef>0.0){
-	      Recycling_flux[i] = Recycling_coef*abs(visheath * nesheath) * coord->J[i]/( sqrt(coord->g_22[i])*coord->dy[i]*coord->J[i]);
-	    }
-
-	    TRACE("Sheath offset==1, set double next fields");
-
-	    const int offset_factor = 1;
-
-	      //pnt.getAt<false>(Ne, offset_factor) = floor(pnt.ythis(Ne)*decay_Ne*decay_Ne, floor_Ne);
-	    pnt.getAt<false>(Ne, offset_factor) = floor(pnt.ynext(Ne), floor_Ne);
-	    pnt.getAt<false>(Te, offset_factor) = floor(pnt.ynext(Te), floor_Te);
-	    pnt.getAt<false>(Ti, offset_factor) = floor(pnt.ynext(Ti), floor_Ti);
-	    pnt.getAt<false>(Pe, offset_factor) = pnt.getAt<false>(Ne, offset_factor) * pnt.getAt<false>(Te, offset_factor);
-	    pnt.getAt<false>(Pi, offset_factor) = pnt.getAt<false>(Ne, offset_factor) * pnt.getAt<false>(Ti, offset_factor);
-	    
-	    pnt.getAt<false>(phi, offset_factor) = pnt.ynext(phi);
-	    pnt.getAt<false>(Vi, offset_factor) = pnt.ynext(Vi);
-	    pnt.getAt<false>(Ve, offset_factor) = pnt.ynext(Ve);
-	    pnt.getAt<false>(Jpar, offset_factor) = pnt.ynext(Jpar);
-	    pnt.getAt<false>(NVi, offset_factor) = pnt.ynext(NVi);
-	    
-	  
-	  } // End if offset
-
-
-
-
-	    
-	    
-	  } // End if (boundary_direction[i]
-
-	} // End for (const auto& pnt : *bndry_par)
-	
-      } // End for (const auto &bndry_par
-      
-
-      
-      break;
-    }
+    
       
     default: {
       throw BoutException("Not implemented");
