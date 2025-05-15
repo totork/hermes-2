@@ -703,7 +703,7 @@ int Hermes::init(bool restarting) {
   Vort_parflow = optvort["Vort_parflow"].doc("Use parallel ion flow in vorticity").withDefault<bool>(false);
   Vort_dissipation = optvort["Vort_dissipation"].doc("Use dissipation in vorticity").withDefault<bool>(false);
   Vort_sheathdissipation = optvort["Vort_sheathdissipation"].doc("Use sheath dissipation in vorticity").withDefault<bool>(false);
-  Vort_dissipation_par = optvort["Vort_dissipation"].doc("Use dissipation in vorticity").withDefault<bool>(false);
+  Vort_dissipation_par = optvort["Vort_dissipation_par"].doc("Use dissipation in vorticity").withDefault<bool>(false);
 
   OPTION(optvort, Vort_dissipation_espeed, false);
   
