@@ -933,11 +933,15 @@ int Hermes::init(bool restarting) {
   }
 
 
+
+  OPTION(optsc, phi_dirichlet, false);
   
   /////////////////////////////////////////////////////////////////////////
 
   // Switches to change between different calculation methods
 
+
+  
   OPTION(optnumerics, use_Div_n_bxGrad_f_B_XPPM, true);
   OPTION(optnumerics, use_bracket, true);
   OPTION(optnumerics, ne_bndry_flux, false);
@@ -1960,9 +1964,9 @@ int Hermes::rhs(BoutReal t) {
 	    Field3D averaged_phi = DC(phi);
 	    for (int j = mesh->ystart; j <= mesh->yend; j++) {
 	      for (int k = 0; k < mesh->LocalNz; k++) {
-		if (phi_inneraverage){
+		if (phi_dirichlet){
 		  //phi_boundary3d(mesh->xstart - 2, j, k) = Pi(mesh->xstart, j, k ) + averaged_phi(mesh->xstart, j, k);
-		  phi_boundary3d(mesh->xstart - 1, j, k) = Pi(mesh->xstart, j, k ) + averaged_phi(mesh->xstart, j, k);
+		  phi_boundary3d(mesh->xstart - 1, j, k) = 0.5 * (Pi(mesh->xstart - 1, j, k) + Pi(mesh->xstart, j, k));
 		} else {
 		  phi_boundary3d(mesh->xstart - 1, j, k) = 0.5 * ( 3.0*(Te(mesh->xstart - 1, j, k) + Te(mesh->xstart, j, k)) + Pi(mesh->xstart - 1, j, k) + Pi(mesh->xstart, j, k));
 		}
@@ -2001,7 +2005,12 @@ int Hermes::rhs(BoutReal t) {
 	  if (mesh->lastX()) {
 	    for (int j = mesh->ystart; j <= mesh->yend; j++) {
 	      for (int k = 0; k < mesh->LocalNz; k++) {
-		phi_boundary3d(mesh->xend + 1, j, k) = 0.5 * ( lambda_sheath*( Te(mesh->xend + 1, j, k) + Te(mesh->xend, j, k) ) + Pi(mesh->xend + 1, j, k) + Pi(mesh->xend, j, k) );	    
+		if (phi_dirichlet){
+		  phi_boundary3d(mesh->xend + 1, j, k) = 0.5 * (Pi(mesh->xend + 1, j, k) + Pi(mesh->xend, j, k));
+		} else {
+		  
+		  phi_boundary3d(mesh->xend + 1, j, k) = 0.5 * ( lambda_sheath*( Te(mesh->xend + 1, j, k) + Te(mesh->xend, j, k) ) + Pi(mesh->xend + 1, j, k) + Pi(mesh->xend, j, k) );
+		}
 	      }
 	    }
 	  }
