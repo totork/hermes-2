@@ -103,7 +103,7 @@ private:
   Field3D debug_Jpar_1, debug_Jpar_2, debug_Jpar_3;
   Field3D Vort_diss;
   bool phi_inneraverage;
-
+  bool soft_floor;
   bool inner_Te_dirichlet;
   BoutReal inner_Te_value;
 

@@ -113,10 +113,11 @@ BoutReal clip(BoutReal value, BoutReal min, BoutReal max) {
 }
 
 BoutReal floor(BoutReal value, BoutReal min) {
-  if (value < min)
-    return min;
-  return value;
+  if (value < 0.0)
+    value = 0.0;
+  return value + min * exp(-value / min);
 }
+
 
 Ind3D indexAt(const Field3D& f, int x, int y, int z) {
   int ny = f.getNy();
@@ -1148,6 +1149,8 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, low_diffuse_value_Ti, low_diffuse_value_Te);
   OPTION(optnumerics, ceil_Te, -1.0);
   OPTION(optnumerics, use_rhie_interpolation, false);
+
+  
   if (use_rhie_interpolation){
     alloc_all(rhie_cor_up);
     alloc_all(rhie_cor_down);
