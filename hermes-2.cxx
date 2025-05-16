@@ -2741,138 +2741,56 @@ int Hermes::rhs(BoutReal t) {
       break;
     } // End case 0
     case 1:{
-      // This is meant to conserve kinetic energy  at the sheath boundary
-      // Temperature is also maintained
-      // Density is this changed to account for the change in momentum
-      sheath_ramp_factor = rampfactor(t,sheath_ramp_time);
+            sheath_ramp_factor = rampfactor(t,sheath_ramp_time);
       sheath_dpe = 0.0;
       sheath_dpi = 0.0;
       Recycling_flux = 0.0;
       for (const auto &bndry_par :
            mesh->getBoundariesPar(BoundaryParType::xout)) {
-        for (const auto& pnt : *bndry_par) {
-          const auto i = pnt.ind();
-          // This if statement catech double boundaries                                                                                              
-          // And ignores boundaries in the negative direction, only taking the positive one                                                          
-          if (boundary_direction[i] > 10.9 && boundary_direction[i] < 11.1 && pnt.dir < 0.0);
-          else{
-	    
-	    BoutReal kin_E = pnt.ythis(Ne) * pnt.ythis(Vi) * pnt.ythis(Vi);
-	    BoutReal tesheath = pnt.ythis(Te);
-	    BoutReal tisheath = pnt.ythis(Ti);
-	    BoutReal phisheath = log(sqrt(tesheath / (tesheath + tisheath))) * tesheath;
-	    pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
+	for (const auto& pnt : *bndry_par) {
+	  const auto i = pnt.ind();
+	  // This if statement catech double boundaries
+	  // And ignores boundaries in the negative direction, only taking the positive one
+	  if (boundary_direction[i] > 10.9 && boundary_direction[i] < 11.1 && pnt.dir < 0.0);
+	  else{
 
-	    
-	    BoutReal visheath = 0.0;
-	    if (!sheath_ramp){
-	      visheath = pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath);
-	    } else {
-	      visheath = sheath_ramp_factor * (pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath));
-	    }
-	    BoutReal vesheath = 0.0;
-	    if (evolve_vepsi){
-	      if (!sheath_ramp){
-		vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
-	      } else {
-		vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath)));
-	      }
-	    } else {
-	      vesheath = visheath;
-	    }
+	  pnt.ynext(Ne) = floor(pnt.ythis(Ne), floor_Ne); // Not for Ne, sothat NVi does not increase if vi is constant                                                                                                                                                         
+	  pnt.ynext(Te) = floor(pnt.ythis(Te), floor_Te);
+	  pnt.ynext(Ti) = floor(pnt.ythis(Ti), floor_Ti);
 
-	    BoutReal nesheath = floor(kin_E / (visheath*visheath), floor_Ne);
-	    const BoutReal jsheath = nesheath * (visheath - vesheath);
-	    const BoutReal nvisheath = nesheath * visheath;
-	    
+	  
+	  pnt.ynext(Pi) = pnt.ynext(Ne)*pnt.ynext(Ti);
+	  pnt.ynext(Pe) = pnt.ynext(Ne)*pnt.ynext(Te);
 
-	    
-	  } // End if (boundary_direction[i]
+	  
+	  BoutReal nesheath = pnt.ythis(Ne);
+	  BoutReal tesheath = pnt.ythis(Te);
+	  BoutReal tisheath = pnt.ythis(Ti);
 
-	} // End for (const auto& pnt : *bndry_par)
-	
-      } // End for (const auto &bndry_par
-      
-      
-      
-      break;
-    } // End case 1
-    case 2:{
-      // This case should use an exponential decay into the sheath
-      // Just like Hermes-3
-      sheath_ramp_factor = rampfactor(t,sheath_ramp_time);
-      sheath_dpe = 0.0;
-      sheath_dpi = 0.0;
-      Recycling_flux = 0.0;
-      for (const auto &bndry_par :
-           mesh->getBoundariesPar(BoundaryParType::xout)) {
-        for (const auto& pnt : *bndry_par) {
-          const auto i = pnt.ind();
-          // This if statement catech double boundaries                                                                                              
-          // And ignores boundaries in the negative direction, only taking the positive one                                                          
-          if (boundary_direction[i] > 10.9 && boundary_direction[i] < 11.1 && pnt.dir < 0.0);
-          else{
+	  pnt.ynext(phi) = interpolate_sheathneighbour(pnt.yprev(phi), pnt.ythis(phi));
+	  BoutReal phisheath = 0.5 * (pnt.ythis(phi) + pnt.ynext(phi));
+	  
+	  pnt.ynext(Ve) = interpolate_sheathneighbour(pnt.yprev(Ve), pnt.ythis(Ve));
+	  BoutReal vesheath = 0.5 * (pnt.ythis(Ve) + pnt.ynext(Ve));
+	  
+	  if(steady_state){
+	    pnt.ynext(phi_1) = pnt.ynext(phi) * lam2;
+	  }
 
-	    
-	    pnt.ynext(Ne) = floor(SQ(pnt.ythis(Ne))/pnt.yprev(Ne), floor_Ne); 
-            pnt.ynext(Te) = floor(SQ(pnt.ythis(Te))/pnt.yprev(Te), floor_Te);
-            pnt.ynext(Ti) = floor(SQ(pnt.ythis(Ti))/pnt.yprev(Ti), floor_Ti);
+	  BoutReal visheath = pnt.dir * sqrt(tesheath + tisheath);
+	  pnt.ynext(Vi) = interpolate_sheathneighbour(pnt.ythis(Vi), visheath);
+	  
+	  
+	 	  
+	  
+	  pnt.ynext(Jpar) = pnt.ynext(Ne) * (pnt.ynext(Vi) - pnt.ynext(Ve));
+	  BoutReal Jsheath = 0.5 * (pnt.ythis(Jpar) + pnt.ynext(Jpar));
+	  
+	  pnt.ynext(NVi) = pnt.ynext(Ne) * pnt.ynext(Vi);
+	  BoutReal nvisheath = 0.5 * (pnt.ythis(NVi) + pnt.ynext(NVi));
 
-	    BoutReal nesheath = 0.5 * (pnt.ynext(Ne) + pnt.ythis(Ne));
-	    BoutReal tesheath =	0.5 * (pnt.ynext(Te) + pnt.ythis(Te));
-	    BoutReal tisheath =	0.5 * (pnt.ynext(Ti) + pnt.ythis(Ti));
-              
-	    //BoutReal phisheath = log(sqrt(tesheath / (tesheath + tisheath))) * tesheath;
-	    // Extrapolate sheath
-	    pnt.ynext(phi) = 2.0 * pnt.ythis(phi) - pnt.yprev(phi);
-	    BoutReal phisheath = 0.5 * (pnt.ynext(phi) + pnt.ythis(phi));
-
-	    BoutReal visheath = 0.0;
-	    if (!sheath_ramp){
-	      visheath = pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath);
-	    } else {
-	      visheath = sheath_ramp_factor * (pnt.dir * sqrt((5.0/3.0)*tisheath + tesheath));
-	    }	    
-	    if (pnt.dir > 0.99 && pnt.dir < 1.01){
-	      if (pnt.ythis(Vi) > visheath){
-		visheath = pnt.ythis(Vi);
-	      }
-	    } else {
-	      if (pnt.ythis(Vi) < visheath){
-		visheath = pnt.ythis(Vi);
-	      }
-	    }
-	    
-	    BoutReal vesheath = 0.0;
-	    if (evolve_vepsi){
-	      if (!sheath_ramp){
-		vesheath = pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath));
-	      } else {
-		vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (2. * sqrt(PI))) * exp(-(phisheath/tesheath)));
-	      }
-	      if (pnt.dir > 0.99 && pnt.dir < 1.01){
-		if (pnt.ythis(Ve) > vesheath){
-		  vesheath = pnt.ythis(Ve);
-		}
-	      } else {
-		if (pnt.ythis(Ve) < vesheath){
-		  vesheath = pnt.ythis(Ve);
-		}
-	      }
-	    } else {
-	      vesheath = visheath;
-	    }
-
-	    const BoutReal jsheath = nesheath * (visheath - vesheath);
-	    const BoutReal nvisheath = nesheath * visheath;
-
-	    pnt.ynext(Vi) = 2.0 * visheath - pnt.ythis(Vi);
-	    pnt.ynext(Ve) = 2.0	* vesheath - pnt.ythis(Ve);
-	    pnt.ynext(Jpar) = pnt.ynext(Ne) * (pnt.ynext(Vi) - pnt.ynext(Ve));
-	    pnt.ynext(NVi) = pnt.ynext(Ne) * pnt.ynext(Vi);
-	    	    
-
-	    
+	  pnt.ynext(Vort) = pnt.ythis(Vort);
+	  
 	  if (abs(pnt.offset())==1){	              	   	    
 	    
 
@@ -2900,42 +2818,50 @@ int Hermes::rhs(BoutReal t) {
 	    if (evolve_neutrals && Recycling_coef>0.0){
 	      Recycling_flux[i] = Recycling_coef*abs(visheath * nesheath) * coord->J[i]/( sqrt(coord->g_22[i])*coord->dy[i]*coord->J[i]);
 	    }
+	    
+	    // Also set the values in the interpolated value after the sheath, here neumann
 
 	    TRACE("Sheath offset==1, set double next fields");
 
 	    const int offset_factor = 1;
-
+	    if(sheath_interpolate){	      
 	      //pnt.getAt<false>(Ne, offset_factor) = floor(pnt.ythis(Ne)*decay_Ne*decay_Ne, floor_Ne);
-	    pnt.getAt<false>(Ne, offset_factor) = floor(pnt.ynext(Ne), floor_Ne);
-	    pnt.getAt<false>(Te, offset_factor) = floor(pnt.ynext(Te), floor_Te);
-	    pnt.getAt<false>(Ti, offset_factor) = floor(pnt.ynext(Ti), floor_Ti);
-	    pnt.getAt<false>(Pe, offset_factor) = pnt.getAt<false>(Ne, offset_factor) * pnt.getAt<false>(Te, offset_factor);
-	    pnt.getAt<false>(Pi, offset_factor) = pnt.getAt<false>(Ne, offset_factor) * pnt.getAt<false>(Ti, offset_factor);
+	      pnt.getAt<false>(Ne, offset_factor) = floor(pnt.ynext(Ne), floor_Ne);
+	      pnt.getAt<false>(Te, offset_factor) = floor(pnt.ynext(Te), floor_Te);
+	      pnt.getAt<false>(Ti, offset_factor) = floor(pnt.ynext(Ti), floor_Ti);
+	      pnt.getAt<false>(Pe, offset_factor) = pnt.getAt<false>(Ne, offset_factor) * pnt.getAt<false>(Te, offset_factor);
+	      pnt.getAt<false>(Pi, offset_factor) = pnt.getAt<false>(Ne, offset_factor) * pnt.getAt<false>(Ti, offset_factor);
+
+	      pnt.getAt<false>(phi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(phi),pnt.ynext(phi));
+	      pnt.getAt<false>(Vi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Vi),pnt.ynext(Vi));
+	      pnt.getAt<false>(Ve, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Ve),pnt.ynext(Ve));
+	      pnt.getAt<false>(Jpar, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Jpar),pnt.ynext(Jpar));
+	      pnt.getAt<false>(NVi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(NVi),pnt.ynext(NVi));
+	      pnt.getAt<false>(Vort, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Vort),pnt.ynext(Vort));
+	    } else {       	    
+	      pnt.getAt<false>(Ne, offset_factor) = pnt.ynext(Ne);
+	      pnt.getAt<false>(Te, offset_factor) = pnt.ynext(Te);
+	      pnt.getAt<false>(Pe, offset_factor) = pnt.ynext(Pe);
+	      pnt.getAt<false>(Ti, offset_factor) = pnt.ynext(Ti);
+	      pnt.getAt<false>(Pi, offset_factor) = pnt.ynext(Pi);
 	    
-	    pnt.getAt<false>(phi, offset_factor) = pnt.ynext(phi);
-	    pnt.getAt<false>(Vi, offset_factor) = pnt.ynext(Vi);
-	    pnt.getAt<false>(Ve, offset_factor) = pnt.ynext(Ve);
-	    pnt.getAt<false>(Jpar, offset_factor) = pnt.ynext(Jpar);
-	    pnt.getAt<false>(NVi, offset_factor) = pnt.ynext(NVi);
-	    
+	      pnt.getAt<false>(phi, offset_factor) = pnt.ynext(phi);
+	      pnt.getAt<false>(Vi, offset_factor) = pnt.ynext(Vi);
+	      pnt.getAt<false>(Ve, offset_factor) = pnt.ynext(Ve);
+	      pnt.getAt<false>(Jpar, offset_factor) = pnt.ynext(Jpar);
+	      pnt.getAt<false>(NVi, offset_factor) = pnt.ynext(NVi);
+	      pnt.getAt<false>(Vort, offset_factor) = pnt.ynext(Vort);
+	    }
 	  
-	  } // End if offset
+	  } // End interpolate_sheathneighbour
+	  }
+	  
+	} // End for (const auto& pnt : region)
+      } // End iter_regions([&](auto& region)
 
 
-
-
-	    
-	    
-	  } // End if (boundary_direction[i]
-
-	} // End for (const auto& pnt : *bndry_par)
-	
-      } // End for (const auto &bndry_par
-      
-
-      
       break;
-    }
+    } // End case 1
       
     default: {
       throw BoutException("Not implemented");
