@@ -941,7 +941,7 @@ int Hermes::init(bool restarting) {
   // Switches to change between different calculation methods
 
 
-  
+  OPTION(optnumerics, use_old_aparSolver, false);
   OPTION(optnumerics, use_Div_n_bxGrad_f_B_XPPM, true);
   OPTION(optnumerics, use_bracket, true);
   OPTION(optnumerics, ne_bndry_flux, false);
@@ -1427,7 +1427,11 @@ int Hermes::init(bool restarting) {
 
   restart.addOnce(phi, "phi");
   if (electromagnetic){
-    aparSolver = LaplaceXZ::create(mesh,&opt["aparSolver"],CELL_CENTER);
+    if (!use_old_aparSolver){
+      aparSolver = LaplaceXZ::create(mesh,&opt["aparSolver"],CELL_CENTER);
+    } else {
+      oldaparSolver = Laplacian::create(&opt["aparSolver"]);
+    }
   }
   
   Ve.setBoundary("Ve");
@@ -2147,17 +2151,18 @@ int Hermes::rhs(BoutReal t) {
   if (electromagnetic) {
     if (FiniteElMass) {
 
-      Field3D ones = 1.0;
-      //Field3D tmp = -Ne*0.5*beta_e*mi_me;
-      Field3D tmp = mul_all(Ne, mul_all(-0.5, mul_all(beta_e, mi_me)));
-      //Field3D tmp = -0.5*beta_e*mi_me;
 
-      // With laplacian
-      //aparSolver->setCoefD(1.0);
-      //aparSolver->setCoefA(-Ne*0.5*beta_e*mi_me);
-      aparSolver->setCoefs(oness,tmp);
-      //psi = aparSolver->solve(-VePsi,psi);
-      psi = aparSolver->solve(-VePsi*Ne,oness);
+      if (use_old_aparSolver){
+	oldaparSolver->setCoefD(1.0);
+	oldaparSolver->setCoefA(-Ne*0.5*beta_e*mi_me);
+	psi = oldaparSolver->solve(-VePsi*Ne,psi);
+      } else {
+	Field3D tmp = mul_all(Ne, mul_all(-0.5, mul_all(beta_e, mi_me)));
+	aparSolver->setCoefs(oness,tmp);
+	psi = aparSolver->solve(mul_all(-1.0, mul_all(VePsi, Ne)), psi);
+      }
+      
+      
       mesh->communicate(psi);
       
       psi.applyParallelBoundary(parbc);

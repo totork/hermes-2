@@ -408,7 +408,7 @@ private:
   Field2D psi2D;        // Axisymmetric Psi
   
   // Solvers for the electrostatic potential
-
+  bool use_old_aparSolver;
   bool split_n0;        // Split solve into n=0 and n~=0?
   // std::unique_ptr<LaplaceXY> laplacexy{nullptr};
   LaplaceXY *laplacexy; // Laplacian solver in X-Y (n=0)
@@ -427,7 +427,8 @@ private:
   //std::unique_ptr<LaplaceXZ> newaparSolver{nullptr};
   std::unique_ptr<Laplacian> neutralSolver{nullptr};
   std::unique_ptr<Laplacian> preconSolver{nullptr};
-  
+
+  std::unique_ptr<Laplacian> oldaparSolver{nullptr};
   bool relaxation;
   Field3D phi_1;
   BoutReal lambda_0,lambda_2;
