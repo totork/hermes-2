@@ -1680,7 +1680,7 @@ int Hermes::init(bool restarting) {
   
 
   lambda_sheath = log(sqrt(mi_me/(2.0*PI)));
-  
+  SAVE_ONCE(lambda_sheath);
   OPTION(optsc, test_profiles, false);
 
 
