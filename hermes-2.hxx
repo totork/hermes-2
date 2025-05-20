@@ -156,7 +156,12 @@ private:
   bool FiniteElMass;    // Finite Electron Mass
 
   Field3D oness,zeroes;
-  
+
+
+  bool radial_buffers;
+  int radial_inner_width;
+  int radial_outer_width;
+  BoutReal radial_buffer_D;
 
   BoutReal low_diffuse_value;
   // All variables for the rhie chow velocity correction

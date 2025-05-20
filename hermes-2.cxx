@@ -958,6 +958,14 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, use_H3_div_par, false);
   OPTION(optnumerics, low_diffuse_value, 1e-3);
 
+
+  OPTION(optnumerics, radial_buffers, false);
+  OPTION(optnumerics, radial_inner_width, 5);
+  OPTION(optnumerics, radial_outer_width, 5);
+  OPTION(optnumerics, radial_buffer_D, 1.0);
+
+
+  
   OPTION(optvort, sheathdissipation_espeed, true);
   
   OPTION(optnumerics, use_rhie_interpolation, false);
@@ -3768,6 +3776,138 @@ int Hermes::rhs(BoutReal t) {
       
   } // End evolve_neutrals
 
+
+  // RADIAL BUFFERS
+
+  if (radial_buffers) {
+    /// Radial buffer regions
+
+    // Calculate flux sZ averages
+    Field2D PeDC = averageY(DC(Pe));
+    Field2D PiDC = averageY(DC(Pi));
+    Field2D NeDC = averageY(DC(Ne));
+    Field2D VortDC = averageY(DC(Vort));
+
+    if ((mesh->getGlobalXIndex(mesh->xstart) - mesh->xstart) < radial_inner_width) {
+      // This processor contains points inside the inner radial boundary
+
+      int imax = mesh->xstart + radial_inner_width - 1
+                 - (mesh->getGlobalXIndex(mesh->xstart) - mesh->xstart);
+      if (imax > mesh->xend) {
+        imax = mesh->xend;
+      }
+
+      int imin = mesh->xstart;
+      if (!mesh->firstX()) {
+        --imin; // Calculate in guard cells, for radial fluxes
+      }
+      int ncz = mesh->LocalNz;
+
+      for (int i = imin; i <= imax; ++i) {
+        // position inside the boundary (0 = on boundary, 0.5 = first cell)
+        BoutReal pos =
+            static_cast<BoutReal>(mesh->getGlobalXIndex(i) - mesh->xstart) + 0.5;
+
+        // Diffusion coefficient which increases towards the boundary
+        BoutReal D = radial_buffer_D * (1. - pos / radial_inner_width);
+
+        for (int j = mesh->ystart; j <= mesh->yend; ++j) {
+          for (int k = 0; k < ncz; ++k) {
+            BoutReal dx = coord->dx(i, j, k);
+            BoutReal dx_xp = coord->dx(i + 1, j, k);
+            BoutReal J = coord->J(i, j, k);
+            BoutReal J_xp = coord->J(i + 1, j, k);
+	    BoutReal sqg_11 = sqrt(coord->g_11(i,j,k));
+	    BoutReal sqg_11_xp = sqrt(coord->g_11(i+1,j,k));
+	    
+            // Calculate metric factors for radial fluxes
+            BoutReal rad_flux_factor = 0.25 * (J + J_xp) * (dx + dx_xp) * 0.5 * (sqg_11 + sqg_11_xp);
+            BoutReal x_factor = rad_flux_factor / (J * dx * sqg_11);
+            BoutReal xp_factor = rad_flux_factor / (J_xp * dx_xp * sqg_11_xp);
+            // Relax towards constant value on flux surface
+
+            ddt(Pe)(i, j, k) -= D * (Pe(i, j, k) - PeDC(i, j));
+            ddt(Pi)(i, j, k) -= D * (Pi(i, j, k) - PiDC(i, j));
+            ddt(Ne)(i, j, k) -= D * (Ne(i, j, k) - NeDC(i, j));
+            ddt(Vort)(i, j, k) -= D * (Vort(i, j, k) - VortDC(i, j));
+            ddt(NVi)(i, j, k) -= D * NVi(i, j, k);
+
+            // Radial fluxes
+            BoutReal f = D * (Ne(i + 1, j, k) - Ne(i, j, k));
+            ddt(Ne)(i, j, k) += f * x_factor;
+            ddt(Ne)(i + 1, j, k) -= f * xp_factor;
+
+            f = D * (Pe(i + 1, j, k) - Pe(i, j, k));
+            ddt(Pe)(i, j, k) += f * x_factor;
+            ddt(Pe)(i + 1, j, k) -= f * xp_factor;
+
+            f = D * (Pi(i + 1, j, k) - Pi(i, j, k));
+            ddt(Pi)(i, j, k) += f * x_factor;
+            ddt(Pi)(i + 1, j, k) -= f * xp_factor;
+
+            f = D * (Vort(i + 1, j, k) - Vort(i, j, k));
+            ddt(Vort)(i, j, k) += f * x_factor;
+            ddt(Vort)(i + 1, j, k) -= f * xp_factor;
+          }
+        }
+      }
+    }
+    // Number of points in outer guard cells
+    int nguard = mesh->LocalNx - mesh->xend - 1;
+
+    if (mesh->GlobalNx - nguard - mesh->getGlobalXIndex(mesh->xend)
+        <= radial_outer_width) {
+
+      // Outer boundary
+      int imin = mesh->GlobalNx - nguard - radial_outer_width - mesh->getGlobalXIndex(0);
+      if (imin < mesh->xstart) {
+        imin = mesh->xstart;
+      }
+      int ncz = mesh->LocalNz;
+      for (int i = imin; i <= mesh->xend; ++i) {
+
+        // position inside the boundary
+        BoutReal pos =
+            static_cast<BoutReal>(mesh->GlobalNx - nguard - mesh->getGlobalXIndex(i))
+            - 0.5;
+
+        // Diffusion coefficient which increases towards the boundary
+        BoutReal D = radial_buffer_D * (1. - pos / radial_outer_width);
+
+        for (int j = mesh->ystart; j <= mesh->yend; ++j) {
+          for (int k = 0; k < ncz; ++k) {
+            BoutReal dx = coord->dx(i, j, k);
+            BoutReal dx_xp = coord->dx(i + 1, j, k);
+            BoutReal J = coord->J(i, j, k);
+            BoutReal J_xp = coord->J(i + 1, j, k);
+	    BoutReal sqg_11 = sqrt(coord->g_11(i,j,k));
+            BoutReal sqg_11_xp = sqrt(coord->g_11(i+1,j,k));
+	    
+            // Calculate metric factors for radial fluxes
+
+	    BoutReal rad_flux_factor = 0.25 * (J + J_xp) * (dx + dx_xp) * 0.5 * (sqg_11 + sqg_11_xp);
+            BoutReal x_factor = rad_flux_factor / (J * dx * sqg_11);
+            BoutReal xp_factor = rad_flux_factor / (J_xp * dx_xp * sqg_11_xp);
+	    
+            ddt(Pe)(i, j, k) -= D * (Pe(i, j, k) - PeDC(i, j));
+            ddt(Pi)(i, j, k) -= D * (Pi(i, j, k) - PiDC(i, j));
+            ddt(Ne)(i, j, k) -= D * (Ne(i, j, k) - NeDC(i, j));
+            ddt(Vort)(i, j, k) -= D * (Vort(i, j, k) - VortDC(i, j));
+            // ddt(Vort)(i,j,k) -= D*Vort(i,j,k);
+
+            BoutReal f = D * (Vort(i + 1, j, k) - Vort(i, j, k));
+            ddt(Vort)(i, j, k) += f * x_factor;
+            ddt(Vort)(i + 1, j, k) -= f * xp_factor;
+          }
+        }
+      }
+    }
+  }
+
+
+  
+
+  
 
   
   return 0;
