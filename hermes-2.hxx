@@ -189,7 +189,8 @@ private:
 
   // Vorticity
   bool Vort_mag, Vort_parcurrent, Vort_polarcurrent, Vort_collision, Vort_parviscous;
-  bool Vort_anomalous,Vort_hyper,Vort_numdiff, Vort_parflow, Vort_dissipation, Vort_sheathdissipation, Vort_dissipation_par, Vort_phidissipation;
+  bool Vort_anomalous,Vort_hyper,Vort_numdiff, Vort_parflow, Vort_dissipation, Vort_sheathdissipation, Vort_dissipation_par;
+  bool Vort_phidissipation;
   bool sheathdissipation_espeed;
   bool Vort_dissipation_espeed;
   bool poloidal_flows;

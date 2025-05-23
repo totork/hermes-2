@@ -2958,7 +2958,7 @@ int Hermes::rhs(BoutReal t) {
       } else if (use_H3_div_par){
         TE_Vort_phidissipation = -Div_par_mod_H3(mul_all(-1.0, phi),zeroes,fastest_espeed);
       } else {
-	TE_Pe_parflow = -Div_par_mod(mul_all(-1.0, phi),zeroes,fastest_espeed, use_slope_limiter) ;
+	TE_Vort_phidissipation = -Div_par_mod(mul_all(-1.0, phi),zeroes,fastest_espeed, use_slope_limiter) ;
       }
 
       ddt(Vort) += TE_Vort_phidissipation;
