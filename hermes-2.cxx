@@ -3849,7 +3849,7 @@ int Hermes::rhs(BoutReal t) {
             ddt(Vort)(i, j, k) += f * x_factor;
             ddt(Vort)(i + 1, j, k) -= f * xp_factor;
 	    if (damp_core_vorticity){
-	      ddt(Vort)(i,j,k) -= 0.01 * VortDC(i,j); 
+	      ddt(Vort)(i,j,k) -= 0.01 * Vort(i,j,k); 
 	    }
 	    
           }
