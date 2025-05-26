@@ -3591,6 +3591,13 @@ int Hermes::rhs(BoutReal t) {
     } // End Pe_lowdiffuse
 
 
+    if (Pi_parviscousheat){
+      Field3D sqrtBVi = mul_all(B12, Vi);
+      TE_Pi_parviscousheat = (2.0/3.0) * 1.28 * (Pi * tau_i / B12) * Grad_par(sqrtBVi) * Div_par(Vi);
+      ddt(Pi) += TE_Pi_parviscousheat;
+    } // End Pi_parviscousheat
+
+    
     
   } // End evolve_ti
 
