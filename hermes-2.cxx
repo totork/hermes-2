@@ -1230,7 +1230,7 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, inner_Ne_value, Ne_target);
 
   OPTION(optnumerics, inner_NVi_dirichlet, false);
-  
+  OPTION(optnumerics, inner_VePsi_dirichlet, false);
   // Sheath switches
   
   OPTION(optsheath, sheath_model, 0);
@@ -2193,7 +2193,18 @@ int Hermes::rhs(BoutReal t) {
  
   
   if (evolve_vepsi){
-    VePsi.applyParallelBoundary(parbc);
+    if (inner_VePsi_dirichlet){
+      VePsi.applyParallelBoundary(parbc);
+      for (const auto &bndry_par :
+           mesh->getBoundariesPar(BoundaryParType::xin)) {
+        for (const auto& pnt : *bndry_par) {
+          const auto i = pnt.ind();
+          pnt.ynext(VePsi) = interpolate_sheathneighbour(pnt.ythis(VePsi), 0.0 );
+        }
+      }
+    } else {
+      VePsi.applyParallelBoundary(parbc);
+    }
   }
 
   if (evolve_neutrals){
