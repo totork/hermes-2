@@ -4240,6 +4240,20 @@ int Hermes::rhs(BoutReal t) {
 	TE_Vort_numdiff = numericaldissipation(num_Vort,Vort);
 	ddt(Vort) += TE_Vort_numdiff;
       } // End Vort_numdiff
+
+      if (Vort_polarcurrent){
+
+      
+	if (use_Div_n_bxGrad_f_B_XPPM){
+	  TE_Vort_polarcurrent = -0.5 * Div_n_bxGrad_f_B_XPPM(Vort, phi, vort_bndry_flux,
+							      poloidal_flows, false , bracket_factor) * scale_ExB;
+	} else {
+	  TE_Vort_polarcurrent = -0.5 * bracket(phi,Vort, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
+	}
+      }// End Vort_polarcurrent
+          
+
+
       
       
     } // End if evolve_vort
