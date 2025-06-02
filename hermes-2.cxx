@@ -2624,7 +2624,9 @@ int Hermes::rhs(BoutReal t) {
 	  // lambda_sheath = log( sqrt( mi_me/(2*PI) ) )
 
 	  BoutReal vesheath = 0.0;
-	  if (sheath_simplephi){
+	  if (sheath_floating){
+	    vesheath = visheath;
+	  } else if (sheath_simplephi){
 	    if (!sheath_ramp){
 	      vesheath = pnt.dir * sqrt(tesheath) * sqrt(mi_me/(2.0*PI)) * exp(-(phisheath/tesheath));
 	    } else {
