@@ -2662,11 +2662,8 @@ int Hermes::rhs(BoutReal t) {
 	    pnt.ynext(Ve) = interpolate_sheathneighbour(pnt.ythis(Ve), vesheath);
 	    pnt.ynext(Jpar) = interpolate_sheathneighbour(pnt.ythis(Jpar), jsheath);
 	    pnt.ynext(NVi) = interpolate_sheathneighbour(pnt.ythis(NVi), nvisheath);
-	    if (Vort_dirichlet){
-	      pnt.ynext(Vort) = interpolate_sheathneighbour(pnt.ythis(Vort), 0.0);
-	    } else {
-	      pnt.ynext(Vort) = pnt.ythis(Vort);
-	    }
+	    pnt.ynext(Vort) = pnt.ythis(Vort);
+
 	  } else {
 	    pnt.ynext(Vi) = visheath;
 	    pnt.ynext(Ve) = vesheath;
