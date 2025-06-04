@@ -173,6 +173,7 @@ private:
   bool evolve_vepsi;
   bool evolve_ne;
   bool steady_state;
+  bool adhoc;
   
   bool electromagnetic; // Include magnetic potential psi
   bool FiniteElMass;    // Finite Electron Mass

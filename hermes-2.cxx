@@ -466,6 +466,8 @@ int Hermes::init(bool restarting) {
   auto& optpn = opt["Pn"];
   auto& optneutrals = opt["Neutrals"];
   auto& optss = opt["Steady_state"];
+
+
   
   isMMS = opt["solver"]["mms"].withDefault<bool>(false);
   
@@ -500,6 +502,9 @@ int Hermes::init(bool restarting) {
 
   steady_state=optsc["steady_state"]
 			.doc("Use the steady state solver for drift approximations?")
+                        .withDefault<bool>(false);
+  adhoc = optsc["adhoc"]
+			.doc("Use adhoc description of electrostatic potential?")
                         .withDefault<bool>(false);
 
   
@@ -2407,6 +2412,8 @@ int Hermes::rhs(BoutReal t) {
     
   } else if (steady_state){
     phi = div_all(phi_1, lam2);
+  } else if (adhoc){
+    phi = mul_all(3.0, Te);    
   } else {
     phi = 0.0;
   } // End calc_potential
