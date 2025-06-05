@@ -1596,7 +1596,7 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(psi);
   }
 
-  if ((calc_potential) || (steady_state)){
+  if ((calc_potential) || (steady_state) || adhoc){
     SAVE_REPEAT(phi);
   }
   
