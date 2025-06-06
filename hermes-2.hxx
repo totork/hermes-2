@@ -175,13 +175,14 @@ private:
   bool evolve_ne;
   bool steady_state;
   bool adhoc;
+  bool adhoc_current;
   
   bool electromagnetic; // Include magnetic potential psi
   bool FiniteElMass;    // Finite Electron Mass
-
-  Field3D oness,zeroes;
   
+  Field3D oness,zeroes;
 
+  
   BoutReal low_diffuse_value;
   BoutReal low_diffuse_value_Ne;
   BoutReal low_diffuse_value_Ti;
