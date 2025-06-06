@@ -1638,8 +1638,11 @@ int Hermes::init(bool restarting) {
   Jpar.setBoundary("Jpar");
 
   if ((evolve_vepsi) || (steady_state)){
-    SAVE_REPEAT(Jpar, Ve);
+    SAVE_REPEAT(Jpar);
   }
+
+  
+  SAVE_REPEAT(Ve);
   SAVE_REPEAT(Vi);
   psi = 0.0;
   nu = 0.0;
@@ -1963,7 +1966,8 @@ int Hermes::rhs(BoutReal t) {
 	Tn[i] = floor(Pn[i] / Nn[i], floor_Tn);
       } else {
 	Tn[i] = Ti[i];
-      }      
+      }
+      
       NnVn[i] = Nn[i] * Vn[i];
       Pn[i] = Nn[i] * Tn[i];
     }
@@ -3639,7 +3643,7 @@ int Hermes::rhs(BoutReal t) {
 
 
     if (evolve_neutrals && neutralplasmainteraction){
-      ddt(NVi) -= (Vi - Vn)  * (Rrc + Rcx);
+      ddt(NVi) -= (Vi)  * (Rrc + Rcx);
     }
 
 
@@ -4035,14 +4039,14 @@ int Hermes::rhs(BoutReal t) {
       ddt(Pn) = 0.0;
     }
 
-  //  TE_Nn_sources = 0.0;
-
+    
+    
     if (Nn_parflow){
       
       if (!use_new_div_par){
 	TE_Nn_parflow = -Div_par(NnVn);
       } else if (use_H3_div_par){
-	TE_Nn_parflow = -Div_par_mod_H3(Nn, Vn, fastest_espeed);
+	TE_Nn_parflow = -Div_par_mod_H3(Nn, Vn, fastest_ispeed);
       } else {
 	TE_Nn_parflow = -Div_par_mod(Nn,Vn,fastest_ispeed, use_slope_limiter);
       }
@@ -4119,7 +4123,8 @@ int Hermes::rhs(BoutReal t) {
 	ddt(NnVn) += TE_NnVn_perpflow;
       }
     } // End NnVn_perpflow
-  
+
+    
     if (NnVn_pargradient){
       if (!use_new_grad_par){
 	TE_NnVn_pargradient = -Grad_par(Pn);
@@ -4139,7 +4144,7 @@ int Hermes::rhs(BoutReal t) {
     } // End NnVn_pardiffusion
 
     if (NnVn_friction && neutralplasmainteraction){
-      TE_NnVn_friction = (Vi - Vn) * (Rrc + Rcx);
+      TE_NnVn_friction = (Vi) * (Rrc + Rcx);
       ddt(NnVn) += TE_NnVn_friction;
     }
 
@@ -4163,7 +4168,7 @@ int Hermes::rhs(BoutReal t) {
 	  Field3D PnVn = mul_all(Pn, Vn);
 	  TE_Pn_parflow = -Div_par(PnVn);
 	} else if (use_H3_div_par){
-	  TE_Pn_parflow = -Div_par_mod_H3(Pn, Vn, fastest_espeed);
+	  TE_Pn_parflow = -Div_par_mod_H3(Pn, Vn, fastest_ispeed);
 	} else {
 	  TE_Pn_parflow = -Div_par_mod(Pn, Vn, fastest_ispeed, use_slope_limiter);
 	}
