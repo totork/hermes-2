@@ -1189,6 +1189,8 @@ int Hermes::init(bool restarting) {
 
   OPTION(optnumerics, flux_limit_alpha, -1);
   OPTION(optnumerics, kappa_limit_alpha, -1);
+  OPTION(optnumerics, kappa_limit_beta, -1);
+  
   OPTION(optnumerics, eta_limit_alpha, -1);
   OPTION(optnumerics, floor_eta_epar, -1);
 
@@ -3007,7 +3009,28 @@ int Hermes::rhs(BoutReal t) {
   
 
   // Ion parallel heat conduction
-  kappa_ipar = mul_all(mul_all(mul_all(3.9, Ti), Ne), tau_i);
+  if (kappa_limit_beta <= 0.0){
+    kappa_ipar = mul_all(mul_all(mul_all(3.9, Ti), Ne), tau_i);
+  } else {
+    kappa_ipar = 3.9 * Ti * Ne * tau_i;
+    Field3D gradTi = Grad_par(Ti);
+    gradTi.applyBoundary("neumann");
+    mesh->communicate(gradTi);
+    gradTi.applyParallelBoundary(parbc);
+
+
+    Field3D q_SH = kappa_ipar * gradTi;
+    Field3D q_fl = kappa_limit_beta * Ne * Ti32;
+
+    Field3D denom = 1.0 + abs(q_SH / q_fl);
+
+
+    kappa_ipar = kappa_ipar / denom;
+    kappa_ipar.applyBoundary("neumann");
+    mesh->communicate(kappa_ipar);
+    kappa_ipar.applyParallelBoundary(parbc);
+  }
+  
   
   // Electron parallel viscosity
   if (!use_new_viscosity){

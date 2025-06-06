@@ -148,6 +148,7 @@ private:
 
   BoutReal flux_limit_alpha;  // Flux limiter. < 0 disables
   BoutReal kappa_limit_alpha; // Heat flux limiter from SOLPS
+  BoutReal kappa_limit_beta;
   BoutReal eta_limit_alpha;   // Momentum flux limiter from SOLPS
   BoutReal floor_eta_epar;
   BoutReal scale_ExB;
