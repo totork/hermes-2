@@ -2534,31 +2534,11 @@ int Hermes::rhs(BoutReal t) {
 	Field3D gradparphi = Grad_par(phi);
 	Field3D gradparTe = Grad_par(Te);
 	Field3D gradparPe = Grad_par(Pe);
-	
-	if (!use_new_viscosity){
-	  eta_epar = mul_all(0.7333, mul_all(mi_me,mul_all(tau_e,Pe)));
-	} else {
-	  eta_epar = mul_all(div_all(4.0,3.0),mul_all(0.73,mul_all(Pe,tau_e)));
-	}
       
+	
+	Jpar = (Ne / nu) * (gradparPe/Ne + 0.71*gradparTe - gradparphi);
 
-
-    
-	gradparphi.applyBoundary("neumann");
-	gradparTe.applyBoundary("neumann");
-	gradparPe.applyBoundary("neumann");
-	mesh->communicate(gradparphi ,gradparTe, gradparPe);
-	gradparphi.applyParallelBoundary(parbc);
-	gradparTe.applyParallelBoundary(parbc);
-	gradparPe.applyParallelBoundary(parbc);
-    
-	Jpar = mul_all(mul_all(-1.0, Ne), div_all(gradparphi, nu)) + div_all(gradparPe, nu) + div_all(mul_all(0.71, mul_all(Ne, gradparTe)), nu);
-	if (verbose){
-	  debug_Jpar_1 = mul_all(mul_all(-1.0, Ne), div_all(gradparphi, nu));
-	  debug_Jpar_2 = div_all(gradparPe, nu);
-	  debug_Jpar_3 = div_all(mul_all(0.71, mul_all(Ne, gradparTe)), nu);
-	}
-    
+	
 	Jpar.applyBoundary("neumann");
 	mesh->communicate(Jpar);
 	Jpar.applyParallelBoundary(parbc);
