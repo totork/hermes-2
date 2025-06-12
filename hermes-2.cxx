@@ -96,6 +96,9 @@ BoutReal rampfactor(BoutReal thistime, BoutReal timecut){
   }
 }
 
+BoutReal logicgrowth(BoutReal x){  
+  return 1.0/(1.0 + exp(-x));
+}
 
 
 
@@ -1199,6 +1202,17 @@ int Hermes::init(bool restarting) {
 
   
   OPTION(optnumerics, scale_ExB, 1.0);
+  OPTION(optnumerics, scale_lowT, false);
+  OPTION(optnumerics, scale_lowN, false);
+  OPTION(optnumerics, scale_floorfactor, 10.0);
+  scale_Ne = 1.0;
+  scale_Te = 1.0;
+  scale_Ti = 1.0;
+
+ 
+
+
+  
   OPTION(optnumerics, resistivity_multiply, 1.0);
   OPTION(optnumerics, electron_weight, 1.0);
   OPTION(optnumerics, poloidal_flows, false);
@@ -1672,6 +1686,8 @@ int Hermes::init(bool restarting) {
   Jpar_sheath = 0.0;
   Vort_sheath = 0.0;
   phi_sheath = 0.0;
+
+
   
   a = 0.0;
   eta_limit_denom = 0.0;
@@ -1702,8 +1718,15 @@ int Hermes::init(bool restarting) {
   Te_yp2 = 0.0;
   boundary_direction = 0.0;
   SAVE_ONCE(boundary_direction);
-  if (verbose) {
 
+  if (verbose) {
+    SAVE_REPEAT(scale_Ne, scale_Te, scale_Ti);
+  } else {
+    SAVE_ONCE(scale_Ne, scale_Te, scale_Ti);
+  }
+  
+  if (verbose) {
+    SAVE_REPEAT(scale_Ne, scale_Te, scale_Ti);
     debug_Jpar_1 = 0.0;
     debug_Jpar_2 = 0.0;
     debug_Jpar_3 = 0.0;
@@ -2293,6 +2316,43 @@ int Hermes::rhs(BoutReal t) {
   if (!evolve_ti){
     Pi=Pe;
   }
+
+
+
+
+
+  //////////////////////////////////////////////////////////////
+  // Scale factors to turn of conduction and advection for densities and pressures
+
+  if (scale_lowN){
+    BoutReal cutoffNe = floor_Ne * scale_floorfactor;
+    BOUT_FOR(i, Ne.getRegion("RGN_NOY")) {
+      BoutReal thisx = (Ne[i]-cutoffNe) / (min(Ne[i], cutoffNe));
+      scale_Ne[i] = logicgrowth(thisx);
+    }
+  } else {
+    scale_Ne = 1.0;
+  }
+
+  if (scale_lowT){
+    BoutReal cutoffPe = floor_Ne * floor_Te * scale_floorfactor;
+    BoutReal cutoffPi = floor_Ne * floor_Ti * scale_floorfactor;
+    
+    BOUT_FOR(i, Ne.getRegion("RGN_NOY")) {
+      BoutReal thisx = (Pe[i]-cutoffPe) / (min(Pe[i], cutoffPe));
+      scale_Te[i] = logicgrowth(thisx);
+
+      thisx = (Pi[i]-cutoffPi) / (min(Pi[i], cutoffPi));
+      scale_Ti[i] = logicgrowth(thisx);
+    }
+  } else {
+    scale_Te = 1.0;
+    scale_Ti = 1.0;
+  }
+
+  
+
+  
 
 
 
@@ -3167,6 +3227,11 @@ int Hermes::rhs(BoutReal t) {
 	  TE_Ne_parflow = -Div_par_mod(Ne,Vi,fastest_espeed, use_slope_limiter);
 	}
       }
+      
+      if (scale_lowN){
+	TE_Ne_parflow *= scale_Ne;
+      }
+      
       ddt(Ne) += TE_Ne_parflow;
     }  // End Ne_parflow
 
@@ -3540,6 +3605,9 @@ int Hermes::rhs(BoutReal t) {
       } else {
 	TE_NVi_parflow = -Div_par_nvv_mod(Ne,Vi,fastest_ispeed);
       }
+      if (scale_lowN){
+	TE_NVi_parflow *= scale_Ne;
+      }
       
       ddt(NVi) += TE_NVi_parflow;
     } // End NVi_parflow
@@ -3564,6 +3632,11 @@ int Hermes::rhs(BoutReal t) {
 	tmp = Div_par_K_Grad_par_mod(div_all(mul_all(Pi,tau_i),coord->Bxy),mul_all(B12,Vi), true);
       }
       TE_NVi_parviscos = 1.28*B12*tmp;
+
+      if (scale_lowN){
+	TE_NVi_parviscos *= scale_Ne;
+      }
+      
       ddt(NVi) += TE_NVi_parviscos;
     } // End NVi_parviscos
 
@@ -3680,6 +3753,11 @@ int Hermes::rhs(BoutReal t) {
       } else {
 	TE_Pe_parflow = -Div_par_mod(Pe,Ve,fastest_espeed, use_slope_limiter) - (2. / 3) * Pe * Div_par(Ve);
       }
+
+      if (scale_lowT){
+	TE_Pe_parflow *= scale_Te;
+      }
+      
       ddt(Pe) += TE_Pe_parflow;
     } // End Pe_parflow
 
@@ -3699,7 +3777,11 @@ int Hermes::rhs(BoutReal t) {
       if (use_conduction_limiter){
 	TE_Pe_conduction = term_limiter(TE_Pe_conduction, conduction_limiter_value);
       }
-      
+
+      if (scale_lowT){
+	TE_Pe_conduction *= scale_Te;
+      }
+
       
       ddt(Pe) += TE_Pe_conduction;
     } // End Pe_conduction
@@ -3881,6 +3963,11 @@ int Hermes::rhs(BoutReal t) {
 	TE_Pi_parflow = -Div_par_mod(Pi,Vi,fastest_ispeed, use_slope_limiter);
 	TE_Pi_parflow += -(2. / 3) * Pi * Div_par(Vi);
       }
+
+      if (scale_lowT){
+	TE_Pi_parflow *= scale_Ti;
+      }
+      
       ddt(Pi) += TE_Pi_parflow;
     } // End Pi_parflow
 
@@ -3906,6 +3993,12 @@ int Hermes::rhs(BoutReal t) {
       } else {
 	TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par_mod(kappa_ipar, Ti, true);
       }
+
+      if (scale_lowT){
+	TE_Pi_conduction *= scale_Ti;
+      }
+
+      
       ddt(Pi) += TE_Pi_conduction;
     } // End Pi_conduction 
 
