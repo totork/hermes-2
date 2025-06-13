@@ -1265,7 +1265,7 @@ int Hermes::init(bool restarting) {
   OPTION(optsheath, infsink_Te, 2.0);
   OPTION(optsheath, infsink_Ne, 1.0);
   OPTION(optsheath, sheath_floating, true);
-  OPTION(optsheath, sheath_floating_perp, true);
+  OPTION(optsheath, sheath_floating_perp, false);
   OPTION(optsheath, infsink_amp, 1.0);
   OPTION(optsheath, neutral_vwall, 1. / 3);  // 1/3rd Franck-Condon energy at wall
   OPTION(optsheath, sheath_yup, true);       // Apply sheath at yup?
