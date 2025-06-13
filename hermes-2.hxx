@@ -60,7 +60,9 @@ private:
   
   // Evolving variables
   Field3D Ne;         // Electron density
+  Field3D Nelim;
   Field3D Pe, Pi;     // Electron and Ion pressures
+  Field3D Pelim, Pilim;
   Field3D VePsi;      // Combination of Ve and psi
   Field3D Vort;       // Vorticity
   Field3D NVi;        // Parallel momentum
@@ -85,6 +87,7 @@ private:
   // Auxilliary variables
   Field3D Te;         // Electron temperature
   Field3D Ti;         // Ion temperature
+  Field3D Telim, Tilim;
   Field3D Ve, Vi, Jpar;  // Electron and ion parallel velocities
   Field3D psi;        // Electromagnetic potential (-A_||)
   Field3D phi;        // Electrostatic potential
@@ -134,7 +137,7 @@ private:
   bool set_inner_neumann;
   bool check_finite;
   // Limited variables
-  Field3D Telim, Tilim;
+
   Field3D Te32, Ti32;
   bool isMMS;
   bool boundarydecay;
