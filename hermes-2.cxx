@@ -4011,6 +4011,8 @@ int Hermes::rhs(BoutReal t) {
     output_Ez = - DDZ(phi) / sqrt(coord->g_33);
   } // End output_analysis
 
+  Te = Telim;
+  Ti = Telim;
   
   
   return 0;
