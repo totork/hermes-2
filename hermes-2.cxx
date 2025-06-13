@@ -1837,6 +1837,11 @@ int Hermes::init(bool restarting) {
   
   alloc_all(Te);
   alloc_all(Ti);
+  alloc_all(Nelim);
+  alloc_all(Pelim);
+  alloc_all(Telim);
+  alloc_all(Pilim);
+  alloc_all(Tilim);
   alloc_all(Vi);
   alloc_all(a);
   alloc_all(b);
