@@ -4012,7 +4012,7 @@ int Hermes::rhs(BoutReal t) {
   } // End output_analysis
 
   Te = Telim;
-  Ti = Telim;
+  Ti = Tilim;
   
   
   return 0;
