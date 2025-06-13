@@ -1951,9 +1951,8 @@ int Hermes::rhs(BoutReal t) {
   if (evolve_neutrals){
     Nn.applyBoundary(t);
     NnVn.applyBoundary(t);
-    if (evolve_pn){
-      Pn.applyBoundary(t);
-    }
+    Pn.applyBoundary(t);
+
   }
 
   if (steady_state){
@@ -2007,9 +2006,8 @@ int Hermes::rhs(BoutReal t) {
   if (evolve_neutrals){
     Nn.applyBoundary(t);
     NnVn.applyBoundary(t);
-    if (evolve_pn){
-      Pn.applyBoundary(t);
-    }
+    Pn.applyBoundary(t);
+
   }
 
   if (steady_state){
@@ -2247,9 +2245,8 @@ int Hermes::rhs(BoutReal t) {
   if (evolve_neutrals){
     Nn.applyParallelBoundary(parbc);
     NnVn.applyParallelBoundary(parbc);
-    if (evolve_pn){
-      Pn.applyParallelBoundary(parbc);
-    }
+    Pn.applyParallelBoundary(parbc);
+
   }
 
   if (steady_state){
@@ -4112,6 +4109,7 @@ int Hermes::rhs(BoutReal t) {
       ddt(Pn) = 0.0;
     }
 
+    Field3D Dnn_Tn = div_all(Dnn, Tn);
     
     
     if (Nn_parflow){
@@ -4131,10 +4129,10 @@ int Hermes::rhs(BoutReal t) {
     if (Nn_perpflow){
       if (!simplified_diffusion){
 	if (use_new_divagradperp){
-	  TE_Nn_perpflow =  FCIDiv_a_Grad_perp(div_all(Dnn, Tn),Pn);
+	  TE_Nn_perpflow =  FCIDiv_a_Grad_perp(Dnn_Tn, Pn);
 	} else {
 	  //TE_Nn_perpflow = div_all(Dnn, Tn) * new_Delp2(Pn);
-	  TE_Nn_perpflow = Div_a_Grad_perp_curv(div_all(Dnn, Tn),Pn);
+	  TE_Nn_perpflow = Div_a_Grad_perp_curv(Dnn_Tn, Pn);
 	}      
 	ddt(Nn) += TE_Nn_perpflow;
       } else {
@@ -4185,10 +4183,10 @@ int Hermes::rhs(BoutReal t) {
     if (NnVn_perpflow){
       if (!simplified_diffusion){
 	if (use_new_divagradperp){
-	  TE_NnVn_perpflow =  FCIDiv_a_Grad_perp(div_all(mul_all(Vn, Dnn),Tn),Pn);
+	  TE_NnVn_perpflow =  FCIDiv_a_Grad_perp(mul_all(Vn, Dnn_Tn),Pn);
 	} else {
 	  //TE_NnVn_perpflow = Vn * Dnn / Tn * new_Delp2(Pn); 
-	  TE_NnVn_perpflow =  Div_a_Grad_perp_curv(div_all(mul_all(Vn, Dnn) ,Tn),Pn);
+	  TE_NnVn_perpflow =  Div_a_Grad_perp_curv(mul_all(Vn, Dnn_Tn),Pn);
 	}
 	ddt(NnVn) += TE_NnVn_perpflow;
       } else {
@@ -4199,11 +4197,7 @@ int Hermes::rhs(BoutReal t) {
 
     
     if (NnVn_pargradient){
-      if (!use_new_grad_par){
-	TE_NnVn_pargradient = -Grad_par(Pn);
-      } else {
-	TE_NnVn_pargradient = -Grad_par_mod(Pn);
-      }
+      TE_NnVn_pargradient = -Grad_par(Pn);
       ddt(NnVn) += TE_NnVn_pargradient;
     } // End NnVn_pargradient
 
