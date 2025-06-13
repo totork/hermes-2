@@ -1288,7 +1288,7 @@ int Hermes::init(bool restarting) {
   // Output additional information
   OPTION(optsc, verbose, false);    // Save additional fields
   OPTION(optsc, output_ddt, false); // Save time derivatives
-
+  OPTION(optsc, output_power, verbose);
   
   // Normalisation
   OPTION(optsc, Tnorm, 20);  // Reference temperature [eV]
@@ -1803,11 +1803,11 @@ int Hermes::init(bool restarting) {
   
 
   
-  if (evolve_te && parallel_sheaths && verbose){
+  if (evolve_te && parallel_sheaths && output_power){
     SAVE_REPEAT(sheath_dpe);
   }
 
-  if (evolve_ti && parallel_sheaths && verbose){
+  if (evolve_ti && parallel_sheaths && output_power){
     SAVE_REPEAT(sheath_dpi);
   }
   zero_all(Ve);
