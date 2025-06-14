@@ -1289,6 +1289,7 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, verbose, false);    // Save additional fields
   OPTION(optsc, output_ddt, false); // Save time derivatives
   OPTION(optsc, output_power, verbose);
+  OPTION(optsc, output_sheath, verbose);
   
   // Normalisation
   OPTION(optsc, Tnorm, 20);  // Reference temperature [eV]
@@ -1760,12 +1761,15 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(kappa_epar,eta_epar); // Parallel electron heat conductivity
     SAVE_REPEAT(kappa_ipar); // Parallel ion heat conductivity
     SAVE_REPEAT(nu);
-    SAVE_REPEAT(debug_visheath,debug_vesheath,debug_sheathexp);
-    SAVE_REPEAT(debug_phisheath);
     SAVE_REPEAT(debug_VePsisheath);
     SAVE_REPEAT(a);
   }
 
+  if (output_sheath){
+    SAVE_REPEAT(debug_phisheath);
+    SAVE_REPEAT(debug_visheath,debug_vesheath);
+  }
+  
   if(kappa_limit_alpha>0.0){
     SAVE_REPEAT(debug_denom);
   }
@@ -2748,13 +2752,16 @@ int Hermes::rhs(BoutReal t) {
 	    pnt.ynext(Vort) = pnt.ythis(Vort);
 	  }
 
+	  if (output_sheath){
+	    debug_visheath[i] = visheath;
+            debug_vesheath[i] = vesheath;
+            debug_phisheath[i] = phisheath;
+	  }
+	  
 	  if (verbose){
 	    Te_ythis[i] = pnt.ythis(Te);
 	    Te_ynext[i] = pnt.ynext(Te);
 	    Te_yprev[i] = pnt.yprev(Te);
-	    debug_visheath[i] = visheath;
-	    debug_vesheath[i] = vesheath;
-	    debug_phisheath[i] = phisheath;
 	    Te_sheath[i] = tesheath;
 	  }
 	  

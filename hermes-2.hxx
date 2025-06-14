@@ -332,7 +332,7 @@ private:
   bool verbose;    // Outputs additional fields, mainly for debugging
   bool output_ddt; // Output time derivatives
   bool output_power;
-
+  bool output_sheath;
   // neutral variables
   bool evolve_neutrals, evolve_pn;
   Field3D Nn;
