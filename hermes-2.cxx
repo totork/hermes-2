@@ -3105,33 +3105,25 @@ int Hermes::rhs(BoutReal t) {
     kappa_ipar.applyParallelBoundary(parbc);
   }
   
-  
-  // Electron parallel viscosity
-  if (!use_new_viscosity){
-    eta_epar = mul_all(0.7333, mul_all(mi_me,mul_all(tau_e,Pe)));
+
+  if (eta_limit_alpha <= 0.0){
+    eta_epar = 0.973 * mi_me * tau_e * Te;
+    
+    eta_epar.applyBoundary("neumann");
+    mesh->communicate(eta_epar);
+    eta_epar.applyParallelBoundary(parbc);
   } else {
-    eta_epar = mul_all(div_all(4.0,3.0),mul_all(0.73,mul_all(Pe,tau_e)));
-  }
+    eta_epar = 0.973 * mi_me * tau_e * Te;
+    Field3D q_cl = eta_epar * Grad_par(Ve);
+    Field3D q_fl = eta_limit_alpha * Pe * mi_me;
+    Field3D denom = 1.0 + abs(q_cl / q_fl);
+    eta_epar = eta_epar/denom;
     
-  if (eta_limit_alpha>0.0){
-    Field3D qm_cl = eta_epar * Grad_par(Ve);
-    mesh->communicate(qm_cl);
-    qm_cl.applyParallelBoundary(parbc);
-    
-    Field3D qm_fl = mul_all(eta_limit_alpha,mul_all(Pe,mi_me));
-    Field3D tmp = abs(div_all(qm_cl,qm_fl));
-    mesh->communicate(tmp);
-    tmp.applyParallelBoundary(parbc);
-    eta_limit_denom = add_all(1,tmp);
-    eta_epar = div_all(eta_epar,eta_limit_denom);
-      
+    eta_epar.applyBoundary("neumann");
+    mesh->communicate(eta_epar);
+    eta_epar.applyParallelBoundary(parbc);
   }
 
-  if (floor_eta_epar>0.0){
-    BOUT_FOR(i, eta_epar.getRegion("RGN_ALL")) {
-      floor_all(eta_epar, floor_eta_epar, i);
-    }
-  }
   
   //////////////////////////////////////////////////////////////                                                                        
   TRACE("Calculating resistivity");
