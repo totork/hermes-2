@@ -434,6 +434,18 @@ const Field3D adaptive_sourceterm(const Field3D& thisfield ,const Field3D& sourc
 }
 
 
+const Field3D low_sourceterm(const Field3D& f, const BoutReal lowvalue, const BoutReal scalefactor){
+  Field3D diff = f - lowvalue;
+  Field3D result = 0.0;
+  BOUT_FOR(i, f.getRegion("RGN_NOY")){
+    if (diff[i] < 0.0){
+      result[i] = abs(diff[i])/scalefactor;
+    }
+  }
+  return result;
+}
+
+
 
 
 const Field3D new_Delp2(const Field3D& a){
@@ -1158,6 +1170,7 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, low_diffuse_value_Ne, low_diffuse_value);
   OPTION(optnumerics, low_diffuse_value_Te, low_diffuse_value);
   OPTION(optnumerics, low_diffuse_value_Ti, low_diffuse_value_Te);
+
   OPTION(optnumerics, ceil_Te, -1.0);
   OPTION(optnumerics, use_rhie_interpolation, false);
 
@@ -1223,6 +1236,16 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, floor_Te,0.1);
   OPTION(optnumerics, floor_Ti,0.1);
 
+
+  OPTION(optnumerics, low_source, false);
+  OPTION(optnumerics, low_source_Ne, floor_Ne);
+  OPTION(optnumerics, low_source_Te, floor_Te);
+  OPTION(optnumerics, low_source_Ti, floor_Ti);
+  OPTION(optnumerics, low_source_timescale, 1e-5);
+  
+  
+
+  
   OPTION(optnumerics, use_Te_limiter, false);
   OPTION(optnumerics, use_Ti_limiter, false);
   OPTION(optnumerics, Te_limiter_value, 1.0);
@@ -1323,6 +1346,8 @@ int Hermes::init(bool restarting) {
       sqrt(AA) / (4.78e-8 * (Nnorm / 1e6) * lambda_ii * pow(Tnorm, -3. / 2));
   output.write("\ttau_e0={:e}, tau_i0={:e}\n", tau_e0, tau_i0);
 
+
+  low_source_timescale *= Omega_ci;
 
   // Get the transport parameters
 
@@ -3292,6 +3317,10 @@ int Hermes::rhs(BoutReal t) {
     } // End Ne_lowdiffuse
 
     
+    if (low_source){
+      ddt(Ne) += low_sourceterm(Ne, low_source_Ne, low_source_timescale);
+    }
+    
   } //End evolve_ne
   
   
@@ -3905,6 +3934,10 @@ int Hermes::rhs(BoutReal t) {
       ddt(Pe) += TE_Pe_lowdiffuse;
     } // End Pe_lowdiffuse
 
+
+    if (low_source){
+      ddt(Pe) += low_sourceterm(Te, low_source_Te, low_source_timescale);
+    }
     
   } // End evolve_te
 
@@ -4090,6 +4123,9 @@ int Hermes::rhs(BoutReal t) {
     } // End Pe_lowdiffuse
 
 
+    if (low_source){
+      ddt(Pi) += low_sourceterm(Ti, low_source_Ti, low_source_timescale);
+    }
     
   } // End evolve_ti
 

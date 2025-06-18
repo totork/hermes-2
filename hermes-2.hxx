@@ -187,6 +187,9 @@ private:
   
   Field3D oness,zeroes;
 
+  bool low_source;
+  BoutReal low_source_Ne, low_source_Te, low_source_Ti, low_source_timescale;
+  
   
   BoutReal low_diffuse_value;
   BoutReal low_diffuse_value_Ne;
