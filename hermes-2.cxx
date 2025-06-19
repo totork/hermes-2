@@ -2777,6 +2777,12 @@ int Hermes::rhs(BoutReal t) {
 	    pnt.ynext(Vort) = pnt.ythis(Vort);
 	  }
 
+	  if (evolve_neutrals){
+	    BoutReal sheathneutralvelocity = interpolate_sheathneighbour(pnt.ythis(Vn), 0.0);
+	    pnt.ynext(Vn) = sheathneutralvelocity;
+	    pnt.ynext(NnVn) = pnt.ythis(Nn) * sheathneutralvelocity;	    
+	  }
+	  
 	  if (output_sheath){
 	    debug_visheath[i] = visheath;
             debug_vesheath[i] = vesheath;
