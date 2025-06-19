@@ -181,7 +181,7 @@ private:
   bool steady_state;
   bool adhoc;
   bool adhoc_current;
-  
+  BoutReal nu_maxTe;
   bool electromagnetic; // Include magnetic potential psi
   bool FiniteElMass;    // Finite Electron Mass
   

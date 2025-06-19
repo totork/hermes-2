@@ -1365,6 +1365,7 @@ int Hermes::init(bool restarting) {
     mu_i_par = div_all(mu_i_par, rho_s0 * Omega_ci * rho_s0);
     mu_i_perp = div_all(mu_i_perp, rho_s0 * Omega_ci * rho_s0);
     SAVE_ONCE(mu_i_par, mu_i_perp);
+    nu_maxTe = optss["nu_maxTe"].withDefault(-1.0);
   }
 
 
@@ -3162,6 +3163,17 @@ int Hermes::rhs(BoutReal t) {
   //nu = resistivity_multiply / (1.96 * tau_e * mi_me);
   nu = div_all(resistivity_multiply,mul_all(1.96,mul_all(tau_e,mi_me)));
 
+  if (nu_maxTe>1.0){
+
+    Field3D newTe = ceil(Te, nu_maxTe);
+    Field3D newTe32 = newTe * sqrt(Te);
+    Field3D tau_elim = (Cs0/rho_s0) * tau_e0 * newTe32 / Ne;
+    nu = resistivity_multiply / (1.96 * tau_elim * mi_me);
+    nu.applyBoundary("neumann");
+    mesh->communicate(nu);
+    nu.applyParallelBoundary(parbc);
+  }
+  
   Wi = mul_all(div_all(3.0,mi_me),mul_all(Ne,div_all(sub_all(Te,Ti),tau_e)));
 
 
