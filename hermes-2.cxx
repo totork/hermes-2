@@ -2016,12 +2016,13 @@ int Hermes::rhs(BoutReal t) {
       Vn[i] = NnVn[i] / Nn[i];
       if (evolve_pn){
 	Tn[i] = floor(Pn[i] / Nn[i], floor_Tn);
+	Pn[i] = Nn[i] * Tn[i];
       } else {
 	Tn[i] = Ti[i];
+	Pn[i] = Ti[i] * Nn[i];
       }
       
       NnVn[i] = Nn[i] * Vn[i];
-      Pn[i] = Nn[i] * Tn[i];
     }
   }
 
@@ -2187,7 +2188,9 @@ int Hermes::rhs(BoutReal t) {
   
   mesh->communicate(EvolvingVars);
 
-
+  if (evolve_neutrals && !evolve_pn){
+    mesh->communicate(Pn);
+  }
   
   Vort.applyParallelBoundary(parbc);
 
@@ -2308,14 +2311,19 @@ int Hermes::rhs(BoutReal t) {
     if(evolve_neutrals){
 
       floor_all(Nn, floor_Nn, i);
-      
-      div_all(Tn, Pn, Nn, i);
+
       div_all(Vn, NnVn, Nn, i);
-      
-      floor_all(Tn, floor_Tn, i);
-      
-      mul_all(Pn, Tn, Nn, i);
       mul_all(NnVn, Vn, Nn, i);
+
+      if (evolve_pn){
+	div_all(Tn, Pn, Nn, i);
+	floor_all(Tn, floor_Tn, i);
+	mul_all(Pn, Tn, Nn, i);
+      } else {
+	mul_all(Pn, Ti, Nn, i);
+	div_all(Tn, Pn, Nn, i);
+      }
+      
       
     }
     
