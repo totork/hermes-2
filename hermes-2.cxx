@@ -1971,22 +1971,22 @@ int Hermes::rhs(BoutReal t) {
 
 
   // Just apply boundary conditions sothat no empy data
-  Ne.applyBoundary(t);
-  NVi.applyBoundary(t);
-  Pe.applyBoundary(t);
-  Vort.applyBoundary(t);
-  Pi.applyBoundary(t);
-  VePsi.applyBoundary(t);
+  Ne.applyBoundary();
+  NVi.applyBoundary();
+  Pe.applyBoundary();
+  Vort.applyBoundary();
+  Pi.applyBoundary();
+  VePsi.applyBoundary();
 
   if (evolve_neutrals){
-    Nn.applyBoundary(t);
-    NnVn.applyBoundary(t);
-    Pn.applyBoundary(t);
+    Nn.applyBoundary();
+    NnVn.applyBoundary();
+    Pn.applyBoundary();
 
   }
 
   if (steady_state){
-    phi_1.applyBoundary(t);
+    phi_1.applyBoundary();
   }
 
 
@@ -2027,22 +2027,22 @@ int Hermes::rhs(BoutReal t) {
   }
 
   // Here apply the actual bcs 
-  Ne.applyBoundary(t);
-  NVi.applyBoundary(t);
-  Pe.applyBoundary(t);
-  Vort.applyBoundary(t);
-  Pi.applyBoundary(t);
-  VePsi.applyBoundary(t);
+  Ne.applyBoundary();
+  NVi.applyBoundary();
+  Pe.applyBoundary();
+  Vort.applyBoundary();
+  Pi.applyBoundary();
+  VePsi.applyBoundary();
 
   if (evolve_neutrals){
-    Nn.applyBoundary(t);
-    NnVn.applyBoundary(t);
-    Pn.applyBoundary(t);
+    Nn.applyBoundary();
+    NnVn.applyBoundary();
+    Pn.applyBoundary();
 
   }
 
   if (steady_state){
-    phi_1.applyBoundary(t);
+    phi_1.applyBoundary();
   }
   
 
