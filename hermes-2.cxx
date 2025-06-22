@@ -1601,6 +1601,9 @@ int Hermes::init(bool restarting) {
   opt["VePsi"].setConditionallyUsed();
   optsc["neutral_gamma"].setConditionallyUsed();
 
+  OPTION(optnumerics, inner_VePsi_dirichlet, false);
+  OPTION(optnumerics, inner_NVi_dirichlet, false);
+  
   alloc_all(fastest_espeed);
   alloc_all(fastest_ispeed);
   
@@ -1727,18 +1730,18 @@ int Hermes::rhs(BoutReal t) {
 
   
 
-  Ne.applyBoundary(t);
-  NVi.applyBoundary(t);
-  Pe.applyBoundary(t);
-  Vort.applyBoundary(t);
-  Pi.applyBoundary(t);
-  VePsi.applyBoundary(t);
+  Ne.applyBoundary();
+  NVi.applyBoundary();
+  Pe.applyBoundary();
+  Vort.applyBoundary();
+  Pi.applyBoundary();
+  VePsi.applyBoundary();
 
   if (evolve_neutrals){
-    Nn.applyBoundary(t);
-    NnVn.applyBoundary(t);
+    Nn.applyBoundary();
+    NnVn.applyBoundary();
     if (evolve_pn){
-      Pn.applyBoundary(t);
+      Pn.applyBoundary();
     }
   }
   
@@ -1770,18 +1773,18 @@ int Hermes::rhs(BoutReal t) {
     }
   }
 
-  Ne.applyBoundary(t);
-  NVi.applyBoundary(t);
-  Pe.applyBoundary(t);
-  Vort.applyBoundary(t);
-  Pi.applyBoundary(t);
-  VePsi.applyBoundary(t);
+  Ne.applyBoundary();
+  NVi.applyBoundary();
+  Pe.applyBoundary();
+  Vort.applyBoundary();
+  Pi.applyBoundary();
+  VePsi.applyBoundary();
 
   if (evolve_neutrals){
-    Nn.applyBoundary(t);
-    NnVn.applyBoundary(t);
+    Nn.applyBoundary();
+    NnVn.applyBoundary();
     if (evolve_pn){
-      Pn.applyBoundary(t);
+      Pn.applyBoundary();
     }
   }
 
@@ -1854,20 +1857,6 @@ int Hermes::rhs(BoutReal t) {
 
   } // End
   
-  if (use_Ve_limiter){
-    BOUT_FOR(i, Ne.getRegion("RGN_ALL")) {
-      BoutReal thisve = VePsi[i] + Vi[i];
-      BoutReal newve = 0.0;
-      BoutReal thissoundspeed = sqrt(mi_me) * sqrt(Te[i] + Ti[i] * (5. / 3));
-      if (thisve > thissoundspeed){
-	newve = thissoundspeed;
-	VePsi[i] = newve - Vi[i];	
-      } else if (thisve < (-thissoundspeed)){
-	newve = -thissoundspeed;
-	VePsi[i] = newve - Vi[i];
-      }
-    }
-  }
   
   mesh->communicate(EvolvingVars);
 
@@ -1880,10 +1869,36 @@ int Hermes::rhs(BoutReal t) {
   if (evolve_ti){
     Pi.applyParallelBoundary(parbc);
   }
-  NVi.applyParallelBoundary(parbc);
+
+  if (evolve_nvi){
+    if (inner_NVi_dirichlet){
+      NVi.applyParallelBoundary(parbc);
+      for (const auto &bndry_par :
+           mesh->getBoundariesPar(BoundaryParType::xin)) {
+        for (const auto& pnt : *bndry_par) {
+          const auto i = pnt.ind();
+          pnt.ynext(NVi) = interpolate_sheathneighbour(pnt.ythis(NVi), 0.0 );
+        }
+      }
+    } else {
+      NVi.applyParallelBoundary(parbc);
+    }
+  }
+
   
   if (evolve_vepsi){
-    VePsi.applyParallelBoundary(parbc);
+    if (inner_VePsi_dirichlet){
+      VePsi.applyParallelBoundary(parbc);
+      for (const auto &bndry_par :
+           mesh->getBoundariesPar(BoundaryParType::xin)) {
+        for (const auto& pnt : *bndry_par) {
+          const auto i = pnt.ind();
+          pnt.ynext(VePsi) = interpolate_sheathneighbour(pnt.ythis(VePsi), 0.0 );
+        }
+      }
+    } else {
+      VePsi.applyParallelBoundary(parbc);
+    }
   }
 
   if (evolve_neutrals){
@@ -2298,7 +2313,8 @@ int Hermes::rhs(BoutReal t) {
 	    phisheath = pnt.ythis(phi);
 	    pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi), phisheath);
 	  }
-	    
+
+	  phisheath = floor(phisheath, 0.0);
 
 	  BoutReal visheath = 0.0;
 	  if (!sheath_ramp){
@@ -3032,12 +3048,16 @@ int Hermes::rhs(BoutReal t) {
       if(!use_Vi){
 	if(!use_new_div_par){
 	  TE_VePsi_parflow = -Ve * Div_par(sub_all(Ve,Vi));
+        } else if (use_H3_div_par){
+	  TE_VePsi_parflow = - Div_par_mod_H3(Ve,sub_all(Ve, Vi),fastest_espeed);
 	} else {
 	  TE_VePsi_parflow = -Ve * Div_par_mod(sub_all(Ve,Vi), fastest_espeed, use_slope_limiter);
 	}
       } else {
 	if(!use_new_div_par){
 	  TE_VePsi_parflow = -Vi * Div_par(sub_all(Ve,Vi));
+	} else if (use_H3_div_par){
+          TE_VePsi_parflow = - Div_par_mod_H3(Vi,sub_all(Ve, Vi),fastest_ispeed);
 	} else {
 	  TE_VePsi_parflow = -Vi * Div_par_mod(sub_all(Ve,Vi), fastest_espeed, use_slope_limiter);
 	}       

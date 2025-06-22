@@ -97,6 +97,8 @@ private:
   Field3D debug_Pe_conduction_A,debug_Pe_conduction_B;
   Field3D debug_decay_Ne;
 
+  bool inner_VePsi_dirichlet;
+  bool inner_NVi_dirichlet;
   bool phi_inneraverage;
   bool phi_dirichlet;
   bool test_profiles;
