@@ -1313,7 +1313,7 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, output_ddt, false); // Save time derivatives
   OPTION(optsc, output_power, verbose);
   OPTION(optsc, output_sheath, verbose);
-  
+  OPTION(optsc, output_neutrals, verbose);
   // Normalisation
   OPTION(optsc, Tnorm, 20);  // Reference temperature [eV]
   OPTION(optsc, Nnorm, 1e19); // Reference density [m^-3]
@@ -1906,7 +1906,8 @@ int Hermes::init(bool restarting) {
     alloc_all(Rcx);
     alloc_all(Recycling_flux);
     alloc_all(Dnn);
-    if (verbose){
+
+    if (output_neutrals){
       SAVE_REPEAT(Sneutral,Fn,Rn,Qin,Riz,Rrc,Rcx,Recycling_flux);
     }
     SAVE_REPEAT(Dnn);

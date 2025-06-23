@@ -336,6 +336,7 @@ private:
   bool output_ddt; // Output time derivatives
   bool output_power;
   bool output_sheath;
+  bool output_neutrals;
   // neutral variables
   bool evolve_neutrals, evolve_pn;
   Field3D Nn;
