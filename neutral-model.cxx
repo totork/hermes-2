@@ -54,7 +54,7 @@ void fci_neutral_rates(
     Field3D &S, Field3D &F, Field3D &Qi, Field3D &R, // Transfer rates
     Field3D &Riz, Field3D &Rrc, Field3D &Rcx,
     BoutReal NormT, BoutReal NormN, BoutReal NormB, BoutReal NormL, BoutReal NormF,
-    bool ionizationloss , Field3D& Dnn, BoutReal Lmax) {      // Rates
+    bool ionizationloss , Field3D& Dnn, BoutReal Lmax, bool evolveTn) {      // Rates
 
 
   UpdatedRadiatedPower hydrogen;
@@ -140,11 +140,18 @@ void fci_neutral_rates(
 
     // Power transfer from plasma to neutrals
     // Factor of 3/2 to convert temperature to energy
-
-    Qi[ind] = (3. / 2) * (J_L * (Ti_L - Tn_L) * R_cx_L +
- 			      4. * J_C * (Ti_C - Tn_C) * R_cx_C +
-			      J_R * (Ti_R - Tn_R) * R_cx_R) /
+    // If no evolving Tn, act like Tn=0 for CX rate calculation
+    if (evolveTn){
+      Qi[ind] = (3. / 2) * (J_L * (Ti_L - Tn_L) * R_cx_L +
+                              4. * J_C * (Ti_C - Tn_C) * R_cx_C +
+                              J_R * (Ti_R - Tn_R) * R_cx_R) /
       (6. * J_C);
+    } else {
+      Qi[ind] = (3. / 2) * (J_L * Ti_L  * R_cx_L +
+			    4. * J_C * (Ti_C - Tn_C) * R_cx_C +
+			    J_R * Ti_R * R_cx_R) /
+	(6. * J_C);
+    }
     
         // Plasma-neutral friction
     F[ind] =

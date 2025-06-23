@@ -3026,7 +3026,7 @@ int Hermes::rhs(BoutReal t) {
   
   if (evolve_neutrals){
     fci_neutral_rates( Ne, Te, Ti, Vi, Nn, Tn, Vn, Sneutral, Fn, Qin, Rn, Riz, Rrc, Rcx, Tnorm, Nnorm, Bnorm, rho_s0,
-		       Omega_ci, true, Dnn, neutrals_lmax);
+		       Omega_ci, true, Dnn, neutrals_lmax, evolve_pn);
     Fn.applyBoundary("neumann");
     Qin.applyBoundary("neumann");
     Rn.applyBoundary("neumann");
