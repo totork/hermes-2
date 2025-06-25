@@ -338,7 +338,7 @@ private:
   bool output_sheath;
   bool output_neutrals;
   // neutral variables
-  bool evolve_neutrals, evolve_pn;
+  bool evolve_neutrals, evolve_pn, evolve_nnvn;
   Field3D Nn;
   Field3D NnVn;
   Field3D Pn;

@@ -621,11 +621,20 @@ int Hermes::init(bool restarting) {
   // Neutrals
 
   evolve_neutrals = optsc["evolve_neutrals"].doc("Evolve neutrals?").withDefault<bool>(false);
-  evolve_pn = optsc["evolve_pn"].doc("Evolve neutrals?").withDefault<bool>(true);
+  evolve_nnvn = optsc["evolve_nnvn"].doc("Evolve neutrals?").withDefault<bool>(false);
+  evolve_pn = optsc["evolve_pn"].doc("Evolve neutrals?").withDefault<bool>(false);
+  
   if (evolve_neutrals) {
     SOLVE_FOR(Nn);
-    SOLVE_FOR(NnVn);
-    EvolvingVars.add(Nn,NnVn);
+    EvolvingVars.add(Nn);
+
+    if (evolve_nnvn){
+      SOLVE_FOR(NnVn);
+    EvolvingVars.add(NnVn);
+    } else {
+      zero_all(NnVn);
+    }
+
     if (output_ddt) {
       SAVE_REPEAT(ddt(Nn),ddt(NnVn));
     }
@@ -636,6 +645,8 @@ int Hermes::init(bool restarting) {
       if(output_ddt){
 	SAVE_REPEAT(ddt(Pn));
       }
+    } else {
+      zero_all(Pn);
     }
     
   } else {
@@ -2022,8 +2033,13 @@ int Hermes::rhs(BoutReal t) {
 	Tn[i] = Ti[i];
 	Pn[i] = Ti[i] * Nn[i];
       }
+
+      if (evolve_nnvn){
+	NnVn[i] = Nn[i] * Vn[i];
+      } else {
+	NnVn[i] = 0.0;
+      }
       
-      NnVn[i] = Nn[i] * Vn[i];
     }
   }
 
@@ -2313,8 +2329,10 @@ int Hermes::rhs(BoutReal t) {
 
       floor_all(Nn, floor_Nn, i);
 
+
       div_all(Vn, NnVn, Nn, i);
       mul_all(NnVn, Vn, Nn, i);
+      
 
       if (evolve_pn){
 	div_all(Tn, Pn, Nn, i);
@@ -2787,7 +2805,7 @@ int Hermes::rhs(BoutReal t) {
 	    pnt.ynext(Vort) = pnt.ythis(Vort);
 	  }
 
-	  if (evolve_neutrals){
+	  if (evolve_neutrals && evolve_nnvn){
 	    BoutReal sheathneutralvelocity = interpolate_sheathneighbour(pnt.ythis(Vn), 0.0);
 	    pnt.ynext(Vn) = sheathneutralvelocity;
 	    pnt.ynext(NnVn) = pnt.ythis(Nn) * sheathneutralvelocity;	    
@@ -3025,6 +3043,9 @@ int Hermes::rhs(BoutReal t) {
   */
   
   if (evolve_neutrals){
+    if (!evolve_nnvn){
+      zero_all(Vn);
+    }
     fci_neutral_rates( Ne, Te, Ti, Vi, Nn, Tn, Vn, Sneutral, Fn, Qin, Rn, Riz, Rrc, Rcx, Tnorm, Nnorm, Bnorm, rho_s0,
 		       Omega_ci, true, Dnn, neutrals_lmax, evolve_pn);
     Fn.applyBoundary("neumann");
@@ -4166,7 +4187,10 @@ int Hermes::rhs(BoutReal t) {
 
   if (evolve_neutrals){
     ddt(Nn) = 0.0;
-    ddt(NnVn) = 0.0;
+    if(evolve_nnvn){
+      ddt(NnVn) = 0.0;
+    }
+
     if (evolve_pn){
       ddt(Pn) = 0.0;
     }
@@ -4174,7 +4198,7 @@ int Hermes::rhs(BoutReal t) {
     Field3D Dnn_Tn = div_all(Dnn, Tn);
     
     
-    if (Nn_parflow){
+    if (Nn_parflow && evolve_nnvn){
       
       if (!use_new_div_par){
 	TE_Nn_parflow = -Div_par(NnVn);
@@ -4185,7 +4209,14 @@ int Hermes::rhs(BoutReal t) {
       }
       
       ddt(Nn) += TE_Nn_parflow;
-    } // End Nn_parflow
+    } else if (Nn_parflow){
+      if (!simplified_diffusion){
+	TE_Nn_parflow = Div_par_K_Grad_par_mod(Dnn, Nn);
+      } else {
+	TE_Nn_parflow = Dnn * Div_par_K_Grad_par_mod(oness, Nn);
+      }
+      ddt(Nn) += TE_Nn_parflow;
+    }
     
     
     if (Nn_perpflow){
@@ -4227,67 +4258,67 @@ int Hermes::rhs(BoutReal t) {
 
 
 
-    
+    if (evolve_nnvn){
       
-    if (NnVn_parflow){      
-      if (!use_new_div_par){
-	Field3D NnVnVn = mul_all(NnVn, Vn);
-	TE_NnVn_parflow = -Div_par(NnVnVn);
-      } else if (use_H3_div_par){
-        TE_NnVn_parflow = -Div_par_fvv_H3(Nn,Vn,fastest_ispeed);
-      } else {
-	TE_NnVn_parflow = -Div_par_nvv_mod(Nn,Vn,fastest_ispeed);
-      }
-      
-      ddt(NnVn) += TE_NnVn_parflow;
-    } // End NnVn_parflow 
-    
-    if (NnVn_perpflow){
-      if (!simplified_diffusion){
-	if (use_new_divagradperp){
-	  TE_NnVn_perpflow =  FCIDiv_a_Grad_perp(mul_all(Vn, Dnn_Tn),Pn);
+      if (NnVn_parflow){      
+	if (!use_new_div_par){
+	  Field3D NnVnVn = mul_all(NnVn, Vn);
+	  TE_NnVn_parflow = -Div_par(NnVnVn);
+	} else if (use_H3_div_par){
+	  TE_NnVn_parflow = -Div_par_fvv_H3(Nn,Vn,fastest_ispeed);
 	} else {
-	  //TE_NnVn_perpflow = Vn * Dnn / Tn * new_Delp2(Pn); 
-	  TE_NnVn_perpflow =  Div_a_Grad_perp_curv(mul_all(Vn, Dnn_Tn),Pn);
+	  TE_NnVn_parflow = -Div_par_nvv_mod(Nn,Vn,fastest_ispeed);
 	}
-	ddt(NnVn) += TE_NnVn_perpflow;
-      } else {
-	TE_NnVn_perpflow = Dnn * Nn * new_Delp2(Vn);
-	ddt(NnVn) += TE_NnVn_perpflow;
-      }
-    } // End NnVn_perpflow
+      
+	ddt(NnVn) += TE_NnVn_parflow;
+      } // End NnVn_parflow 
+    
+      if (NnVn_perpflow){
+	if (!simplified_diffusion){
+	  if (use_new_divagradperp){
+	    TE_NnVn_perpflow =  FCIDiv_a_Grad_perp(mul_all(Vn, Dnn_Tn),Pn);
+	  } else {
+	    //TE_NnVn_perpflow = Vn * Dnn / Tn * new_Delp2(Pn); 
+	    TE_NnVn_perpflow =  Div_a_Grad_perp_curv(mul_all(Vn, Dnn_Tn),Pn);
+	  }
+	  ddt(NnVn) += TE_NnVn_perpflow;
+	} else {
+	  TE_NnVn_perpflow = Dnn * Nn * new_Delp2(Vn);
+	  ddt(NnVn) += TE_NnVn_perpflow;
+	}
+      } // End NnVn_perpflow
 
     
-    if (NnVn_pargradient){
-      TE_NnVn_pargradient = -Grad_par(Pn);
-      ddt(NnVn) += TE_NnVn_pargradient;
-    } // End NnVn_pargradient
+      if (NnVn_pargradient){
+	TE_NnVn_pargradient = -Grad_par(Pn);
+	ddt(NnVn) += TE_NnVn_pargradient;
+      } // End NnVn_pargradient
 
-    if (NnVn_pardiffusion){
-      if (!use_new_conduction){
-	TE_NnVn_pardiffusion = Div_par_K_Grad_par(mul_all(Dnn, Nn), Vn);
-      } else {	
-	TE_NnVn_pardiffusion = Div_par_K_Grad_par_mod(mul_all(Dnn, Nn), Vn);
+      if (NnVn_pardiffusion){
+	if (!use_new_conduction){
+	  TE_NnVn_pardiffusion = Div_par_K_Grad_par(mul_all(Dnn, Nn), Vn);
+	} else {	
+	  TE_NnVn_pardiffusion = Div_par_K_Grad_par_mod(mul_all(Dnn, Nn), Vn);
+	}
+	ddt(NnVn) += TE_NnVn_pardiffusion;
+      } // End NnVn_pardiffusion
+      
+      if (NnVn_friction && neutralplasmainteraction){
+	TE_NnVn_friction = (Vi) * (Rrc + Rcx);
+	ddt(NnVn) += TE_NnVn_friction;
       }
-      ddt(NnVn) += TE_NnVn_pardiffusion;
-    } // End NnVn_pardiffusion
 
-    if (NnVn_friction && neutralplasmainteraction){
-      TE_NnVn_friction = (Vi) * (Rrc + Rcx);
-      ddt(NnVn) += TE_NnVn_friction;
-    }
-
-    if (NnVn_hyper){
-      TE_NnVn_hyper = hyperdissipation(hyper_nu, NnVn);
-      ddt(NnVn) += TE_NnVn_hyper;
-    } // End Pe_hyper
-
-    if (NnVn_numdiff){
-      TE_NnVn_numdiff = numericaldissipation(num_nu,Vn);
-      ddt(NnVn) += TE_NnVn_numdiff;
-    } // End Ne_numdiff
-
-
+      if (NnVn_hyper){
+	TE_NnVn_hyper = hyperdissipation(hyper_nu, NnVn);
+	ddt(NnVn) += TE_NnVn_hyper;
+      } // End Pe_hyper
+      
+      if (NnVn_numdiff){
+	TE_NnVn_numdiff = numericaldissipation(num_nu,Vn);
+	ddt(NnVn) += TE_NnVn_numdiff;
+      } // End Ne_numdiff
+      
+    } // End evolve_nnvn
 
 
     if (evolve_pn){
