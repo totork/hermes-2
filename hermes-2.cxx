@@ -1305,35 +1305,11 @@ int Hermes::init(bool restarting) {
     ASSERT1(min(Bxyz) > 0.0);
 
     mesh->communicate(Bxyz,coord->Bxy);
-    
-    /*
-    fwd_bndry_mask = BoutMask(mesh, false);
-    bwd_bndry_mask = BoutMask(mesh, false);
-    for (const auto &bndry_par : mesh->getBoundariesPar(BoundaryParType::fwd)) {
-      for (const auto &pnt : *bndry_par) {
-	fwd_bndry_mask[pnt.ind()] = true;
-      }
-    }
-    for (const auto &bndry_par : mesh->getBoundariesPar(BoundaryParType::bwd)) {
-      for (const auto &pnt : *bndry_par) {
-        bwd_bndry_mask[pnt.ind()] = true;
-      }
-    }
 
-    */
-
-    /*
-    bout::checkPositive(coord->Bxy, "f", "RGN_NOCORNERS");
-    bout::checkPositive(coord->Bxy.yup(), "fyup", "RGN_YPAR_+1");
-    bout::checkPositive(coord->Bxy.ydown(), "fdown", "RGN_YPAR_-1");
-    */
     logB = log(Bxyz);
-    if (use_bracket){
-      bracket_factor = sqrt(coord->g_22) / (coord->J * Bxyz);
-    } else {
-      bracket_factor = sqrt(coord->g_22) / (coord->J);
-    }
 
+    bracket_factor = sqrt(coord->g_22) / (coord->J * Bxyz);
+    
     SAVE_ONCE(bracket_factor);
   }else{
     mesh->communicate(coord->Bxy);
@@ -1345,67 +1321,6 @@ int Hermes::init(bool restarting) {
   B32 = mul_all(B12, coord->Bxy); // B^(3/2)
   B42 = SQ_all(coord->Bxy);
 
-
-
-
-  /////////////////////////////////////////////////////////
-  // Read curvature components
-  /*
-  TRACE("Reading curvature");
-
-  try {
-    Curlb_B.covariant = false; // Contravariant
-    mesh->get(Curlb_B, "bxcv");
-    // SAVE_ONCE(Curlb_B);
-  } catch (BoutException &e) {
-    try {
-      // May be 2D, reading as 3D
-      Vector2D curv2d;
-      curv2d.covariant = false;
-      mesh->get(curv2d, "bxcv");
-      Curlb_B = curv2d;
-    } catch (BoutException &e) {
-      if (j_diamag) {
-        // Need curvature
-        throw;
-      } else {
-        output_warn.write("No curvature vector in input grid");
-        Curlb_B = 0.0;
-      }
-    }
-  }
-  */
-
-  if (!use_bracket){
-    TRACE("Reading curvature for the curvature drifts");
-    try{
-      mesh->get(bxcvx,"bxcvx");
-      mesh->get(bxcvy,"bxcvy");
-      mesh->get(bxcvz,"bxcvz");
-
-      //Normalize
-
-      bxcvx /= Bnorm;
-      bxcvy /= Bnorm;
-      bxcvz /= Bnorm;
-      
-      bxcvx *= rho_s0;
-      bxcvy *= rho_s0;
-      bxcvz *= rho_s0;
-      
-      
-      bxcv = 0.0;
-      bxcv.covariant = false;
-      bxcv.x = bxcvx;
-      bxcv.y = bxcvy;
-      bxcv.z = bxcvz;
-      bxcv.covariant = false;
-      SAVE_ONCE(bxcvx,bxcvy,bxcvz);
-      
-    } catch(BoutException &e) {
-      throw;
-    }
-  }
 
 
 
@@ -1790,71 +1705,19 @@ int Hermes::rhs(BoutReal t) {
 
   
   if (isMMS==false){
-    if (boundarydecay==true){
-      if (mesh->lastX()) {
-	int n = mesh->LocalNx;
-	for (int j = mesh->ystart; j <= mesh->yend; j++) {
-	  for (int k = 0; k < mesh->LocalNz; k++) {
-	    // Extrapolate X-boundaries to have an exponential decay into the boundary
-	    // Extrapolate Ne, Pe, Pi and NVi
-	    // Ne
-	    
-
-	    BoutReal decay_Ne = limitFreeScale(abs(Ne(n - 4, j, k)) , abs(Ne(n - 3, j, k)));
-	    //Ne(n - 2, j, k) = floor(Ne(n - 3, j, k) * decay_Ne,floor_Ne);
-	    //Ne(n - 1, j, k) = floor(Ne(n - 3, j, k) * decay_Ne * decay_Ne,floor_Ne);
-	    Ne(n - 2, j, k) = floor(Ne(n - 3, j, k),floor_Ne);
-	    Ne(n - 1, j, k) = floor(Ne(n - 3, j, k),floor_Ne);
-	    
-	    // Pe
-	    BoutReal decay_Te = limitFreeScale(abs(Te(n - 4, j, k)) , abs(Te(n - 3, j, k)));
-	    Te(n - 2, j, k) = floor(Te(n - 3, j, k) * decay_Te,floor_Te);
-	    Te(n - 1, j, k) = floor(Te(n - 3, j, k) * decay_Te * decay_Te,floor_Te);
-	    // Pi
-	    BoutReal decay_Ti = limitFreeScale(abs(Ti(n - 4, j, k)) , abs(Ti(n - 3, j, k)));
-	    Ti(n - 2, j, k) = floor(Ti(n - 3, j, k) * decay_Ti,floor_Ti);
-	    Ti(n - 1, j, k) = floor(Ti(n - 3, j, k) * decay_Ti * decay_Ti,floor_Ti);
-	    // Vi
-	    BoutReal decay_Vi = limitFreeScale(abs(Vi(n - 4, j, k)) , abs(Vi(n - 3, j, k)));
-	    Vi(n - 2, j, k) = Vi(n - 3, j, k) * decay_Vi;
-	    Vi(n - 1, j, k) = Vi(n - 3, j, k) * decay_Vi * decay_Vi;
-	    // Ve                                                                                                                                                                                             
-	    BoutReal decay_Ve = limitFreeScale(abs(Ve(n - 4, j, k)) , abs(Ve(n - 3, j, k)));
-	    Ve(n - 2, j, k) = Ve(n - 3, j, k) * decay_Ve;
-	    Ve(n - 1, j, k) = Ve(n - 3, j, k) * decay_Ve * decay_Ve;	
-	    // Vort
-	    //BoutReal decay_Vort = limitFreeScale(abs(Vort(n - 4, j, k)) , abs(Vort(n - 3, j, k)));
-	    //Vort(n - 2, j, k) = Vort(n - 3, j, k) * decay_Vort;
-	    //Vort(n - 1, j, k) = Vort(n - 3, j, k) * decay_Vort * decay_Vort;
-	    Pi(n - 1, j, k) = Ti(n - 1, j, k) * Ne(n - 1, j, k);
-	    Pi(n - 2, j, k) = Ti(n - 2, j, k) * Ne(n - 2, j, k);
-	    Pe(n - 1, j, k) = Te(n - 1, j, k) * Ne(n - 1, j, k);
-	    Pe(n - 2, j, k) = Te(n - 2, j, k) * Ne(n - 2, j, k);	
-	    NVi(n - 1, j, k) = Vi(n - 1, j, k) * Ne(n - 1, j, k);
-	    NVi(n - 2, j, k) = Vi(n - 2, j, k) * Ne(n - 2, j, k);        
-	    VePsi(n - 1, j, k) = Ve(n - 1, j, k) - Vi(n - 1, j, k);
-	    VePsi(n - 2, j, k) = Ve(n - 2, j, k) - Vi(n - 2, j, k);	  	
-	  }
+    if (mesh->lastX()) {
+      int n = mesh->LocalNx;
+      for (int j = mesh->ystart; j <= mesh->yend; j++) {
+	for (int k = 0; k < mesh->LocalNz; k++) {
+	  Ne(n - 1, j, k) = Ne(n - 2, j, k);
+	  Pe(n - 1, j, k) = Pe(n - 2, j, k);
+	  Pi(n - 1, j, k) = Pi(n - 2, j, k);
+	  NVi(n - 1, j, k) = NVi(n - 2, j, k);
+	  Vort(n - 1, j, k) = Vort(n - 2, j, k);
+	  VePsi(n - 1, j, k) = VePsi(n - 2, j, k);	    
 	}
       }
-    } else {
-      if (mesh->lastX()) {
-        int n = mesh->LocalNx;
-        for (int j = mesh->ystart; j <= mesh->yend; j++) {
-          for (int k = 0; k < mesh->LocalNz; k++) {
-	    Ne(n - 1, j, k) = Ne(n - 2, j, k);
-	    Pe(n - 1, j, k) = Pe(n - 2, j, k);
-	    Pi(n - 1, j, k) = Pi(n - 2, j, k);
-	    NVi(n - 1, j, k) = NVi(n - 2, j, k);
-	    Vort(n - 1, j, k) = Vort(n - 2, j, k);
-	    VePsi(n - 1, j, k) = VePsi(n - 2, j, k);
-	    
-          }
-        }
-      }
-
     }
-
   } // End
   
   
@@ -1945,12 +1808,13 @@ int Hermes::rhs(BoutReal t) {
     }
     
 
-    sound_speed[i] =  sqrt(Te[i] );
+    sound_speed[i] =  sqrt(Te[i]  + Ti[i]);
   }
   
   sound_speed.applyBoundary("neumann");
+  mesh->communicate(sound_speed);
+  sound_speed.applyParallelBoundary(parbc);
 
-  
   fastest_ispeed = sound_speed;
   if (electromagnetic){
     fastest_espeed = mul_all(sqrt(mi_me),sound_speed);
@@ -1984,8 +1848,7 @@ int Hermes::rhs(BoutReal t) {
   if (calc_potential){
     Field3D phi_boundary3d;
     phi_boundary3d = 0.0;
-  
-
+    
     if (boussinesq) {
       if (!isMMS){
 
