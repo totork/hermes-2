@@ -114,15 +114,15 @@ SolVePsi[x_, y_, z_, t_] = If[SWelectromagnetic==1,
 							(*-(rhos0^2)*laplaceperp[SolPsi,x,y,z,t]+0.5*betae*SolPsi[x,y,z,t]*mime,*)
 							(*-Bnorm*betae*rhos0/(2.0*SolNe[x,y,z,t])*laplaceperp[SolPsi,x,y,z,t]*(rhos0^2)+0.5*betae*SolPsi[x,y,z,t]*mime,*)														
 							(ampVePsi*Sin[2.0*Pi*kxVePsi*xn[x]]*Sin[2.0*Pi*kzVePsi*zn[z]-phzVePsi]+ampYVePsi*Sin[kyVePsi*y - phyVePsi])];
-
-(*SolJpar[x_, y_, z_, t_] = SolNVi[x,y,z,t]-SolNe[x,y,z,t]*SolVe[x,y,z,t];*)
+SolVe[x_, y_, z_, t_] = SolVePsi[x,y,z,t] - SolVi[x,y,z,t];
+SolJpar[x_, y_, z_, t_] = SolNVi[x,y,z,t]-SolNe[x,y,z,t]*SolVe[x,y,z,t];
 taue[x_, y_, z_, t_] = (taue0 * (Cs0/rhos0) * (SolTe[x,y,z,t]^(1.5)))/SolNe[x,y,z,t];
 taui[x_, y_, z_, t_] = (taui0 * (Cs0/rhos0) * (SolTi[x,y,z,t]^(1.5)))/SolNe[x,y,z,t];
 nu[x_, y_, z_, t_] = resistivitymultiply / (1.96 * taue[x,y,z,t]*mime);
-SolJpar[x_, y_, z_, t_] = (-1.0 * SolNe[x,y,z,t] * gradpar[SolPhi,x,y,z,t]/nu[x,y,z,t]\
+(*SolJpar[x_, y_, z_, t_] = (-1.0 * SolNe[x,y,z,t] * gradpar[SolPhi,x,y,z,t]/nu[x,y,z,t]\
 							+ gradpar[SolPi,x,y,z,t] / nu[x,y,z,t]\
-							+0.71 * SolNe[x,y,z,t] * gradpar[SolTe,x,y,z,t]/nu[x,y,z,t])*rhos0;
-SolVe[x_, y_, z_, t_] = SolVi[x,y,z,t] - SolJpar[x,y,z,t]/SolNe[x,y,z,t];
+							+0.71 * SolNe[x,y,z,t] * gradpar[SolTe,x,y,z,t]/nu[x,y,z,t])*rhos0;*)
+(*SolVe[x_, y_, z_, t_] = SolVi[x,y,z,t] - SolJpar[x,y,z,t]/SolNe[x,y,z,t];*)
 
 
 SolNeVi[x_, y_, z_, t_] = SolNe[x,y,z,t]*SolVi[x,y,z,t];
