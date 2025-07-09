@@ -932,6 +932,8 @@ int Hermes::init(bool restarting) {
     }
   }
 
+
+  OPTION(optsheath, parallel_sheaths, false); // Apply parallel sheath conditions?
   
   // Electron pressure
   TE_Pe_ExB = 0.0;
@@ -993,7 +995,7 @@ int Hermes::init(bool restarting) {
     if (Pe_dampening) {
       SAVE_REPEAT(TE_Pe_dampening);
     }
-    if (parallel_sheaths && Pe_sources) {
+    if (parallel_sheaths) {
       SAVE_REPEAT(TE_Pe_sheath);
     }
     if (Pe_lowdiffuse) {
@@ -1305,7 +1307,6 @@ int Hermes::init(bool restarting) {
   OPTION(optsheath, sheath_yup, true);       // Apply sheath at yup?
   OPTION(optsheath, sheath_ydown, true);     // Apply sheath at ydown?
   OPTION(optsheath, test_boundaries, false); // Test boundary conditions
-  OPTION(optsheath, parallel_sheaths, false); // Apply parallel sheath conditions?
   OPTION(optsheath, par_sheath_model, 0);
   OPTION(optsheath, par_sheath_ve, true);
   OPTION(optsheath, sheath_ramp, false);
