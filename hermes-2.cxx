@@ -2075,7 +2075,7 @@ int Hermes::rhs(BoutReal t) {
 
     }
     
-  } else {
+  } else { // Electrostatic
     if (FiniteElMass){
       
     // Electrostatic
@@ -2211,18 +2211,6 @@ int Hermes::rhs(BoutReal t) {
 	  }
 
 
-	  if (sheath_allow_supersonic){
-	    
-	    if (pnt.dir > 0.99 && pnt.dir < 1.01){
-	      if (pnt.ythis(Ve) > vesheath){
-		vesheath = pnt.ythis(Ve);
-	      }
-	    } else {
-	      if (pnt.ythis(Ve) < vesheath){
-		vesheath = pnt.ythis(Ve);
-	      }
-	    }
-	  }
 	    
 
 	  
@@ -2508,11 +2496,6 @@ int Hermes::rhs(BoutReal t) {
       
   }
 
-  if (floor_eta_epar>0.0){
-    BOUT_FOR(i, eta_epar.getRegion("RGN_ALL")) {
-      floor_all(eta_epar, floor_eta_epar, i);
-    }
-  }
   
   //////////////////////////////////////////////////////////////                                                                        
   TRACE("Calculating resistivity");
@@ -2536,13 +2519,6 @@ int Hermes::rhs(BoutReal t) {
   // tau_e
   // tau_i
 
-
-  if (use_conduction_map){
-    qi = kappa_ipar * Grad_par(Ti);
-    qi.applyBoundary("neumann");
-    mesh->communicate(qi);
-    qi.applyParallelBoundary(parbc);
-  }
 
   
   
@@ -2899,7 +2875,7 @@ int Hermes::rhs(BoutReal t) {
 
     if (VePsi_ExB){//Row 3 Term 1
       if(use_Div_n_bxGrad_f_B_XPPM){
-	TE_VePsi_ExB = -Div_n_bxGrad_f_B_XPPM(Ve-Vi, phi, false,poloidal_flows , false, bracket_factor) * scale_ExB;
+	TE_VePsi_ExB = -Div_n_bxGrad_f_B_XPPM(sub_all(Ve,Vi), phi, false,poloidal_flows , false, bracket_factor) * scale_ExB;
       } else {
 	TE_VePsi_ExB = -bracket(phi , sub_all(Ve,Vi) , BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
       }
