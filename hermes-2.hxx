@@ -446,7 +446,7 @@ private:
   Coordinates::FieldMetric B12, B32, B42;
 
   bool fci_transform;
-  Field3D Bxyz, logB;
+  Field3D Bxyz, logB, Bxy;
   Field3D Bxz, logBxz;
   Field3D bracket_factor;
   Field3D fci_curvature(const Field3D &f, const bool &bool_bracket);

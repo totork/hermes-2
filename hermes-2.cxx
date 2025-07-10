@@ -1285,8 +1285,13 @@ int Hermes::init(bool restarting) {
     mesh->get(coord->Bxy, "Bxy", 1.0);
 
     Bxy = coord->Bxy;
+    
     Bxy.applyBoundary("neumann");
-    mesh->communicate(Bxy);
+    coord->Bxy.applyBoundary("neumann");
+    
+    mesh->communicate(Bxy, coord->Bxy);
+
+    coord->Bxy.applyParallelBoundary(parbc);
     Bxy.applyParallelBoundary(parbc);
 
     logB = log_all(Bxy);
