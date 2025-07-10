@@ -200,6 +200,7 @@ SourcePi[x_, y_, z_, t_] = D[SolPi[x,y,z,t],t]\
 	+SWPihyper * (rhos0^4)*(hyperchi/(rhos0^4 * Omegaci)) * hyperdiffusion[SolPi,x,y,z,t]\
 	-SWPianomalous * (2.0/3.0) * ( divagradperp[DanomalousTi,SolNe,x,y,z,t] + divagradperp[chianomalousNe,SolTi,x,y,z,t] )*(rhos0^2)/(rhos0*rhos0*Omegaci)\
 	+SWPimag * (rhos0^2) * (5.0/3.0) * curvature[SolPiTi,x,y,z,t]\
+	+SWPiparviscousheat * SolVi[x,y,z,t] *  (rhos0^2) * 1.28 * SqrtB[x,y,z,t] * divparkgradpar[PitauidivB,B12Vi,x,y,z,t]\
 	+SWPiExB * (rhos0^2) * (ExBoperator[SolPi,x,y,z,t]+(2.0/3.0)*SolPi[x,y,z,t]*curvature[SolPhi,x,y,z,t]);
 SourceVort[x_, y_, z_, t_] = D[SolVort[x,y,z,t],t]\
 	-SWVortmag * (rhos0^2) * curvature[SolPepPi,x,y,z,t]\
