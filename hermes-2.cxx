@@ -1227,8 +1227,6 @@ int Hermes::init(bool restarting) {
   // Load metric tensor from the mesh, passing length and B
   // field normalisations
   Coordinates *coord = mesh->getCoordinates();
-  coord->Bxy /= Bnorm;
-
   
   //CONTRAVARIANT
 
@@ -1285,31 +1283,16 @@ int Hermes::init(bool restarting) {
   if(fci_transform){
     mesh->get(Bxyz, "B",1.0);
     mesh->get(coord->Bxy, "Bxy", 1.0);
-    Bxyz /= Bnorm;
-    coord->Bxy /= Bnorm;
-    // mesh->communicate(Bxyz, coord->Bxy); // To get yup/ydown fields
-    //  Note: A Neumann condition simplifies boundary conditions on fluxes
-    //  where the condition e.g. on J should be on flux (J/B)
 
-    auto logBxy = log(coord->Bxy);
-    auto logBxyz = log(Bxyz);
-    //logBxy.applyBoundary("neumann");
-    //logBxyz.applyBoundary("neumann");
-    mesh->communicate(logBxy, logBxyz);
-    logBxy.applyParallelBoundary(parbc);
-    logBxyz.applyParallelBoundary(parbc);
-    output_info.write("Setting from log");
-    coord->Bxy = exp_all(logBxy);
-    Bxyz = exp_all(logBxyz);
-    SAVE_ONCE(Bxyz);
-    ASSERT1(min(Bxyz) > 0.0);
+    Bxy = coord->Bxy;
+    Bxy.applyBoundary("neumann");
+    mesh->communicate(Bxy);
+    Bxy.applyParallelBoundary(parbc);
 
-    mesh->communicate(Bxyz,coord->Bxy);
-
-    logB = log(Bxyz);
-
-    bracket_factor = sqrt(coord->g_22) / (coord->J * Bxyz);
+    logB = log_all(Bxy);
     
+    bracket_factor = sqrt(coord->g_22) / (coord->J * Bxy);
+    ASSERT0(min(Bxy)>0);
     SAVE_ONCE(bracket_factor);
   }else{
     mesh->communicate(coord->Bxy);
