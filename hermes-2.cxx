@@ -1810,13 +1810,6 @@ int Hermes::rhs(BoutReal t) {
     fastest_espeed = mul_all(sqrt(mi_me),sound_speed);
   }
   
-
-
-  
-  if(verbose){
-    debug_soundspeed = sound_speed;
-  }
-  
   // Set radial boundary conditions on Te, Ti, Vi
   //
 
@@ -2102,14 +2095,6 @@ int Hermes::rhs(BoutReal t) {
   }
 
 
-  
-
-
-  /*
-  Jpar.applyBoundary("neumann");
-  mesh->communicate(Jpar);
-  Jpar.applyParallelBoundary(parbc);
-  */
 
   //////////////////////////////////////////////////////////////
   // Sheath boundary conditions on Y up and Y down
@@ -2208,19 +2193,12 @@ int Hermes::rhs(BoutReal t) {
 	  const BoutReal jsheath = nesheath * (visheath - vesheath);
 	  const BoutReal nvisheath = nesheath * visheath;
 	  
-	  if (sheath_interpolate){
-	    pnt.ynext(Vi) = interpolate_sheathneighbour(pnt.ythis(Vi), visheath);
-	    pnt.ynext(Ve) = interpolate_sheathneighbour(pnt.ythis(Ve), vesheath);
-	    pnt.ynext(Jpar) = interpolate_sheathneighbour(pnt.ythis(Jpar), jsheath);
-	    pnt.ynext(NVi) = interpolate_sheathneighbour(pnt.ythis(NVi), nvisheath);
-	    pnt.ynext(Vort) = pnt.ythis(Vort);
-	  } else {
-	    pnt.ynext(Vi) = visheath;
-	    pnt.ynext(Ve) = vesheath;
-	    pnt.ynext(Jpar) = jsheath;
-	    pnt.ynext(NVi) = nvisheath;
-	    pnt.ynext(Vort) = pnt.ythis(Vort);
-	  }
+	  pnt.ynext(Vi) = interpolate_sheathneighbour(pnt.ythis(Vi), visheath);
+	  pnt.ynext(Ve) = interpolate_sheathneighbour(pnt.ythis(Ve), vesheath);
+	  pnt.ynext(Jpar) = interpolate_sheathneighbour(pnt.ythis(Jpar), jsheath);
+	  pnt.ynext(NVi) = interpolate_sheathneighbour(pnt.ythis(NVi), nvisheath);
+	  pnt.ynext(Vort) = pnt.ythis(Vort);
+	  
 
 	  if (verbose){
 	    Te_ythis[i] = pnt.ythis(Te);
@@ -2289,34 +2267,20 @@ int Hermes::rhs(BoutReal t) {
 	    TRACE("Sheath offset==1, set double next fields");
 
 	    const int offset_factor = 1;
-	    if(sheath_interpolate){	      
-	      //pnt.getAt<false>(Ne, offset_factor) = floor(pnt.ythis(Ne)*decay_Ne*decay_Ne, floor_Ne);
-	      pnt.getAt<false>(Ne, offset_factor) = floor(pnt.ynext(Ne), floor_Ne);
-	      pnt.getAt<false>(Te, offset_factor) = floor(pnt.ynext(Te), floor_Te);
-	      pnt.getAt<false>(Ti, offset_factor) = floor(pnt.ynext(Ti), floor_Ti);
-	      pnt.getAt<false>(Pe, offset_factor) = pnt.getAt<false>(Ne, offset_factor) * pnt.getAt<false>(Te, offset_factor);
-	      pnt.getAt<false>(Pi, offset_factor) = pnt.getAt<false>(Ne, offset_factor) * pnt.getAt<false>(Ti, offset_factor);
-
-	      pnt.getAt<false>(phi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(phi),pnt.ynext(phi));
-	      pnt.getAt<false>(Vi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Vi),pnt.ynext(Vi));
-	      pnt.getAt<false>(Ve, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Ve),pnt.ynext(Ve));
-	      pnt.getAt<false>(Jpar, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Jpar),pnt.ynext(Jpar));
-	      pnt.getAt<false>(NVi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(NVi),pnt.ynext(NVi));
-	      pnt.getAt<false>(Vort, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Vort),pnt.ynext(Vort));
-	    } else {       	    
-	      pnt.getAt<false>(Ne, offset_factor) = pnt.ynext(Ne);
-	      pnt.getAt<false>(Te, offset_factor) = pnt.ynext(Te);
-	      pnt.getAt<false>(Pe, offset_factor) = pnt.ynext(Pe);
-	      pnt.getAt<false>(Ti, offset_factor) = pnt.ynext(Ti);
-	      pnt.getAt<false>(Pi, offset_factor) = pnt.ynext(Pi);
+	    //pnt.getAt<false>(Ne, offset_factor) = floor(pnt.ythis(Ne)*decay_Ne*decay_Ne, floor_Ne);
+	    pnt.getAt<false>(Ne, offset_factor) = floor(pnt.ynext(Ne), floor_Ne);
+	    pnt.getAt<false>(Te, offset_factor) = floor(pnt.ynext(Te), floor_Te);
+	    pnt.getAt<false>(Ti, offset_factor) = floor(pnt.ynext(Ti), floor_Ti);
+	    pnt.getAt<false>(Pe, offset_factor) = pnt.getAt<false>(Ne, offset_factor) * pnt.getAt<false>(Te, offset_factor);
+	    pnt.getAt<false>(Pi, offset_factor) = pnt.getAt<false>(Ne, offset_factor) * pnt.getAt<false>(Ti, offset_factor);
 	    
-	      pnt.getAt<false>(phi, offset_factor) = pnt.ynext(phi);
-	      pnt.getAt<false>(Vi, offset_factor) = pnt.ynext(Vi);
-	      pnt.getAt<false>(Ve, offset_factor) = pnt.ynext(Ve);
-	      pnt.getAt<false>(Jpar, offset_factor) = pnt.ynext(Jpar);
-	      pnt.getAt<false>(NVi, offset_factor) = pnt.ynext(NVi);
-	      pnt.getAt<false>(Vort, offset_factor) = pnt.ynext(Vort);
-	    }
+	    pnt.getAt<false>(phi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(phi),pnt.ynext(phi));
+	    pnt.getAt<false>(Vi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Vi),pnt.ynext(Vi));
+	    pnt.getAt<false>(Ve, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Ve),pnt.ynext(Ve));
+	    pnt.getAt<false>(Jpar, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Jpar),pnt.ynext(Jpar));
+	    pnt.getAt<false>(NVi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(NVi),pnt.ynext(NVi));
+	    pnt.getAt<false>(Vort, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Vort),pnt.ynext(Vort));
+	    
 	  
 	  } // End interpolate_sheathneighbour
 	  }
@@ -2422,16 +2386,6 @@ int Hermes::rhs(BoutReal t) {
 
   if (kappa_limit_alpha > 0.0) {
     TRACE("electron heat flux limiter");
-    /*
-     * Flux limiter, as used in SOLPS.
-     *
-     * Calculate the heat flux from Spitzer-Harm and flux limit
-     *
-     * Typical value of alpha ~ 0.2 for electrons
-     *
-     * R.Schneider et al. Contrib. Plasma Phys. 46, No. 1-2, 3 – 191 (2006)
-     * DOI 10.1002/ctpp.200610001
-     */
     
     Field3D gradTe = Grad_par(Te);
     
@@ -2463,14 +2417,15 @@ int Hermes::rhs(BoutReal t) {
   // Ion parallel heat conduction
   kappa_ipar = mul_all(mul_all(mul_all(3.9, Ti), Ne), tau_i);
   
-  // Electron parallel viscosity
-  if (!use_new_viscosity){
-    eta_epar = mul_all(0.7333, mul_all(mi_me,mul_all(tau_e,Pe)));
+  if (eta_limit_alpha <= 0.0){
+
+    eta_epar = 0.973 * mi_me * tau_e * Te;
+    eta_epar.applyBoundary("neumann");
+    mesh->communicate(eta_epar);
+    eta_epar.applyParallelBoundary(parbc);
+
   } else {
-    eta_epar = mul_all(div_all(4.0,3.0),mul_all(0.73,mul_all(Pe,tau_e)));
-  }
-    
-  if (eta_limit_alpha>0.0){
+  
     Field3D qm_cl = eta_epar * Grad_par(Ve);
     mesh->communicate(qm_cl);
     qm_cl.applyParallelBoundary(parbc);
@@ -2489,8 +2444,12 @@ int Hermes::rhs(BoutReal t) {
   TRACE("Calculating resistivity");
 
   //nu = resistivity_multiply / (1.96 * tau_e * mi_me);
-  nu = div_all(resistivity_multiply,mul_all(1.96,mul_all(tau_e,mi_me)));
 
+  nu = resistivity_multiply / (1.96 * tau_e * mi_me);
+  nu.applyBoundary("neumann");
+  mesh->communicate(nu);
+  nu.applyParallelBoundary(parbc);
+  
   Wi = mul_all(div_all(3.0,mi_me),mul_all(Ne,div_all(sub_all(Te,Ti),tau_e)));
 
 
