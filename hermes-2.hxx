@@ -474,6 +474,7 @@ private:
 
   bool fci_transform;
   Field3D Bxyz, logB;
+  Field3D Bxy;
   Field3D Bxz, logBxz;
   Field3D bracket_factor;
   Field3D fci_curvature(const Field3D &f, const bool &bool_bracket);
