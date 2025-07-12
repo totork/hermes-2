@@ -55,7 +55,7 @@ private:
  * @param[in] bndry_flux  Are fluxes through the boundary calculated?
  */
 
-const Field3D Div_par_K_Grad_par_mod(const Field3D& k, const Field3D& f, bool bndry_flux = false);
+const Field3D Div_par_K_Grad_par_mod(const Field3D& k, const Field3D& f, bool bndry_flux = false, bool higher_order = false);
 
 const Field3D Div_par_K_Grad_par_map(const Field3D& flux);
 

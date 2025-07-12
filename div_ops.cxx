@@ -1828,7 +1828,7 @@ const Field3D Div_par_K_Grad_par_map(const Field3D& flux){
 
 
 
-const Field3D Div_par_K_Grad_par_mod(const Field3D& K, const Field3D& f, bool bndry_flux) {
+const Field3D Div_par_K_Grad_par_mod(const Field3D& K, const Field3D& f, bool bndry_flux, bool higher_order) {
   TRACE("FV::Div_par_K_Grad_par_mod");
 
   TRACE("Check first field");
@@ -1848,15 +1848,23 @@ const Field3D Div_par_K_Grad_par_mod(const Field3D& K, const Field3D& f, bool bn
 
   BOUT_FOR(i, result.getRegion("RGN_NOBNDRY")) {    
     const auto iyp = i.yp();
+    const auto iypp = i.ypp();
     const auto iym = i.ym();
-
+    const auto iymm = i.ymm();
+    
     if (bndry_flux || mesh->periodicY(i.x()) || !mesh->lastY(i.x())
         || (i.y() != mesh->yend)) {
     
       BoutReal c = 0.5 * (K[i] + K.yup()[iyp]);             // K at the upper boundary                                                                
       BoutReal J = 0.5 * (coord->J[i] + coord->J.yup()[iyp]); // Jacobian at boundary                                                                  
-      BoutReal g_22 = 0.5 * (coord->g_22[i] + coord->g_22.yup()[iyp]);                                                                                 
-      BoutReal gradient = 2. * (f.yup()[iyp] - f[i]) / (coord->dy[i] + coord->dy[i]);                                                          
+      BoutReal g_22 = 0.5 * (coord->g_22[i] + coord->g_22.yup()[iyp]);
+
+      BoutReal gradient;
+      if (higher_order){
+	gradient = (2.0*f.yup()[iyp] - 0.5*f.yup(1)[iypp] - 1.5*f[i])/coord->dy[i];
+      } else {
+        gradient = 2. * (f.yup()[iyp] - f[i]) / (coord->dy[i] + coord->dy[i]);
+      }
       BoutReal flux = c * J * gradient / g_22;                                                                                                         
       result[i] += flux / (coord->dy[i] * coord->J[i]);                                                                                                
     }
@@ -1868,8 +1876,14 @@ const Field3D Div_par_K_Grad_par_mod(const Field3D& K, const Field3D& f, bool bn
     
       BoutReal c = 0.5 * (K[i] + K.ydown()[iym]);           // K at the lower boundary                                                                          
       BoutReal J = 0.5 * (coord->J[i] + coord->J.ydown()[iym]); // Jacobian at boundary                                                                         
-      BoutReal g_22 = 0.5 * (coord->g_22[i] + coord->g_22.ydown()[iym]);                                                                                        
-      BoutReal gradient = 2. * (f[i] - f.ydown()[iym]) / (coord->dy[i] + coord->dy[i]);                                                               
+      BoutReal g_22 = 0.5 * (coord->g_22[i] + coord->g_22.ydown()[iym]);                                                                                   BoutReal gradient;
+
+      if (higher_order){
+	gradient = (1.5*f[i] + 0.5*f.ydown(1)[iymm] - 2.0*f.ydown()[iym])/coord->dy[i];
+      } else {
+	gradient = 2. * (f[i] - f.ydown()[iym]) / (coord->dy[i] + coord->dy[i]);                                                               
+      }
+
       BoutReal flux = c * J * gradient / g_22;                                                                                                                  
       result[i] -= flux / (coord->dy[i] * coord->J[i]);
 

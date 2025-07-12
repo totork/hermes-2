@@ -266,6 +266,7 @@ private:
   bool norm_dxdydz;
   bool use_Div_parP_n;
   bool use_new_conduction;
+  bool use_conduction_higher;
   bool use_div_par_q;
   Field3D heatflux_e, heatflux_i;
   bool use_new_div_par;

@@ -1170,6 +1170,10 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, pe_bndry_flux, false);
   OPTION(optnumerics, vort_bndry_flux, false);
   OPTION(optnumerics, use_new_conduction, false);
+  OPTION(optnumerics, use_conduction_higher, false);
+  if (use_conduction_higher && !isMMS){
+    throw BoutException("Use_conduction_higher is still experimental and not verified, DO NOT USE except for MMS tests");
+  }
   OPTION(optnumerics, use_div_par_q, false);
   OPTION(optnumerics, use_new_viscosity, false);
   OPTION(optnumerics, use_new_div_par, false);
@@ -3575,7 +3579,7 @@ int Hermes::rhs(BoutReal t) {
       if(!use_new_conduction){
 	TE_VePsi_parallelvisc = Div_par_K_Grad_par(eta_epar,Ve);
       } else {
-	TE_VePsi_parallelvisc = Div_par_K_Grad_par_mod(eta_epar,Ve, true);
+	TE_VePsi_parallelvisc = Div_par_K_Grad_par_mod(eta_epar,Ve, true, use_conduction_higher);
       }
 
       if (use_viscosity_limiter){
@@ -3669,7 +3673,7 @@ int Hermes::rhs(BoutReal t) {
       if(!use_new_conduction){
 	tmp = Div_par_K_Grad_par(div_all(mul_all(Pi,tau_i),coord->Bxy),mul_all(B12,Vi));
       } else {
-	tmp = Div_par_K_Grad_par_mod(div_all(mul_all(Pi,tau_i),coord->Bxy),mul_all(B12,Vi), true);
+	tmp = Div_par_K_Grad_par_mod(div_all(mul_all(Pi,tau_i),coord->Bxy),mul_all(B12,Vi), true, use_conduction_higher);
       }
       TE_NVi_parviscos = 1.28*B12*tmp;
 
@@ -3810,7 +3814,7 @@ int Hermes::rhs(BoutReal t) {
       } else if(use_div_par_q) {
 	TE_Pe_conduction = (2.0/3.0) * Div_par_K_Grad_par_map(heatflux_e);
       } else {
-	TE_Pe_conduction = (2.0/3.0) * Div_par_K_Grad_par_mod(kappa_epar,Te,true);
+	TE_Pe_conduction = (2.0/3.0) * Div_par_K_Grad_par_mod(kappa_epar,Te,true,use_conduction_higher);
 	//TE_Pe_conduction = (2.0/3.0) * kappa_epar * Div_par_K_Grad_par_mod(oness,Te,false);
       }
       
@@ -4035,7 +4039,7 @@ int Hermes::rhs(BoutReal t) {
       } else if(use_div_par_q) {
         TE_Pi_conduction = (2.0/3.0) * Div_par_K_Grad_par_map(heatflux_i);
       } else {
-	TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par_mod(kappa_ipar, Ti, true);
+	TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par_mod(kappa_ipar, Ti, true, use_conduction_higher);
       }
 
       if (scale_lowT){
@@ -4096,7 +4100,7 @@ int Hermes::rhs(BoutReal t) {
       if(!use_new_conduction){
         tmp = Div_par_K_Grad_par(div_all(mul_all(Pi,tau_i),coord->Bxy),mul_all(B12,Vi));
       } else {
-        tmp = Div_par_K_Grad_par_mod(div_all(mul_all(Pi,tau_i),coord->Bxy),mul_all(B12,Vi), true);
+        tmp = Div_par_K_Grad_par_mod(div_all(mul_all(Pi,tau_i),coord->Bxy),mul_all(B12,Vi), true, use_conduction_higher);
       }
       TE_Pi_parviscousheat = -Vi * 1.28*B12*tmp;
       ddt(Pi) += TE_Pi_parviscousheat;      
@@ -4178,9 +4182,9 @@ int Hermes::rhs(BoutReal t) {
       ddt(Nn) += TE_Nn_parflow;
     } else if (Nn_parflow){
       if (!simplified_diffusion){
-	TE_Nn_parflow = Div_par_K_Grad_par_mod(Dnn, Nn);
+	TE_Nn_parflow = Div_par_K_Grad_par_mod(Dnn, Nn, true, use_conduction_higher);
       } else {
-	TE_Nn_parflow = Dnn * Div_par_K_Grad_par_mod(oness, Nn);
+	TE_Nn_parflow = Dnn * Div_par_K_Grad_par_mod(oness, Nn, true, use_conduction_higher);
       }
       ddt(Nn) += TE_Nn_parflow;
     }
@@ -4265,7 +4269,7 @@ int Hermes::rhs(BoutReal t) {
 	if (!use_new_conduction){
 	  TE_NnVn_pardiffusion = Div_par_K_Grad_par(mul_all(Dnn, Nn), Vn);
 	} else {	
-	  TE_NnVn_pardiffusion = Div_par_K_Grad_par_mod(mul_all(Dnn, Nn), Vn);
+	  TE_NnVn_pardiffusion = Div_par_K_Grad_par_mod(mul_all(Dnn, Nn), Vn, true, use_conduction_higher);
 	}
 	ddt(NnVn) += TE_NnVn_pardiffusion;
       } // End NnVn_pardiffusion
@@ -4402,7 +4406,7 @@ int Hermes::rhs(BoutReal t) {
 	  TE_Vort_anomalous +=  Div_par_K_Grad_par(mu_i_par, Vort);
 	} else {
 	  //TE_Vort_anomalous += Div_par_K_Grad_par_mod(mu_i_par,Vort,false);
-	  TE_Vort_anomalous += Div_par_K_Grad_par_mod(mu_i_par, Vort);
+	  TE_Vort_anomalous += Div_par_K_Grad_par_mod(mu_i_par, Vort, true, use_conduction_higher);
 	}
 	
 	ddt(Vort) += TE_Vort_anomalous;
