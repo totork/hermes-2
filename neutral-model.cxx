@@ -227,7 +227,7 @@ void fci_neutral_rates(
 
         // Ionisation and electron excitation energy
     if (ionizationloss){
-      R[ind] += (1.0 / NormT) *
+      R[ind] += (30.0 / NormT) *
 	(J_L * R_iz_L + 4. * J_C * R_iz_C + J_R * R_iz_R) /
 	(6. * J_C);
     }
