@@ -2744,17 +2744,6 @@ int Hermes::rhs(BoutReal t) {
 	    }
 	  }
 
-	  if (sheath_allow_supersonic){
-	    if (pnt.dir > 0.99 && pnt.dir < 1.01){
-	      if (pnt.ythis(Ve) > vesheath){
-		vesheath = pnt.ythis(Ve);
-	      }
-	    } else {
-	      if (pnt.ythis(Ve) < vesheath){
-		vesheath = pnt.ythis(Ve);
-	      }
-	    }
-	  }
 
 	 	  
 	  
