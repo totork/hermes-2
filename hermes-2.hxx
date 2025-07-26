@@ -192,7 +192,7 @@ private:
   // Vorticity
   bool Vort_mag, Vort_parcurrent, Vort_polarcurrent, Vort_collision, Vort_parviscous;
   bool Vort_anomalous,Vort_hyper,Vort_numdiff, Vort_parflow, Vort_dissipation, Vort_sheathdissipation, Vort_dissipation_par;
-  bool Vort_phidissipation;
+  bool Vort_phidissipation, Vort_anomalous_par;
   bool sheathdissipation_espeed;
   bool Vort_dissipation_espeed;
   bool poloidal_flows;
@@ -223,7 +223,7 @@ private:
 
   // Fields for vorticity terms
   Field3D TE_Vort_mag, TE_Vort_parcurrent, TE_Vort_polarcurrent, TE_Vort_collision, TE_Vort_parviscous;
-  Field3D TE_Vort_anomalous, TE_Vort_hyper, TE_Vort_numdiff, TE_Vort_parflow, TE_Vort_dissipation, TE_Vort_sheathdissipation;
+  Field3D TE_Vort_anomalous, TE_Vort_anomalous_par, TE_Vort_hyper, TE_Vort_numdiff, TE_Vort_parflow, TE_Vort_dissipation, TE_Vort_sheathdissipation;
   Field3D TE_Vort_dissipation_par, TE_Vort_phidissipation;
   // Fields for electron velocity terms
   Field3D TE_VePsi_parefield, TE_VePsi_parpressure, TE_VePsi_partemp, TE_VePsi_parcurrent, TE_VePsi_ExB, TE_VePsi_parflow;
@@ -263,11 +263,12 @@ private:
   BoutReal anomalous_D;    // Density diffusion
   BoutReal anomalous_chi;  // Electron thermal diffusion
   BoutReal anomalous_nu;   // Momentum diffusion (kinematic viscosity)
+  BoutReal anomalous_nu_par;
   Field3D hyper_D, hyper_chi, hyper_nu;
   Field3D num_D, num_nu, num_chi;
   Field3D num_Vort, num_VePsi;
   
-  Field3D a_d3d, a_chi3d, a_nu3d; // 3D coef
+  Field3D a_d3d, a_chi3d, a_nu3d, a_nu3d_par; // 3D coef
   bool anomalous_D_nvi; // Include terms in momentum equation
   bool anomalous_D_pepi; // Include terms in Pe, Pi equations
   

@@ -698,6 +698,7 @@ int Hermes::init(bool restarting) {
   Vort_collision = optvort["Vort_collision"].doc("Include collisional effects in vorticity").withDefault<bool>(false);
   Vort_parviscous = optvort["Vort_parviscous"].doc("Include parallel viscous effects in vorticity").withDefault<bool>(false);
   Vort_anomalous = optvort["Vort_anomalous"].doc("Include anomalous effects in vorticity").withDefault<bool>(false);
+  Vort_anomalous_par = optvort["Vort_anomalous_par"].doc("Include parallel anomalous effects in vorticity").withDefault<bool>(false);
   Vort_hyper = optvort["Vort_hyper"].doc("Use hyperdiffusion in vorticity").withDefault<bool>(false);
   Vort_numdiff = optvort["Vort_numdiff"].doc("Use parallel numerical diffusion in vorticity").withDefault<bool>(false);
   Vort_parflow = optvort["Vort_parflow"].doc("Use parallel ion flow in vorticity").withDefault<bool>(false);
@@ -902,6 +903,7 @@ int Hermes::init(bool restarting) {
   TE_Vort_collision = 0.0;
   TE_Vort_parviscous = 0.0;
   TE_Vort_anomalous = 0.0;
+  TE_Vort_anomalous_par = 0.0;
   TE_Vort_hyper = 0.0;
   TE_Vort_numdiff = 0.0;
   TE_Vort_parflow = 0.0;
@@ -912,7 +914,7 @@ int Hermes::init(bool restarting) {
   if (TE_Vort) {
     SAVE_REPEAT(TE_Vort_mag, TE_Vort_parcurrent, TE_Vort_polarcurrent, TE_Vort_collision, TE_Vort_parviscous, TE_Vort_anomalous);
     SAVE_REPEAT(TE_Vort_hyper, TE_Vort_numdiff,TE_Vort_parflow, TE_Vort_dissipation, TE_Vort_sheathdissipation);
-    SAVE_REPEAT(TE_Vort_dissipation_par, TE_Vort_phidissipation);
+    SAVE_REPEAT(TE_Vort_dissipation_par, TE_Vort_phidissipation, TE_Vort_anomalous_par);
   }
 
 
@@ -1115,6 +1117,7 @@ int Hermes::init(bool restarting) {
   anomalous_Dn = optneutrals["anomalous_Dn"].doc("Anomalous neutral diffusion").withDefault(0.0);
   anomalous_D = opttransport["anomalous_D"].doc("Anomalous diffusion").withDefault(0.0);
   anomalous_nu = opttransport["anomalous_nu"].doc("Anomalous viscosity").withDefault(0.0);
+  anomalous_nu_par = opttransport["anomalous_nu_par"].doc("Anomalous parallel viscosity").withDefault(0.0);
   anomalous_chi = opttransport["anomalous_chi"].doc("Anomalous condoctivity").withDefault(0.0);
 
   hyper_D = opttransport["hyper_D"].doc("hyperdiffusion").withDefault(Field3D{0.0});
@@ -1196,6 +1199,16 @@ int Hermes::init(bool restarting) {
     a_nu3d.applyBoundary("neumann");
     mesh->communicate(a_nu3d);
     a_nu3d.applyParallelBoundary("parallel_neumann_o1");
+  }
+
+  if (anomalous_nu_par > 0.0) {
+    // Normalise                                                                                                                                                                                                                                                                  
+    anomalous_nu_par /= rho_s0 * rho_s0 * Omega_ci; // m^2/s                                                                                                                                                                                                                          
+    output.write("\tnormalised parallel anomalous nu_par = {:e}\n", anomalous_nu_par);
+    a_nu3d_par = anomalous_nu_par;
+    a_nu3d_par.applyBoundary("neumann");
+    mesh->communicate(a_nu3d_par);
+    a_nu3d_par.applyParallelBoundary("parallel_neumann_o1");
   }
 
 
@@ -2694,6 +2707,12 @@ int Hermes::rhs(BoutReal t) {
         TE_Vort_anomalous = Div_a_Grad_perp_mod(a_nu3d, Vort);
       }
       ddt(Vort) += TE_Vort_anomalous;
+    }
+
+    if (Vort_anomalous_par){
+      TRACE("Vort anomalous par");
+      TE_Vort_anomalous_par = Div_par_K_Grad_par_mod(a_nu3d_par,Vort,false);
+      ddt(Vort) += TE_Vort_anomalous_par;
     }
 
 
