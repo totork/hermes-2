@@ -2765,9 +2765,9 @@ int Hermes::rhs(BoutReal t) {
 
     if (Vort_dissipation_par){
       if (Vort_dissipation_espeed){
-	TE_Vort_dissipation_par	= Div_par_ssdissipation(Vort, fastest_espeed);
+	TE_Vort_dissipation_par	= -Div_par_ssdissipation(Vort, fastest_espeed);
       } else {
-	TE_Vort_dissipation_par = Div_par_ssdissipation(Vort, fastest_ispeed);
+	TE_Vort_dissipation_par = -Div_par_ssdissipation(Vort, fastest_ispeed);
       }
       ddt(Vort) += TE_Vort_dissipation_par;
     }
