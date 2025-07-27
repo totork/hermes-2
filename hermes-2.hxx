@@ -111,7 +111,7 @@ private:
   BoutReal infsink_Te, infsink_amp;
   BoutReal infsink_Ne;
   Field3D debug_sheath_infsink;
-  bool damp_core_vorticity;
+  bool damp_core_vorticity, damp_edge_vorticity;
   bool J_equalize;
   bool set_inner_neumann;
   bool check_finite;
