@@ -315,6 +315,7 @@ private:
   bool sheath_yup, sheath_ydown; 
   bool test_boundaries;
   bool sheath_allow_supersonic; // If plasma is faster than sound speed, go to plasma velocity
+  bool sheath_allow_supersonic_Te;
   bool parallel_sheaths;  
   int par_sheath_model;  // Sets parallel boundary condition model
   BoutReal electron_weight;  // electron heaviness in units of m_e (for slower boundaries)
