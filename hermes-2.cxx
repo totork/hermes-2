@@ -2688,7 +2688,7 @@ int Hermes::rhs(BoutReal t) {
 	    pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
 	  } else {
 	    // Assuming zero gradient of potential into the sheath
-	    phisheath = pnt.ythis(phi);
+	    phisheath = floor(pnt.ythis(phi), 0.0);
 	    pnt.ynext(phi) = phisheath;
 	  }
 
