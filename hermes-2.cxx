@@ -1064,7 +1064,7 @@ int Hermes::init(bool restarting) {
   SAVE_REPEAT(sheath_ramp_factor);
   sheath_allow_supersonic = optsheath["sheath_allow_supersonic"]
           .doc("If plasma is faster than sound speed, go to plasma velocity")
-          .withDefault<bool>(false);
+          .withDefault<bool>(true);
   
   OPTION(optsheath, sheath_interpolate, false);
 
@@ -2197,7 +2197,19 @@ int Hermes::rhs(BoutReal t) {
 	  }
 
 
-	    
+	  if (sheath_allow_supersonic){
+
+            if (pnt.dir > 0.99 && pnt.dir < 1.01){
+              if (pnt.ythis(Ve) > vesheath){
+		vesheath = pnt.ythis(Ve);
+              }
+            } else {
+              if (pnt.ythis(Ve) < vesheath){
+                vesheath = pnt.ythis(Ve);
+              }
+            }
+
+          }
 
 	  
 
