@@ -604,7 +604,9 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, phi_boundary_last_update, -1);
   OPTION(optsc, phi_boundary_timescale, 1e-4);
 
-
+  OPTION(optsc, phi_relaxation, false);
+  OPTION(optsc, phi_relaxation_time , 1e-8);
+  
   OPTION(optsc, phi_sheath_relax, false);
   OPTION(optsc, phi_sheath_last_update, -1);
   OPTION(optsc, phi_sheath_timescale, 1e-6);
@@ -1101,7 +1103,7 @@ int Hermes::init(bool restarting) {
 
   phi_boundary_timescale *= Omega_ci;
   phi_sheath_timescale *= Omega_ci;
-  
+  phi_relaxation_time *= Omega_ci;
   // Collision times
   BoutReal lambda_ei = 24. - log(sqrt(Nnorm / 1e6) / Tnorm);
   BoutReal lambda_ii = 23. - log(sqrt(2. * Nnorm / 1e6) / pow(Tnorm, 1.5));
@@ -1982,10 +1984,15 @@ int Hermes::rhs(BoutReal t) {
 	// Use older Laplacian solver
 	// phiSolver->setCoefC(1./SQ(coord->Bxy)); // Set when initialised
       mesh->communicate(phi_boundary3d);
-      if (newXZsolver){
-	phi = newSolver->solve(Vort, phi_boundary3d);
-      } else {
-	phi = phiSolver->solve(mul_all(Vort , mul_all(coord->Bxy, coord->Bxy)), phi_boundary3d);
+      if (!phi_relaxation){
+	if (newXZsolver){
+	  phi = newSolver->solve(Vort, phi_boundary3d);
+	} else {
+	  phi = phiSolver->solve(mul_all(Vort , mul_all(coord->Bxy, coord->Bxy)), phi_boundary3d);
+	}
+      } else if (phi_relaxation){
+	Field3D phi_hat = phiSolver->solve(mul_all(Vort , mul_all(coord->Bxy, coord->Bxy)), phi_boundary3d);
+	phi = phi + (phi_hat - phi) / phi_relaxation_time;
       }
 
 	

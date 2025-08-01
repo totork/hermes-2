@@ -426,6 +426,8 @@ private:
 
   bool phi_boundary_relax; ///< Relax the boundary towards Neumann?
   bool phi_sheath_relax;
+  bool phi_relaxation;
+  BoutReal phi_relaxation_time;
   BoutReal phi_boundary_timescale; ///< Relaxation timescale
   BoutReal phi_boundary_last_update; ///< The last time the boundary was updated
   BoutReal phi_sheath_timescale;
