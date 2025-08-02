@@ -2256,13 +2256,13 @@ int Hermes::rhs(BoutReal t) {
 
               if (pnt.dir > 0.5) {
                 BoutReal g_22up = 0.5 * (sqrt(coord->g_22[i]) + sqrt(coord->g_22.yup()[iyp]));
-                BoutReal Jup  = 0.5 * (sqrt(coord->J[i]) + sqrt(coord->J.yup()[iyp]));
+                BoutReal Jup  = 0.5 * ((coord->J[i]) + (coord->J.yup()[iyp]));
                 BoutReal fluxup = 0.5 * dissvel * Vort[i] * Jup / g_22up;
 
                 TE_Vort_sheathdissipation[i] = fluxup / (coord->dy[i]*coord->J[i]);
               } else {
                 BoutReal g_22down = 0.5 * (sqrt(coord->g_22[i]) + sqrt(coord->g_22.ydown()[iym]));
-                BoutReal Jdown  = 0.5 * (sqrt(coord->J[i]) + sqrt(coord->J.ydown()[iym]));
+                BoutReal Jdown  = 0.5 * ((coord->J[i]) + (coord->J.ydown()[iym]));
                 BoutReal fluxdown= -0.5 * dissvel * Vort[i] * Jdown / g_22down;
                 TE_Vort_sheathdissipation[i] = -fluxdown / (coord->dy[i]*coord->J[i]);
               }
