@@ -742,6 +742,8 @@ int Hermes::init(bool restarting) {
   Vort_dissipation = optvort["Vort_dissipation"].doc("Use dissipation in vorticity").withDefault<bool>(false);
   Vort_dissipation_par = optvort["Vort_dissipation_par"].doc("Use dissipation in vorticity in parallel direction").withDefault<bool>(false);
   Vort_dissipation_perp = optvort["Vort_dissipation_perp"].doc("Use dissipation in vorticity in perpendicular direction").withDefault<bool>(false);
+  Vort_sheathdissipation = optvort["Vort_sheathdissipation"].doc("Use dissipation of vorticity infront of sheath").withDefault<bool>(false);
+  
   if (optvort["bndry_xout"] == "dirichlet"){
     Vort_dirichlet=true;
   } else {
@@ -1076,6 +1078,7 @@ int Hermes::init(bool restarting) {
   TE_Vort_numdiff = 0.0;
   TE_Vort_parflow = 0.0;
   TE_Vort_dissipation = 0.0;
+  TE_Vort_sheathdissipation = 0.0;
   if (TE_Vort) {
     if (Vort_mag) {
       SAVE_REPEAT(TE_Vort_mag);
@@ -1107,9 +1110,14 @@ int Hermes::init(bool restarting) {
     if (Vort_dissipation) {
       SAVE_REPEAT(TE_Vort_dissipation);
     }
+    if (Vort_sheathdissipation) {
+      SAVE_REPEAT(TE_Vort_sheathdissipation);
+    }
   }
+  
+  OPTION(optvort, sheathdissipation_espeed, false);
 
-
+  
   // Electron velocity
   TE_VePsi_parefield = 0.0;
   TE_VePsi_parpressure = 0.0;
@@ -2801,7 +2809,31 @@ int Hermes::rhs(BoutReal t) {
 	  }
 	  
 	  if (abs(pnt.offset())==1){	              	   	    
-	    
+
+
+	    if (Vort_sheathdissipation){
+              BoutReal dissvel = 0.0;
+              const auto iyp = i.yp();
+              const auto iym = i.ym();
+              if (sheathdissipation_espeed){
+                dissvel = fastest_espeed[i];
+              } else {
+                dissvel = fastest_ispeed[i];
+              }
+
+              if (pnt.dir > 0.5) {
+                BoutReal g_22up = 0.5 * (sqrt(coord->g_22[i]) + sqrt(coord->g_22.yup()[iyp]));
+                BoutReal Jup  = 0.5 * ((coord->J[i]) + (coord->J.yup()[iyp]));
+                BoutReal fluxup = 0.5 * dissvel * Vort[i] * Jup / g_22up;
+		// SIGNS FLIPPED BECAUSE ADVECTION = -divpar() ... 
+                TE_Vort_sheathdissipation[i] = -fluxup / (coord->dy[i]*coord->J[i]);
+              } else {
+                BoutReal g_22down = 0.5 * (sqrt(coord->g_22[i]) + sqrt(coord->g_22.ydown()[iym]));
+                BoutReal Jdown  = 0.5 * ((coord->J[i]) + (coord->J.ydown()[iym]));
+                BoutReal fluxdown= -0.5 * dissvel * Vort[i] * Jdown / g_22down;
+                TE_Vort_sheathdissipation[i] = fluxdown / (coord->dy[i]*coord->J[i]);
+              }
+            }
 
 	    TRACE("Sheath offset==1, sheath power calculation");
 
@@ -4465,7 +4497,9 @@ int Hermes::rhs(BoutReal t) {
 	ddt(Vort) += TE_Vort_parflow;
       }
 
-      
+      if (Vort_sheathdissipation){
+	ddt(Vort) += TE_Vort_sheathdissipation;
+      }
       
     } // End if evolve_vort
 

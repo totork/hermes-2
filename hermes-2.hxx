@@ -220,7 +220,8 @@ private:
   // Vorticity
   bool Vort_mag, Vort_parcurrent, Vort_polarcurrent, Vort_collision, Vort_parviscous;
   bool Vort_anomalous,Vort_hyper,Vort_numdiff, Vort_parflow, Vort_dissipation;
-  bool Vort_dissipation_par,Vort_dissipation_perp;
+  bool Vort_dissipation_par,Vort_dissipation_perp, Vort_sheathdissipation;
+  bool sheathdissipation_espeed;
   bool poloidal_flows;
   bool Vort_dirichlet;
   // Electron velocity
@@ -249,6 +250,7 @@ private:
   // Fields for vorticity terms
   Field3D TE_Vort_mag, TE_Vort_parcurrent, TE_Vort_polarcurrent, TE_Vort_collision, TE_Vort_parviscous;
   Field3D TE_Vort_anomalous, TE_Vort_hyper, TE_Vort_numdiff, TE_Vort_parflow, TE_Vort_dissipation;
+  Field3D TE_Vort_sheathdissipation;
   
   // Fields for electron velocity terms
   Field3D TE_VePsi_parefield, TE_VePsi_parpressure, TE_VePsi_partemp, TE_VePsi_parcurrent, TE_VePsi_ExB, TE_VePsi_parflow;
