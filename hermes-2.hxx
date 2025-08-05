@@ -354,7 +354,7 @@ private:
   
   bool neutralplasmainteraction;
   bool simplified_diffusion;
-  
+  bool neutral_average;
   BoutReal floor_Nn,floor_Tn;
   BoutReal anomalous_Dn;
   BoutReal Recycling_coef;
