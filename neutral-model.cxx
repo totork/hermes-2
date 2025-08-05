@@ -54,7 +54,7 @@ void fci_neutral_rates(
     Field3D &S, Field3D &F, Field3D &Qi, Field3D &R, // Transfer rates
     Field3D &Riz, Field3D &Rrc, Field3D &Rcx,
     BoutReal NormT, BoutReal NormN, BoutReal NormB, BoutReal NormL, BoutReal NormF,
-    bool ionizationloss , Field3D& Dnn, BoutReal Lmax, bool evolveTn) {      // Rates
+    bool ionizationloss , Field3D& Dnn, BoutReal Lmax, bool evolveTn, bool average) {      // Rates
 
 
   UpdatedRadiatedPower hydrogen;
@@ -142,27 +142,42 @@ void fci_neutral_rates(
     // Factor of 3/2 to convert temperature to energy
     // If no evolving Tn, act like Tn=0 for CX rate calculation
     if (evolveTn){
-      Qi[ind] = (3. / 2) * (J_L * (Ti_L - Tn_L) * R_cx_L +
+      if (average){
+	Qi[ind] = (3. / 2) * (J_L * (Ti_L - Tn_L) * R_cx_L +
                               4. * J_C * (Ti_C - Tn_C) * R_cx_C +
                               J_R * (Ti_R - Tn_R) * R_cx_R) /
-      (6. * J_C);
+	  (6. * J_C);
+      } else {
+	Qi[ind] = (3.0/2.0) * (Ti_C - Tn_C) * R_cx_C;
+      }
     } else {
-      Qi[ind] = (3. / 2) * (J_L * Ti_L  * R_cx_L +
-			    4. * J_C * (Ti_C - Tn_C) * R_cx_C +
-			    J_R * Ti_R * R_cx_R) /
-	(6. * J_C);
+      if (average) {
+	Qi[ind] = (3. / 2) * (J_L * Ti_L  * R_cx_L +
+			      4. * J_C * (Ti_C) * R_cx_C +
+			      J_R * Ti_R * R_cx_R) /
+	  (6. * J_C);
+      } else {
+	Qi[ind] = (3.0/2.0) * (Ti_C) * R_cx_C;
+      }
     }
     
         // Plasma-neutral friction
-    F[ind] =
-      (J_L * (Vi_L - Vn_L) * R_cx_L + 4. * J_C * (Vi_C - Vn_C) * R_cx_C +
-       J_R * (Vi_R - Vn_R) * R_cx_R) /
-      (6. * J_C);
-    
+    if (average){
+      F[ind] =
+	(J_L * (Vi_L - Vn_L) * R_cx_L + 4. * J_C * (Vi_C - Vn_C) * R_cx_C +
+	 J_R * (Vi_R - Vn_R) * R_cx_R) /
+	(6. * J_C);
+    } else {
+      F[ind] = (Vi_C - Vn_C) * R_cx_C;
+    }
+      
     // Cell-averaged rate
-    Rcx[ind] =
-      (J_L * R_cx_L + 4. * J_C * R_cx_C + J_R * R_cx_R) / (6. * J_C);
-    
+    if (average) {
+      Rcx[ind] =
+	(J_L * R_cx_L + 4. * J_C * R_cx_C + J_R * R_cx_R) / (6. * J_C);
+    } else {
+      Rcx[ind] = R_cx_C;
+    }
     ///////////////////////////////////////
     // Recombination
 
@@ -176,30 +191,48 @@ void fci_neutral_rates(
     // Radiated power from plasma
     // Factor of 1.09 so that recombination becomes an energy source at
     // 5.25eV
-    R[ind] = (J_L * (1.09 * Te_L - 13.6 / NormT) * R_rc_L +
-		  4. * J_C * (1.09 * Te_C - 13.6 / NormT) * R_rc_C +
-		  J_R * (1.09 * Te_R - 13.6 / NormT) * R_rc_R) /
-      (6. * J_C);
+    if (average) {
+      R[ind] = (J_L * (1.09 * Te_L - 13.6 / NormT) * R_rc_L +
+		4. * J_C * (1.09 * Te_C - 13.6 / NormT) * R_rc_C +
+		J_R * (1.09 * Te_R - 13.6 / NormT) * R_rc_R) /
+	(6. * J_C);
+    } else {
+      R[ind] = (1.09 * Te_C - 13.6 / NormT) * R_rc_C;
+    }
     
         // Plasma sink / neutral source
-    S[ind] =
-      (J_L * R_rc_L + 4. * J_C * R_rc_C + J_R * R_rc_R) / (6. * J_C);
-
+    if (average){
+      S[ind] =
+	(J_L * R_rc_L + 4. * J_C * R_rc_C + J_R * R_rc_R) / (6. * J_C);
+    } else {
+      S[ind] = R_rc_C;
+    }
         // Transfer of ion momentum to neutrals
-    F[ind] += (J_L * Vi_L * R_rc_L + 4. * J_C * Vi_C * R_rc_C +
-		   J_R * Vi_R * R_rc_R) /
-      (6. * J_C);
+    if (average) {
+      F[ind] += (J_L * Vi_L * R_rc_L + 4. * J_C * Vi_C * R_rc_C +
+		 J_R * Vi_R * R_rc_R) /
+	(6. * J_C);
+    } else {
+      F[ind] += Vi_C * R_rc_C;
+    }
     
         // Transfer of ion energy to neutrals
-    Qi[ind] += (3. / 2) *
-      (J_L * Ti_L * R_rc_L + 4. * J_C * Ti_C * R_rc_C +
-       J_R * Ti_R * R_rc_R) /
-      (6. * J_C);
+    if (average) {
+      Qi[ind] += (3. / 2) *
+	(J_L * Ti_L * R_rc_L + 4. * J_C * Ti_C * R_rc_C +
+	 J_R * Ti_R * R_rc_R) /
+	(6. * J_C);
+    } else {
+      Qi[ind] += (3.0/2.0) * Ti_C * R_rc_C;
+    }
 
         // Cell-averaged rate
-    Rrc[ind] =
-      (J_L * R_rc_L + 4. * J_C * R_rc_C + J_R * R_rc_R) / (6. * J_C);
-
+    if (average) {
+      Rrc[ind] =
+	(J_L * R_rc_L + 4. * J_C * R_rc_C + J_R * R_rc_R) / (6. * J_C);
+    } else {
+      Rrc[ind] = R_rc_C;
+    }
         ///////////////////////////////////////
         // Ionisation
 
@@ -211,30 +244,46 @@ void fci_neutral_rates(
             Ne_R * Nn_R * hydrogen.ionisation(Te_R * NormT) * NormN / NormF;
 
         // Neutral sink, plasma source
-    S[ind] -=
-            (J_L * R_iz_L + 4. * J_C * R_iz_C + J_R * R_iz_R) / (6. * J_C);
-
+    if (average) {
+      S[ind] -=
+	(J_L * R_iz_L + 4. * J_C * R_iz_C + J_R * R_iz_R) / (6. * J_C);
+    } else {
+      S[ind] -= R_iz_C;
+    }
         // Transfer of neutral momentum to ions
-    F[ind] -= (J_L * Vn_L * R_iz_L + 4. * J_C * Vn_C * R_iz_C +
-                       J_R * Vn_R * R_iz_R) /
-                      (6. * J_C);
-
+    if (average) {
+      F[ind] -= (J_L * Vn_L * R_iz_L + 4. * J_C * Vn_C * R_iz_C +
+		 J_R * Vn_R * R_iz_R) /
+	(6. * J_C);
+    } else {
+      F[ind] -= Vn_C * R_iz_C;
+    }
         // Transfer of neutral energy to ions
-    Qi[ind] -= (3. / 2) *
-                       (J_L * Tn_L * R_iz_L + 4. * J_C * Tn_C * R_iz_C +
-                        J_R * Tn_R * R_iz_R) /
-                       (6. * J_C);
-
+    if (average) {
+      Qi[ind] -= (3. / 2) *
+	(J_L * Tn_L * R_iz_L + 4. * J_C * Tn_C * R_iz_C +
+	 J_R * Tn_R * R_iz_R) /
+	(6. * J_C);
+    } else {
+      Qi[ind] -= Tn_C * R_iz_C;
+    }
         // Ionisation and electron excitation energy
     if (ionizationloss){
-      R[ind] += (30.0 / NormT) *
-	(J_L * R_iz_L + 4. * J_C * R_iz_C + J_R * R_iz_R) /
-	(6. * J_C);
+      if (average) {
+	R[ind] += (30.0 / NormT) *
+	  (J_L * R_iz_L + 4. * J_C * R_iz_C + J_R * R_iz_R) /
+	  (6. * J_C);
+      } else {
+	R[ind] += (30.0 / NormT) * R_iz_C;
+      }
     }
         // Cell-averaged rate
-    Riz[ind] =
-      (J_L * R_iz_L + 4. * J_C * R_iz_C + J_R * R_iz_R) / (6. * J_C);
-
+    if (average) {
+      Riz[ind] =
+	(J_L * R_iz_L + 4. * J_C * R_iz_C + J_R * R_iz_R) / (6. * J_C);
+    } else {
+      Riz[ind] = R_iz_C;
+    }
 
 
     BoutReal sigma_cx = Ne[ind] * NormN * hydrogen.chargeExchange(Te[ind]*NormT)/NormF;
