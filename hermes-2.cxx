@@ -706,7 +706,7 @@ int Hermes::init(bool restarting) {
   Pe_numdiff = optpe["Pe_numdiff"].doc("Use parallel numerical diffusion in electron pressure").withDefault<bool>(false);
   Pe_dampening = optpe["Pe_dampening"].doc("Use dampening of high temperatures in electron pressure").withDefault<bool>(false);
   Pe_lowdiffuse = optpe["Pe_lowdiffuse"].doc("Use dampening of high temperatures in electron pressure").withDefault<bool>(false);
-
+  Pe_neutrals = optpe["Pe_neutrals"].doc("Use neutral radiation in electron pressure").withDefault<bool>(false);
 
   
   // bool Pi_ExB, Pi_mag, Pi_parflow, Pi_conduction, Pi_diamagenergyexchange, Pi_parviscousheat;
@@ -954,6 +954,7 @@ int Hermes::init(bool restarting) {
   TE_Pe_dampening = 0.0;
   TE_Pe_sheath = 0.0;
   TE_Pe_lowdiffuse = 0.0;
+  TE_Pe_neutrals = 0.0;
   if (TE_Pe) {
     if (Pe_ExB) {
       SAVE_REPEAT(TE_Pe_ExB);
@@ -1002,6 +1003,9 @@ int Hermes::init(bool restarting) {
     }
     if (Pe_lowdiffuse) {
       SAVE_REPEAT(TE_Pe_lowdiffuse);
+    }
+    if(Pe_neutrals){
+      SAVE_REPEAT(TE_Pe_neutrals);
     }
   }
   
@@ -3932,14 +3936,15 @@ int Hermes::rhs(BoutReal t) {
       } else {
 	TE_Pe_sources = PeSource;
       }
-
-      if (evolve_neutrals && neutralplasmainteraction){
-	TE_Pe_sources += -(2.0/3.0) * Rn; 
-      }
-      
       ddt(Pe) += TE_Pe_sources;
     } //End Pe_sources
 
+    if (Pe_neutrals){
+      if (evolve_neutrals && neutralplasmainteraction){
+        TE_Pe_neutrals += -(2.0/3.0) * Rn;
+      }
+      ddt(Pe) += TE_Pe_neutrals;
+    }
 
     if (parallel_sheaths && Pe_sources){
       switch (par_sheath_model) {

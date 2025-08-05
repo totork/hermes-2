@@ -212,7 +212,7 @@ private:
   // Electron pressure
   bool Pe_ExB, Pe_mag, Pe_parflow, Pe_conduction, Pe_ohmic, Pe_thermalforce, Pe_thermalcurrent;
   bool Pe_collision, Pe_anomalous, Pe_sources, Pe_energyexchange,Pe_hyper,Pe_numdiff;
-  bool Pe_dampening, Pe_lowdiffuse;
+  bool Pe_dampening, Pe_lowdiffuse, Pe_neutrals;
   // Ion Pressure
   bool Pi_ExB, Pi_mag, Pi_parflow, Pi_conduction, Pi_diamagenergyexchange, Pi_parviscousheat;
   bool Pi_resistivedrift, Pi_perpviscous, Pi_sources,Pi_hyper,Pi_numdiff,Pi_anomalous, Pi_energyexchange, Pi_lowdiffuse;
@@ -242,7 +242,7 @@ private:
   // Fields for electron pressure terms
   Field3D TE_Pe_ExB, TE_Pe_mag, TE_Pe_parflow, TE_Pe_conduction, TE_Pe_ohmic, TE_Pe_thermalforce, TE_Pe_thermalcurrent;
   Field3D TE_Pe_collision, TE_Pe_anomalous, TE_Pe_sources, TE_Pe_energyexchange, TE_Pe_hyper, TE_Pe_numdiff, TE_Pe_lowdiffuse;
-  Field3D TE_Pe_dampening,TE_Pe_sheath;
+  Field3D TE_Pe_dampening,TE_Pe_sheath, TE_Pe_neutrals;
   // Fields for ion pressure terms
   Field3D TE_Pi_ExB, TE_Pi_mag, TE_Pi_parflow, TE_Pi_conduction, TE_Pi_diamagenergyexchange, TE_Pi_parviscousheat;
   Field3D TE_Pi_resistivedrift, TE_Pi_perpviscous, TE_Pi_sources, TE_Pi_hyper, TE_Pi_numdiff,TE_Pi_anomalous, TE_Pi_energyexchange, TE_Pi_lowdiffuse;
