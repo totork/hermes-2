@@ -850,6 +850,7 @@ int Hermes::init(bool restarting) {
   OPTION(optneutrals, simplified_diffusion, false);
   OPTION(optneutrals, neutrals_lmax, 0.01);
   OPTION(optneutrals, neutral_average, true);
+  OPTION(optneutrals, neutral_recombination, true);
   // Density
   TE_Ne_ExB = 0.0;
   TE_Ne_mag = 0.0;
@@ -3060,7 +3061,7 @@ int Hermes::rhs(BoutReal t) {
       zero_all(Vn);
     }
     fci_neutral_rates( Ne, Te, Ti, Vi, Nn, Tn, Vn, Sneutral, Fn, Qin, Rn, Riz, Rrc, Rcx, Tnorm, Nnorm, Bnorm, rho_s0,
-		       Omega_ci, true, Dnn, neutrals_lmax, evolve_pn, neutral_average);
+		       Omega_ci, true, Dnn, neutrals_lmax, evolve_pn, neutral_average, neutral_recombination);
     Fn.applyBoundary("neumann");
     Qin.applyBoundary("neumann");
     Rn.applyBoundary("neumann");

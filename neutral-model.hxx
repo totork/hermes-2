@@ -21,7 +21,7 @@ void fci_neutral_rates(
     Field3D &S, Field3D &F, Field3D &Qi, Field3D &R, // Transfer rates                                                                                                                                                                                                            
     Field3D &Riz, Field3D &Rrc, Field3D &Rcx,
     BoutReal NormT, BoutReal NormN, BoutReal NormB, BoutReal NormL, BoutReal NormF,
-    bool ionizationloss , Field3D& Dnn, BoutReal Lmax, bool evolveTn);
+    bool ionizationloss , Field3D& Dnn, BoutReal Lmax, bool evolveTn, bool average, bool recombination);
 
 
 
