@@ -1335,9 +1335,9 @@ int Hermes::init(bool restarting) {
           .doc("If plasma is faster than sound speed, go to plasma velocity")
           .withDefault<bool>(true);
 
-  sheath_allow_supersonic_Te = optsheath["sheath_allow_supersonic_supersonic"]
+  sheath_allow_supersonic_Te = optsheath["sheath_allow_supersonic_Te"]
           .doc("If plasma is faster than sound speed, go to plasma velocity")
-          .withDefault<bool>(sheath_allow_supersonic);
+          .withDefault<bool>(false);
 
   
   OPTION(optsheath, sheath_interpolate, false);
