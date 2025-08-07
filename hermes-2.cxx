@@ -1329,6 +1329,7 @@ int Hermes::init(bool restarting) {
   OPTION(optsheath, par_sheath_ve, true);
   OPTION(optsheath, sheath_ramp, false);
   OPTION(optsheath, sheath_ramp_time, 1e6);
+  OPTION(optsheath, phisheath_floor, 0.0);
   SAVE_REPEAT(sheath_ramp_factor);
   sheath_allow_supersonic = optsheath["sheath_allow_supersonic"]
           .doc("If plasma is faster than sound speed, go to plasma velocity")
@@ -2751,15 +2752,15 @@ int Hermes::rhs(BoutReal t) {
 	    vesheath = visheath;
 	  } else if (sheath_simplephi){
 	    if (!sheath_ramp){
-	      vesheath = pnt.dir * sqrt(tesheath) * sqrt(mi_me/(2.0*PI)) * exp(-(phisheath/tesheath));
+	      vesheath = pnt.dir * sqrt(tesheath) * sqrt(mi_me/(2.0*PI)) * exp(-(floor(phisheath, phisheath_floor)/tesheath));
 	    } else {
-	      vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * sqrt(mi_me/(2.0*PI)) * exp(-(phisheath/tesheath)));
+	      vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * sqrt(mi_me/(2.0*PI)) * exp(-(floor(phisheath, phisheath_floor)/tesheath)));
 	    }
 	  } else {
 	    if (!sheath_ramp){
-	      vesheath = pnt.dir * sqrt(tesheath) * sqrt(mi_me/(2.0*PI)) * exp(-(phisheath/tesheath));
+	      vesheath = pnt.dir * sqrt(tesheath) * sqrt(mi_me/(2.0*PI)) * exp(-(floor(phisheath, phisheath_floor)/tesheath));
 	    } else {
-	      vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * sqrt(mi_me/(2.0*PI))  * exp(-(phisheath/tesheath)));
+	      vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * sqrt(mi_me/(2.0*PI))  * exp(-(floor(phisheath, phisheath_floor)/tesheath)));
 	    }
 	  }
 
