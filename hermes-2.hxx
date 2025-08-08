@@ -227,7 +227,7 @@ private:
   bool Vort_dirichlet;
   // Electron velocity
   bool VePsi_parefield, VePsi_parpressure, VePsi_partemp, VePsi_parcurrent, VePsi_ExB, VePsi_parflow,VePsi_hyper,VePsi_numdiff;
-  bool VePsi_parallelvisc,VePsi_supsonicdampening, VePsi_anomalous, VePsi_sheathdissipation;
+  bool VePsi_parallelvisc,VePsi_supsonicdampening, VePsi_anomalous, VePsi_sheathdissipation, VePsi_anomalous_par;
 
 
   
@@ -256,7 +256,7 @@ private:
   // Fields for electron velocity terms
   Field3D TE_VePsi_parefield, TE_VePsi_parpressure, TE_VePsi_partemp, TE_VePsi_parcurrent, TE_VePsi_ExB, TE_VePsi_parflow;
   Field3D TE_VePsi_hyper, TE_VePsi_numdiff , TE_VePsi_parallelvisc, TE_VePsi_supsonicdampening, TE_VePsi_anomalous, TE_VePsi_sheathdissipation;
-
+  Field3D TE_VePsi_anomalous_par;
   
   //////////////////////////////////////////////////////
   
@@ -295,11 +295,12 @@ private:
   BoutReal anomalous_D;    // Density diffusion
   BoutReal anomalous_chi;  // Electron thermal diffusion
   BoutReal anomalous_nu;   // Momentum diffusion (kinematic viscosity)
+  BoutReal anomalous_nu_par;
   Field3D hyper_D, hyper_chi, hyper_nu;
   Field3D num_D, num_nu, num_chi;
   Field3D num_Vort, num_VePsi;
   
-  Field3D a_d3d, a_chi3d, a_nu3d; // 3D coef
+  Field3D a_d3d, a_chi3d, a_nu3d, a_nu3d_par; // 3D coef
   bool anomalous_D_nvi; // Include terms in momentum equation
   bool anomalous_D_pepi; // Include terms in Pe, Pi equations
   

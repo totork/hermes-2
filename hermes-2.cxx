@@ -766,6 +766,7 @@ int Hermes::init(bool restarting) {
   VePsi_supsonicdampening = optvepsi["VePsi_supsonicdampening"].doc("Use supersonic dampening in electron velocity").withDefault<bool>(false);
   VePsi_anomalous = optvepsi["VePsi_anomalous"].doc("Use anomalous transport in electron velocity").withDefault<bool>(false);
   VePsi_sheathdissipation = optvepsi["VePsi_sheathdissipation"].doc("Use dissipation for velocities higher than electron soundspeed in electron velocity").withDefault<bool>(false);
+  VePsi_anomalous_par = optvepsi["VePsi_anomalous_par"].doc("Use anomalous transport in electron velocity").withDefault<bool>(false);
   // Initialize the corresponding fields
 
   TE_Ne = optsc["TE_Ne"].doc("Save all terms in time evolution of density").withDefault<bool>(false);
@@ -1136,6 +1137,7 @@ int Hermes::init(bool restarting) {
   TE_VePsi_parallelvisc = 0.0;
   TE_VePsi_supsonicdampening = 0.0;
   TE_VePsi_anomalous = 0.0;
+  TE_VePsi_anomalous_par = 0.0;
   TE_VePsi_sheathdissipation = 0.0;
   if (TE_VePsi) {
     if (VePsi_parefield) {
@@ -1173,6 +1175,9 @@ int Hermes::init(bool restarting) {
     }
     if (VePsi_sheathdissipation) {
       SAVE_REPEAT(TE_VePsi_sheathdissipation);
+    }
+    if (VePsi_anomalous_par) {
+      SAVE_REPEAT(TE_VePsi_anomalous_par);
     }
   }
 
@@ -1414,7 +1419,8 @@ int Hermes::init(bool restarting) {
   anomalous_D = opttransport["anomalous_D"].doc("Anomalous diffusion").withDefault(0.0);
   anomalous_nu = opttransport["anomalous_nu"].doc("Anomalous viscosity").withDefault(0.0);
   anomalous_chi = opttransport["anomalous_chi"].doc("Anomalous condoctivity").withDefault(0.0);
-
+  anomalous_nu_par = opttransport["anomalous_nu_par"].doc("Anomalous parallel viscosity").withDefault(0.0);
+  
   hyper_D = opttransport["hyper_D"].doc("hyperdiffusion").withDefault(Field3D{0.0});
   hyper_chi = opttransport["hyper_chi"].doc("hyperconductivity").withDefault(Field3D{0.0});
   hyper_nu = opttransport["hyper_nu"].doc("hyperviscosity").withDefault(Field3D{0.0});
@@ -1493,7 +1499,15 @@ int Hermes::init(bool restarting) {
     a_nu3d.applyParallelBoundary("parallel_neumann_o1");
   }
 
-
+  if (anomalous_nu_par > 0.0) {
+    // Normalise                                                                                                                                      
+    anomalous_nu_par /= rho_s0 * rho_s0 * Omega_ci; // m^2/s                                                                                              
+    output.write("\tnormalised anomalous nu_perp = {:e}\n", anomalous_nu_par);
+    a_nu3d_par = anomalous_nu_par;
+    a_nu3d_par.applyBoundary("neumann");
+    mesh->communicate(a_nu3d_par);
+    a_nu3d_par.applyParallelBoundary("parallel_neumann_o1");
+  }
 
 
   
@@ -2797,7 +2811,7 @@ int Hermes::rhs(BoutReal t) {
 		  BoutReal g_22down = 0.5 * (sqrt(coord->g_22[i]) + sqrt(coord->g_22.ydown()[iym]));
 		  BoutReal Jdown  = 0.5 * ((coord->J[i]) + (coord->J.ydown()[iym]));
 		  BoutReal fluxdown= -0.5 * fastest_espeed[i] * (abs(vesheath) - abs(pre_vesheath)) * Jdown / g_22down;
-		  TE_VePsi_sheathdissipation[i] = fluxdown / (coord->dy[i]*coord->J[i]);
+		  TE_VePsi_sheathdissipation[i] = -fluxdown / (coord->dy[i]*coord->J[i]);
 		}
 	      }
 	    }
@@ -3659,7 +3673,13 @@ int Hermes::rhs(BoutReal t) {
       ddt(VePsi) += TE_VePsi_parallelvisc; 
     } // End VePsi_parallelvisc
 
-
+    if (VePsi_anomalous_par) {
+      TE_VePsi_anomalous_par = Div_par_K_Grad_par_mod(a_nu3d_par,Ve, true, use_conduction_higher);
+      ddt(VePsi) += TE_VePsi_anomalous_par;
+    } // End VePsi_anomalous_par
+    
+    
+    
     if (VePsi_anomalous){
       TRACE("VePsi anomalous");
       if (!use_new_divagradperp){
