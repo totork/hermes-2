@@ -296,6 +296,9 @@ private:
   BoutReal anomalous_chi;  // Electron thermal diffusion
   BoutReal anomalous_nu;   // Momentum diffusion (kinematic viscosity)
   BoutReal anomalous_nu_par;
+  bool anomalous_spatial;
+  BoutReal anomalous_r1, anomalous_r2,anomalous_f1,anomalous_f2;
+  Field3D gridR;
   Field3D hyper_D, hyper_chi, hyper_nu;
   Field3D num_D, num_nu, num_chi;
   Field3D num_Vort, num_VePsi;

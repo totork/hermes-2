@@ -1462,8 +1462,7 @@ int Hermes::init(bool restarting) {
   num_nu.applyParallelBoundary(parbc);
   num_chi.applyParallelBoundary(parbc);
   num_Vort.applyParallelBoundary(parbc);
-  num_VePsi.applyParallelBoundary(parbc);
-  
+  num_VePsi.applyParallelBoundary(parbc);  
   
   if (anomalous_D > 0.0) {
     // Normalise
@@ -1509,6 +1508,48 @@ int Hermes::init(bool restarting) {
     a_nu3d_par.applyParallelBoundary("parallel_neumann_o1");
   }
 
+  OPTION(opttransport, anomalous_spatial, false);
+  OPTION(opttransport,anomalous_r1, 0.5);
+  OPTION(opttransport,anomalous_r2, 1.0);
+  OPTION(opttransport,anomalous_f1, 0.5);
+  OPTION(opttransport,anomalous_f2, 1.0);
+  
+  if (anomalous_spatial) {
+    
+    Field3D spatial_factor;
+    set_all(spatial_factor, 0.0);
+    
+    mesh->get(gridR, "Rxy", 0.0);
+    SAVE_ONCE(gridR);
+    
+    BOUT_FOR(i, Ne.getRegion("RGN_NOY")) {
+      BoutReal diff_r = (gridR[i] - anomalous_r1) / (anomalous_r2 - anomalous_r1);
+      if (diff_r <= 0.0) {
+	spatial_factor[i]  = anomalous_f1;
+      } else if (diff_r >= 1.0) {
+	spatial_factor[i]  = anomalous_f2;
+      } else {
+	spatial_factor[i] = anomalous_f1 + (anomalous_f2 - anomalous_f1) * diff_r;
+      }      
+    }
+
+    a_d3d *= spatial_factor;
+    a_chi3d *= spatial_factor;
+    a_nu3d *= spatial_factor;
+
+    a_d3d.applyBoundary("neumann");
+    a_chi3d.applyBoundary("neumann");
+    a_nu3d.applyBoundary("neumann");
+    mesh->communicate(a_d3d, a_chi3d, a_nu3d);
+    a_d3d.applyParallelBoundary("parallel_neumann_o1");
+    a_chi3d.applyParallelBoundary("parallel_neumann_o1");
+    a_nu3d.applyParallelBoundary("parallel_neumann_o1");          
+
+    SAVE_ONCE(a_nu3d, a_chi3d, a_d3d);
+    
+  }
+
+  
 
   
   FieldFactory fact(mesh);
