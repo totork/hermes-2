@@ -4633,6 +4633,17 @@ int Hermes::rhs(BoutReal t) {
       if (Vort_sheathdissipation){
 	ddt(Vort) += TE_Vort_sheathdissipation;
       }
+
+      if (Vort_collision){
+	Field3D classical_mu_vort = mul_all(0.3, div_all(Ti, (mul_all(tau_i, B42))));
+	if (!use_new_divagradperp){
+	  TE_Vort_collision = Div_a_Grad_perp_curv(classical_mu_vort , Vort);
+	} else {
+	  TE_Vort_collision = Div_a_Grad_perp_mod(classical_mu_vort, Vort);
+	}
+	ddt(Vort) += TE_Vort_collision;
+      }
+      
       
     } // End if evolve_vort
 
