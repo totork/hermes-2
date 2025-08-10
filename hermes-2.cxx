@@ -2846,7 +2846,7 @@ int Hermes::rhs(BoutReal t) {
 	    if (pnt.dir > 0.99 && pnt.dir < 1.01){
 	      if (pnt.ythis(Ve) > vesheath){
 		vesheath = pnt.ythis(Ve);
-		if (VePsi_sheathdissipation){
+		if (VePsi_sheathdissipation && abs(pnt.offset())==1){
 		  const auto iyp = i.yp();
 		  const auto iym = i.ym();
 		  BoutReal g_22up = 0.5 * (sqrt(coord->g_22[i]) + sqrt(coord->g_22.yup()[iyp]));
@@ -2859,7 +2859,7 @@ int Hermes::rhs(BoutReal t) {
 	    } else {
 	      if (pnt.ythis(Ve) < vesheath){
 		vesheath = pnt.ythis(Ve);
-		if (VePsi_sheathdissipation){
+		if (VePsi_sheathdissipation && abs(pnt.offset())==1){
 		  const auto iyp = i.yp();
 		  const auto iym = i.ym();
 		  BoutReal g_22down = 0.5 * (sqrt(coord->g_22[i]) + sqrt(coord->g_22.ydown()[iym]));
