@@ -3649,8 +3649,8 @@ int Hermes::rhs(BoutReal t) {
       }
       if (VePsi_phi_pen) {
 	BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")){
-	  BoutReal Te_n = Te[i] / VePsi_phi_pen_value;
-	  if (Te_n < 1.0){
+	  BoutReal Te_n = VePsi_phi_pen_value / Te[i];
+	  if (Te_n > 1.0){
 	    TE_VePsi_parefield[i] *= logicgrowth_mod(-Te_n + 3.0, 3.0 );
 	  }
 	}
