@@ -228,7 +228,8 @@ private:
   // Electron velocity
   bool VePsi_parefield, VePsi_parpressure, VePsi_partemp, VePsi_parcurrent, VePsi_ExB, VePsi_parflow,VePsi_hyper,VePsi_numdiff;
   bool VePsi_parallelvisc,VePsi_supsonicdampening, VePsi_anomalous, VePsi_sheathdissipation, VePsi_anomalous_par;
-
+  bool sheath_lowT_dirichlet;
+  BoutReal sheath_lowT_value;
 
   
   // Field for the terms

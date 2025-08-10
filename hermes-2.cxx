@@ -483,6 +483,11 @@ int Hermes::init(bool restarting) {
   auto& optss = opt["Steady_state"];
 
 
+  OPTION(optsc, Tnorm, 20);  // Reference temperature [eV]                                                                                                                                                                                                                       
+  OPTION(optsc, Nnorm, 1e19); // Reference density [m^-3]                                                                                                                                                                                                                        
+  OPTION(optsc, Bnorm, 1.0);  // Reference magnetic field [T]                                                                                                                                                                                                                    
+  OPTION(optsc, AA, 2.0); // Ion mass (2 = Deuterium)
+  
   
   isMMS = opt["solver"]["mms"].withDefault<bool>(false);
   
@@ -1339,6 +1344,10 @@ int Hermes::init(bool restarting) {
   OPTION(optsheath, sheath_ramp, false);
   OPTION(optsheath, sheath_ramp_time, 1e6);
   OPTION(optsheath, phisheath_floor, 0.0);
+
+  OPTION(optsheath, sheath_lowT_dirichlet, false);
+  OPTION(optsheath, sheath_lowT_value, 1.0 / Tnorm);
+  
   SAVE_REPEAT(sheath_ramp_factor);
   sheath_allow_supersonic = optsheath["sheath_allow_supersonic"]
           .doc("If plasma is faster than sound speed, go to plasma velocity")
@@ -1359,12 +1368,6 @@ int Hermes::init(bool restarting) {
   OPTION(optsc, output_power, verbose);
   OPTION(optsc, output_sheath, verbose);
   OPTION(optsc, output_neutrals, verbose);
-  // Normalisation
-  OPTION(optsc, Tnorm, 20);  // Reference temperature [eV]
-  OPTION(optsc, Nnorm, 1e19); // Reference density [m^-3]
-  OPTION(optsc, Bnorm, 1.0);  // Reference magnetic field [T]
-  OPTION(optsc, AA, 2.0); // Ion mass (2 = Deuterium)
-
   
   output.write("Normalisation Te={:e}, Ne={:e}, B={:e}\n", Tnorm, Nnorm, Bnorm);
   SAVE_ONCE(Tnorm, Nnorm, Bnorm, AA); // Save
@@ -2828,6 +2831,16 @@ int Hermes::rhs(BoutReal t) {
 	    }
 	  }
 
+	  if (sheath_lowT_dirichlet){
+	    if (pnt.ythis(Ti) < sheath_lowT_value){
+	      visheath = 0.0;
+	    }
+	    if (pnt.ythis(Te) < sheath_lowT_value){
+	      vesheath = 0.0;
+            }
+
+	  }
+	  
 	  BoutReal pre_vesheath = vesheath;
 	  if (sheath_allow_supersonic_Te){
 	    if (pnt.dir > 0.99 && pnt.dir < 1.01){
