@@ -100,6 +100,10 @@ BoutReal logicgrowth(BoutReal x){
   return 1.0/(1.0 + exp(-x));
 }
 
+BoutReal logicgrowth_mod(BoutReal x, BoutReal a){
+  return 1.0/(1.0 + exp(-x * a));
+}
+
 
 
 
@@ -772,6 +776,10 @@ int Hermes::init(bool restarting) {
   VePsi_anomalous = optvepsi["VePsi_anomalous"].doc("Use anomalous transport in electron velocity").withDefault<bool>(false);
   VePsi_sheathdissipation = optvepsi["VePsi_sheathdissipation"].doc("Use dissipation for velocities higher than electron soundspeed in electron velocity").withDefault<bool>(false);
   VePsi_anomalous_par = optvepsi["VePsi_anomalous_par"].doc("Use anomalous transport in electron velocity").withDefault<bool>(false);
+
+  VePsi_phi_pen = optvepsi["VePsi_phi_pen"].doc("Penalize parallel electric field below certain electron temp?").withDefault<bool>(false);
+  OPTION(optvepsi, VePsi_phi_pen_value, 1.0 / Tnorm);
+  
   // Initialize the corresponding fields
 
   TE_Ne = optsc["TE_Ne"].doc("Save all terms in time evolution of density").withDefault<bool>(false);
@@ -1191,7 +1199,7 @@ int Hermes::init(bool restarting) {
   /////////////////////////////////////////////////////////////////////////
 
   // Switches to change between different calculation methods
-
+  OPTION(optnumerics, soundspeed_limit, -1.0);
   OPTION(optnumerics, use_Div_n_bxGrad_f_B_XPPM, true);
   OPTION(optnumerics, use_bracket, true);
   OPTION(optnumerics, ne_bndry_flux, false);
@@ -1216,6 +1224,7 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, low_diffuse_value_Te, low_diffuse_value);
   OPTION(optnumerics, low_diffuse_value_Ti, low_diffuse_value_Te);
 
+  
   OPTION(optnumerics, ceil_Te, -1.0);
   OPTION(optnumerics, use_rhie_interpolation, false);
 
@@ -2399,8 +2408,11 @@ int Hermes::rhs(BoutReal t) {
       
     }
     
-
-    sound_speed[i] =  sqrt(Te[i] + Ti[i] );
+    if (soundspeed_limit > 0.0){
+      sound_speed[i] = sqrt(floor(Te[i], soundspeed_limit) + floor(Ti[i], soundspeed_limit) );
+    } else {			   
+      sound_speed[i] =  sqrt(Te[i] + Ti[i] );
+    }
   }
   
   sound_speed.applyBoundary("neumann");
@@ -3635,6 +3647,15 @@ int Hermes::rhs(BoutReal t) {
       } else {
 	TE_VePsi_parefield = mi_me * Grad_par_mod(phi);
       }
+      if (VePsi_phi_pen) {
+	BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")){
+	  BoutReal Te_n = Te[i] / VePsi_phi_pen_value;
+	  if (Te_n < 1.0){
+	    TE_VePsi_parefield[i] *= logicgrowth_mod(-Te_n + 3.0, 3.0 );
+	  }
+	}
+      }
+      
       ddt(VePsi) += TE_VePsi_parefield;
     } //End VePsi_parefield
 

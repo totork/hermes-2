@@ -108,6 +108,7 @@ private:
   bool inner_Te_dirichlet;
   BoutReal inner_Te_value;
 
+  BoutReal soundspeed_limit;
   
   
   bool inner_Ne_dirichlet;
@@ -185,7 +186,8 @@ private:
   BoutReal nu_maxTe;
   bool electromagnetic; // Include magnetic potential psi
   bool FiniteElMass;    // Finite Electron Mass
-  
+  bool VePsi_phi_pen;
+  BoutReal VePsi_phi_pen_value;
   Field3D oness,zeroes;
 
   bool low_source;
