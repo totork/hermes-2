@@ -189,7 +189,7 @@ private:
   bool VePsi_phi_pen;
   BoutReal VePsi_phi_pen_value;
   Field3D oness,zeroes;
-
+  bool reverse_field;
   bool low_source;
   BoutReal low_source_Ne, low_source_Te, low_source_Ti, low_source_timescale;
 

@@ -534,6 +534,8 @@ int Hermes::init(bool restarting) {
   adhoc_current = optsc["adhoc_current"]
                         .doc("Use parallel current in  adhoc description of electrostatic potential?")
 			.withDefault<bool>(false);
+
+  OPTION(optsc, reverse_field, false);
   
   //////////////////////////////////////////////////////////////////////////
 
@@ -3413,6 +3415,9 @@ int Hermes::rhs(BoutReal t) {
       } else {
 	TE_Ne_ExB = -bracket(phi,Ne, BRACKET_ARAKAWA) * bracket_factor*scale_ExB;
       }
+      if (reverse_field){
+	TE_Ne_ExB *= -1.0;
+      }      
       ddt(Ne) += TE_Ne_ExB;
     }  // End Ne_ExB
 
@@ -3420,6 +3425,9 @@ int Hermes::rhs(BoutReal t) {
     if (Ne_mag){// Row 1 Term 2
       TRACE("Density mag");
       TE_Ne_mag = fci_curvature(Pe , use_bracket);
+      if (reverse_field){
+	TE_Ne_mag *= -1.0;
+      }      
       ddt(Ne) += TE_Ne_mag;
     }  // End Ne_mag
 
@@ -3542,6 +3550,9 @@ int Hermes::rhs(BoutReal t) {
     if(Vort_mag){// Row 1 
       TRACE("Vort_mag");
       TE_Vort_mag = fci_curvature(add_all(Pi , Pe),use_bracket);
+      if (reverse_field){
+	TE_Vort_mag *= -1.0;
+      }
       ddt(Vort) += TE_Vort_mag;
     } //End Vort_mag
 
@@ -3604,7 +3615,10 @@ int Hermes::rhs(BoutReal t) {
 	    TE_Vort_polarcurrent = -bracket(phi,Vort, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
 	    
 	  }
-
+	  if (reverse_field){
+	    TE_Vort_polarcurrent *= -1.0;
+	  }
+	  
 	  ddt(Vort) += TE_Vort_polarcurrent;
 
 	} //End j_pol_pi
@@ -3724,6 +3738,9 @@ int Hermes::rhs(BoutReal t) {
       } else {
 	TE_VePsi_ExB = -bracket(phi , sub_all(Ve,Vi) , BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
       }
+      if (reverse_field){
+	TE_VePsi_ExB *= -1.0;
+      }
       ddt(VePsi) += TE_VePsi_ExB;
     } // End VePsi_ExB
 
@@ -3825,14 +3842,18 @@ int Hermes::rhs(BoutReal t) {
       } else {
         TE_NVi_ExB = -bracket(phi,NVi, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
       }
-
+      if (reverse_field){
+	TE_NVi_ExB *= -1.0;
+      }
       ddt(NVi) += TE_NVi_ExB;
     } // End NVi_ExB
 
 
     if (NVi_mag){//Row 1 Term 3
-
       TE_NVi_mag = -fci_curvature(mul_all(NVi , Ti),use_bracket);
+      if (reverse_field) {
+	TE_NVi_mag *= -1.0;
+      }
       ddt(NVi) += TE_NVi_mag;
 
     } // End NVi_mag
@@ -3972,6 +3993,9 @@ int Hermes::rhs(BoutReal t) {
       } else {
 	TE_Pe_ExB = -bracket(phi,Pe, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
       }
+      if (reverse_field){
+	TE_Pe_ExB *= -1.0;
+      }
       ddt(Pe) += TE_Pe_ExB;
     } // End Pe_ExB
 
@@ -3980,6 +4004,9 @@ int Hermes::rhs(BoutReal t) {
       TRACE("Pe_mag");
       TE_Pe_mag = (5. / 3) * fci_curvature(mul_all(Pe , Te),use_bracket);
       TE_Pe_mag += -(2. / 3) * Pe * fci_curvature(phi,use_bracket);
+      if (reverse_field) {
+	TE_Pe_mag *= -1.0;
+      }
       ddt(Pe) += TE_Pe_mag;
     } // End Pe_mag
 
@@ -4186,6 +4213,9 @@ int Hermes::rhs(BoutReal t) {
         TE_Pi_ExB = -bracket(phi,Pi, BRACKET_ARAKAWA) * bracket_factor*scale_ExB;
       }
       TE_Pi_ExB += -(2. / 3) * Pi * fci_curvature(phi,use_bracket);                      // Compression
+      if (reverse_field){
+	TE_Pi_ExB *= -1.0;
+      }
       ddt(Pi) += TE_Pi_ExB;
     } //End Pi_ExB
 
@@ -4193,6 +4223,9 @@ int Hermes::rhs(BoutReal t) {
     if (Pi_mag){//Row 1 Term 2
       TRACE("Pi magnetic drift");
       TE_Pi_mag = -(5. / 3) * fci_curvature(mul_all(Pi , Ti),use_bracket);         // Actual diamag drift, 1st row in manual
+      if (reverse_field){
+	TE_Pi_mag *= -1.0;
+      }
       ddt(Pi) += TE_Pi_mag;
     } //End Pi_mag
 
@@ -4229,7 +4262,11 @@ int Hermes::rhs(BoutReal t) {
       } else {
 	TE_Pi_diamagenergyexchange = -(2. / 3) * Jpar * Grad_par_mod(Pi);
       }
-      TE_Pi_diamagenergyexchange += Pi * fci_curvature(add_all(Pi , Pe),use_bracket);
+      if (reverse_field){
+	TE_Pi_diamagenergyexchange -= Pi * fci_curvature(add_all(Pi , Pe),use_bracket);
+      } else {
+	TE_Pi_diamagenergyexchange += Pi * fci_curvature(add_all(Pi , Pe),use_bracket);
+      }
       ddt(Pi) += TE_Pi_diamagenergyexchange;
     } // End Pi_diamagenergyexchange
     
@@ -4580,6 +4617,9 @@ int Hermes::rhs(BoutReal t) {
       if(Vort_mag){
 	TRACE("Vort_mag");
 	TE_Vort_mag = fci_curvature(add_all(Pi , Pe),use_bracket);
+	if (reverse_field) {
+	  TE_Vort_mag *= -1.0;
+	}
 	ddt(Vort) += TE_Vort_mag;
       } //End Vort_mag
 
@@ -4647,6 +4687,10 @@ int Hermes::rhs(BoutReal t) {
 	} else {
 	  TE_Vort_polarcurrent = -0.5 * bracket(phi,Vort, BRACKET_ARAKAWA) * bracket_factor * scale_ExB;
 	}
+	if (reverse_field) {
+	  TE_Vort_polarcurrent *= -1.0;
+	}
+	ddt(Vort) += TE_Vort_polarcurrent;
       }// End Vort_polarcurrent
           
       if (Vort_parflow){
