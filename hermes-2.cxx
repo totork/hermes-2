@@ -98,6 +98,16 @@ BoutReal rampfactor(BoutReal thistime, BoutReal timecut){
 
 
 
+const Field3D low_sourceterm(const Field3D& f, const BoutReal lowvalue, const BoutReal scalefactor){
+  Field3D diff = f - lowvalue;
+  Field3D result = 0.0;
+  BOUT_FOR(i, f.getRegion("RGN_NOY")){
+    if (diff[i] < 0.0){
+      result[i] = abs(diff[i])/scalefactor;
+    }
+  }
+  return result;
+}
 
 
 
@@ -974,7 +984,7 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, damp_core_vorticity, false);
   OPTION(optnumerics, damp_edge_vorticity, false);
   
-  OPTION(optvort, sheathdissipation_espeed, true);
+  OPTION(optvort, sheathdissipation_espeed, false);
   
   OPTION(optnumerics, use_rhie_interpolation, false);
   if (use_rhie_interpolation){
@@ -983,6 +993,8 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(rhie_cor_up,rhie_cor_down);
   }
 
+
+  
   
   OPTION(optsc, boussinesq, false);
   OPTION(optnumerics, check_finite, false);
@@ -1043,7 +1055,11 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, adaptive_overshoot, 1.0);
 
 
-  
+  OPTION(optnumerics, low_source, false);
+  OPTION(optnumerics, low_source_Ne, floor_Ne);
+  OPTION(optnumerics, low_source_Te, floor_Te);
+  OPTION(optnumerics, low_source_Ti, floor_Ti);
+  OPTION(optnumerics, low_source_timescale, 1e-5);
   
   
   // Sheath switches
@@ -1214,8 +1230,12 @@ int Hermes::init(bool restarting) {
     a_nu3d_par.applyParallelBoundary("parallel_neumann_o1");
   }
 
+  low_source_timescale *= Omega_ci;
 
-
+  OPTION(optnumerics, low_resistivity, false);
+  OPTION(optnumerics, low_resistivity_exp, true);
+  OPTION(optnumerics, low_resistivity_Ne, 1e17 / Nnorm);
+  OPTION(optnumerics, low_resistivity_Te, 1.0 / Tnorm);
 
   
   FieldFactory fact(mesh);
@@ -2499,10 +2519,36 @@ int Hermes::rhs(BoutReal t) {
 
   //nu = resistivity_multiply / (1.96 * tau_e * mi_me);
 
-  nu = resistivity_multiply / (1.96 * tau_e * mi_me);
-  nu.applyBoundary("neumann");
-  mesh->communicate(nu);
-  nu.applyParallelBoundary(parbc);
+
+  nu = div_all(resistivity_multiply,mul_all(1.96,mul_all(tau_e,mi_me)));
+  
+  if (low_resistivity){
+    if (low_resistivity_exp){
+      BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")){
+      // low_res / Ne > 1.0 
+	if (Ne[i] < low_resistivity_Ne){	
+	  nu[i] *= exp( (low_resistivity_Ne / Ne[i]) - 1.0);
+	}
+	if (Te[i] < low_resistivity_Te){
+	  nu[i] *= exp( (low_resistivity_Te / Te[i]) - 1.0);
+	}					 
+      }
+    } else {
+      BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")){
+      // low_res / Ne > 1.0                                                                                                                                                                               
+        if (Ne[i] < low_resistivity_Ne){
+	  nu[i] *= low_resistivity_Ne / Ne[i];
+        }
+        if (Te[i] < low_resistivity_Te){
+          nu[i] *= low_resistivity_Te / Te[i];
+        }
+      }
+    }
+    nu.applyBoundary("neumann");
+    mesh->communicate(nu);
+    nu.applyParallelBoundary("parallel_neumann_o1");
+  }
+  
   
   Wi = mul_all(div_all(3.0,mi_me),mul_all(Ne,div_all(sub_all(Te,Ti),tau_e)));
 
@@ -2644,6 +2690,10 @@ int Hermes::rhs(BoutReal t) {
       ddt(Ne) += TE_Ne_lowdiffuse;
     } // End Ne_lowdiffuse
 
+    if (low_source){
+      ddt(Ne) += low_sourceterm(Ne, low_source_Ne, low_source_timescale);
+    }
+    
     
   } //End evolve_ne
   
@@ -3300,6 +3350,10 @@ int Hermes::rhs(BoutReal t) {
       ddt(Pe) += TE_Pe_lowdiffuse;
     } // End Pe_lowdiffuse
 
+
+    if (low_source){
+      ddt(Pe) += low_sourceterm(Te, low_source_Te, low_source_timescale);
+    }
     
   } // End evolve_te
 
@@ -3469,7 +3523,9 @@ int Hermes::rhs(BoutReal t) {
       ddt(Pi) += TE_Pi_parviscousheat;
     } // End Pi_parviscousheat
 
-    
+    if (low_source){
+      ddt(Pi) += low_sourceterm(Ti, low_source_Ti, low_source_timescale);
+    }
     
   } // End evolve_ti
 

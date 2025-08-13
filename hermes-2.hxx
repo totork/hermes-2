@@ -160,7 +160,9 @@ private:
 
   Field3D oness,zeroes;
 
-
+  bool low_source;
+  BoutReal low_source_Ne, low_source_Te, low_source_Ti, low_source_timescale;
+  
   bool radial_buffers;
   int radial_inner_width;
   int radial_outer_width;
@@ -223,8 +225,8 @@ private:
 
   // Fields for vorticity terms
   Field3D TE_Vort_mag, TE_Vort_parcurrent, TE_Vort_polarcurrent, TE_Vort_collision, TE_Vort_parviscous;
-  Field3D TE_Vort_anomalous, TE_Vort_anomalous_par, TE_Vort_hyper, TE_Vort_numdiff, TE_Vort_parflow, TE_Vort_dissipation, TE_Vort_sheathdissipation;
-  Field3D TE_Vort_dissipation_par, TE_Vort_phidissipation;
+  Field3D TE_Vort_anomalous, TE_Vort_anomalous_par, TE_Vort_hyper, TE_Vort_numdiff, TE_Vort_parflow, TE_Vort_dissipation;
+  Field3D TE_Vort_dissipation_par, TE_Vort_phidissipation, TE_Vort_sheathdissipation;
   // Fields for electron velocity terms
   Field3D TE_VePsi_parefield, TE_VePsi_parpressure, TE_VePsi_partemp, TE_VePsi_parcurrent, TE_VePsi_ExB, TE_VePsi_parflow;
   Field3D TE_VePsi_hyper, TE_VePsi_numdiff , TE_VePsi_parallelvisc, TE_VePsi_supsonicdampening, TE_VePsi_anomalous, TE_VePsi_sheathdissipation;
@@ -308,6 +310,7 @@ private:
   bool verbose;    // Outputs additional fields, mainly for debugging
   bool output_ddt; // Output time derivatives
 
+  
 
   // neutral variables
   bool evolve_neutrals, evolve_pn;
@@ -343,6 +346,8 @@ private:
   
   // Numerical dissipation
 
+  bool low_resistivity, low_resistivity_exp;
+  BoutReal low_resistivity_Ne, low_resistivity_Te;
 
   BoutReal Pe_dampening_Te;
   BoutReal Pe_dampening_factor;
