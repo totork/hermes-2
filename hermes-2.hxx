@@ -192,7 +192,9 @@ private:
 
   bool low_source;
   BoutReal low_source_Ne, low_source_Te, low_source_Ti, low_source_timescale;
-  
+
+  bool low_resistivity, low_resistivity_exp;
+  BoutReal low_resistivity_Ne, low_resistivity_Te;
   
   BoutReal low_diffuse_value;
   BoutReal low_diffuse_value_Ne;

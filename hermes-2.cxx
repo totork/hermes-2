@@ -1296,9 +1296,12 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, low_source_Te, floor_Te);
   OPTION(optnumerics, low_source_Ti, floor_Ti);
   OPTION(optnumerics, low_source_timescale, 1e-5);
-  
-  
 
+  
+  OPTION(optnumerics, low_resistivity, false);
+  OPTION(optnumerics, low_resistivity_exp, false);
+  OPTION(optnumerics, low_resistivity_Ne, 1e17 / Nnorm);
+  OPTION(optnumerics, low_resistivity_Te, 1.0 / Tnorm);
   
   OPTION(optnumerics, use_Te_limiter, false);
   OPTION(optnumerics, use_Ti_limiter, false);
@@ -3325,6 +3328,35 @@ int Hermes::rhs(BoutReal t) {
     mesh->communicate(nu);
     nu.applyParallelBoundary(parbc);
   }
+
+  if (low_resistivity){
+    if (low_resistivity_exp){
+      BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")){
+      // low_res / Ne > 1.0 
+	if (Ne[i] < low_resistivity_Ne){	
+	  nu[i] *= exp( (low_resistivity_Ne / Ne[i]) - 1.0);
+	}
+	if (Te[i] < low_resistivity_Te){
+	  nu[i] *= exp( (low_resistivity_Te / Te[i]) - 1.0);
+	}					 
+      }
+    } else {
+      BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")){
+      // low_res / Ne > 1.0                                                                                                                                                                               
+        if (Ne[i] < low_resistivity_Ne){
+	  nu[i] *= low_resistivity_Ne / Ne[i];
+        }
+        if (Te[i] < low_resistivity_Te){
+          nu[i] *= low_resistivity_Te / Te[i];
+        }
+      }
+    }
+    nu.applyBoundary("neumann");
+    mesh->communicate(nu);
+    nu.applyParallelBoundary("parallel_neumann_o1");
+  }
+  
+  
   
   Wi = mul_all(div_all(3.0,mi_me),mul_all(Ne,div_all(sub_all(Te,Ti),tau_e)));
 
