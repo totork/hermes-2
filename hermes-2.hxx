@@ -199,7 +199,7 @@ private:
   bool Vort_dirichlet;
   // Electron velocity
   bool VePsi_parefield, VePsi_parpressure, VePsi_partemp, VePsi_parcurrent, VePsi_ExB, VePsi_parflow,VePsi_hyper,VePsi_numdiff;
-  bool VePsi_parallelvisc,VePsi_supsonicdampening, VePsi_anomalous, VePsi_dissipation;
+  bool VePsi_parallelvisc,VePsi_supsonicdampening, VePsi_anomalous, VePsi_dissipation, VePsi_sheathdissipation;
 
   Field3D Vort_diss;
   
@@ -227,7 +227,7 @@ private:
   Field3D TE_Vort_dissipation_par, TE_Vort_phidissipation;
   // Fields for electron velocity terms
   Field3D TE_VePsi_parefield, TE_VePsi_parpressure, TE_VePsi_partemp, TE_VePsi_parcurrent, TE_VePsi_ExB, TE_VePsi_parflow;
-  Field3D TE_VePsi_hyper, TE_VePsi_numdiff , TE_VePsi_parallelvisc, TE_VePsi_supsonicdampening, TE_VePsi_anomalous;
+  Field3D TE_VePsi_hyper, TE_VePsi_numdiff , TE_VePsi_parallelvisc, TE_VePsi_supsonicdampening, TE_VePsi_anomalous, TE_VePsi_sheathdissipation;
   Field3D TE_VePsi_dissipation;
   
   //////////////////////////////////////////////////////

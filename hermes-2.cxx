@@ -734,7 +734,7 @@ int Hermes::init(bool restarting) {
   VePsi_supsonicdampening = optvepsi["VePsi_supsonicdampening"].doc("Use supersonic dampening in electron velocity").withDefault<bool>(false);
   VePsi_anomalous = optvepsi["VePsi_anomalous"].doc("Use anomalous transport in electron velocity").withDefault<bool>(false);
   VePsi_dissipation = optvepsi["VePsi_dissipation"].doc("Use anomalous transport in electron velocity").withDefault<bool>(false);
-
+  VePsi_sheathdissipation = optvepsi["VePsi_sheathdissipation"].doc("Use dissipation for velocities higher than electron soundspeed in electron velocity").withDefault<bool>(false);
 
   // Initialize the corresponding fields
 
@@ -933,10 +933,11 @@ int Hermes::init(bool restarting) {
   TE_VePsi_supsonicdampening = 0.0;
   TE_VePsi_anomalous = 0.0;
   TE_VePsi_dissipation = 0.0;
+  TE_VePsi_sheathdissipation = 0.0;
   if (TE_VePsi) {
     SAVE_REPEAT(TE_VePsi_parefield, TE_VePsi_parpressure, TE_VePsi_partemp, TE_VePsi_parcurrent, TE_VePsi_ExB, TE_VePsi_parflow);
     SAVE_REPEAT(TE_VePsi_hyper, TE_VePsi_numdiff,TE_VePsi_parallelvisc,TE_VePsi_supsonicdampening, TE_VePsi_anomalous);
-    SAVE_REPEAT(TE_VePsi_dissipation);
+    SAVE_REPEAT(TE_VePsi_dissipation, TE_VePsi_sheathdissipation);
   }
 
 
@@ -2127,6 +2128,10 @@ int Hermes::rhs(BoutReal t) {
     switch (par_sheath_model) {
     case 0 :{
 
+      if (VePsi_sheathdissipation && evolve_vepsi){
+	TE_VePsi_sheathdissipation = 0.0;
+      }
+
       sheath_ramp_factor = rampfactor(t,sheath_ramp_time);
       sheath_dpe = 0.0;
       sheath_dpi = 0.0;
@@ -2203,18 +2208,35 @@ int Hermes::rhs(BoutReal t) {
 	    vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (sqrt(2.0*PI))) * exp(-(phisheath/tesheath))); 
 	  }
 
-
+	  BoutReal pre_vesheath = vesheath;
+	    
 	  if (sheath_allow_supersonic){
-
-            if (pnt.dir > 0.99 && pnt.dir < 1.01){
-              if (pnt.ythis(Ve) > vesheath){
+	    if (pnt.dir > 0.99 && pnt.dir < 1.01){
+	      if (pnt.ythis(Ve) > vesheath){
 		vesheath = pnt.ythis(Ve);
-              }
-            } else {
-              if (pnt.ythis(Ve) < vesheath){
-                vesheath = pnt.ythis(Ve);
-              }
-            }
+		if (VePsi_sheathdissipation && abs(pnt.offset())==1){
+		  const auto iyp = i.yp();
+		  const auto iym = i.ym();
+		  BoutReal g_22up = 0.5 * (sqrt(coord->g_22[i]) + sqrt(coord->g_22.yup()[iyp]));
+		  BoutReal Jup  = 0.5 * ((coord->J[i]) + (coord->J.yup()[iyp]));
+		  BoutReal fluxup = 0.5 * fastest_espeed[i] * (vesheath - pre_vesheath) * Jup / g_22up;
+		  // SIGNS FLIPPED BECAUSE ADVECTION = -divpar() ...                                                                                                                                                                                                             
+		  TE_VePsi_sheathdissipation[i] = -fluxup / (coord->dy[i]*coord->J[i]);
+		}		
+	      }
+	    } else {
+	      if (pnt.ythis(Ve) < vesheath){
+		vesheath = pnt.ythis(Ve);
+		if (VePsi_sheathdissipation && abs(pnt.offset())==1){
+		  const auto iyp = i.yp();
+		  const auto iym = i.ym();
+		  BoutReal g_22down = 0.5 * (sqrt(coord->g_22[i]) + sqrt(coord->g_22.ydown()[iym]));
+		  BoutReal Jdown  = 0.5 * ((coord->J[i]) + (coord->J.ydown()[iym]));
+		  BoutReal fluxdown= -0.5 * fastest_espeed[i] * (abs(vesheath) - abs(pre_vesheath)) * Jdown / g_22down;
+		  TE_VePsi_sheathdissipation[i] = -fluxdown / (coord->dy[i]*coord->J[i]);
+		}
+	      }
+	    }
 
           }
 
@@ -2938,6 +2960,10 @@ int Hermes::rhs(BoutReal t) {
       TRACE("VePsi dissipation");
       TE_VePsi_dissipation -= Div_par_ssdissipation(sub_all(Ve, Vi), fastest_espeed);
       ddt(VePsi) += TE_VePsi_dissipation;      
+    }
+
+    if (VePsi_sheathdissipation) {
+      ddt(VePsi) += TE_VePsi_sheathdissipation;
     }
             
   } //End evolve_vepsi
