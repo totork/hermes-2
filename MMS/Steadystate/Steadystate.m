@@ -140,7 +140,7 @@ SolVemVi[x_, y_, z_, t_] = SolVe[x,y,z,t] - SolVi[x,y,z,t];
 
 kappaepar[x_, y_, z_, t_] = 3.16 * mime * SolTe[x,y,z,t] * SolNe[x,y,z,t] * taue[x,y,z,t];
 kappaipar[x_, y_, z_, t_] = 3.9 * SolTi[x,y,z,t] * SolNe[x,y,z,t] * taui[x,y,z,t];
-etaepar[x_, y_, z_, t_] = 0.733 * mime * SolNe[x,y,z,t] * SolTe[x,y,z,t] * taue[x,y,z,t];
+etaepar[x_, y_, z_, t_] = 0.973 * mime * SolTe[x,y,z,t] * taue[x,y,z,t];
 
 
 
@@ -206,7 +206,17 @@ SourceVort[x_, y_, z_, t_] = D[SolVort[x,y,z,t],t]\
 	-SWVortmag * (rhos0^2) * curvature[SolPepPi,x,y,z,t]\
 	-SWVortanomalous * (rhos0^2) * ( divagradperp[muiperp3D,SolVort,x,y,z,t] + divparkgradpar[muipar3D,SolVort,x,y,z,t] )/(rhos0*rhos0*Omegaci)\
 	-SWVortparcurrent * (rhos0) * divpar[SolJpar,x,y,z,t];
-SourceVePsi[x_, y_, z_, t_] = 0.0;
+SourceVePsi[x_, y_, z_, t_] = D[SolVePsi[x,y,z,t],t]\
+	+SWVePsiparpressure * mime * rhos0 * gradpar[SolPe,x,y,z,t]/SolNe[x,y,z,t]\
+	+SWVePsinumdiff * (rhos0^4)*(numnu/(rhos0^4 * Omegaci)) * numericaldiffusion[SolVe,x,y,z,t]\
+	+SWVePsipartemp *rhos0 * 0.71 * mime* gradpar[SolTe,x,y,z,t]\
+	-SWVePsiparcurrent * mime* nu[x,y,z,t]*(SolVi[x,y,z,t]-SolVe[x,y,z,t])\
+	-SWVePsiparflow * rhos0 * SolVi[x,y,z,t] * divpar[SolVimVe,x,y,z,t]\
+	-SWVePsiparallelvisc*divparkgradpar[etaepar,SolVe,x,y,z,t]*(rhos0^2)\
+	-SWVePsianomalous * divagradperp[nuanomalous3D,SolVe,x,y,z,t]*(rhos0^2)/(rhos0*rhos0*Omegaci)\
+	+SWVePsihyper * (rhos0^4)*(hypernu/(rhos0^4 * Omegaci)) * hyperdiffusion[SolVe,x,y,z,t]\
+	-SWVePsiparefield * rhos0 * gradpar[SolPhi,x,y,z,t]*mime\
+	+SWVePsiExB * (rhos0^2) * ExBoperator[SolVemVi,x,y,z,t];
 SourcePhi1[x_, y_, z_, t_] = D[SolPhi1[x,y,z,t],t];
 Print["Finished MMS Terms"]
 
