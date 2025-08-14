@@ -536,9 +536,11 @@ int Hermes::init(bool restarting) {
 			.withDefault<bool>(false);
 
   OPTION(optsc, reverse_field, false);
-  
+  SAVE_ONCE(reverse_field);
   //////////////////////////////////////////////////////////////////////////
 
+  OPTION(optsc, electron_neutral, false);
+  
   // Check which variables should be evolved
   OPTION(optsc, phi_inneraverage, false);
   OPTION(optsc,output_ddt,false);
@@ -3357,8 +3359,16 @@ int Hermes::rhs(BoutReal t) {
     mesh->communicate(nu);
     nu.applyParallelBoundary("parallel_neumann_o1");
   }
-  
-  
+
+  if (electron_neutral && evolve_neutrals) {
+    BoutReal a0 = PI*SQ(5.29e-11); // Cross-section [m^2]
+
+    Field3D vth_e = sqrt(mi_me*Te);
+
+    Field3D nu_ne = vth_e * Nnorm * Nn * a0 * rho_s0;
+
+    nu += nu_ne;
+  }  
   
   Wi = mul_all(div_all(3.0,mi_me),mul_all(Ne,div_all(sub_all(Te,Ti),tau_e)));
 
