@@ -983,7 +983,7 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, radial_buffer_D, 1.0);
   OPTION(optnumerics, damp_core_vorticity, false);
   OPTION(optnumerics, damp_edge_vorticity, false);
-  
+  OPTION(optnumerics, damp_core_current, false);
   OPTION(optvort, sheathdissipation_espeed, false);
   
   OPTION(optnumerics, use_rhie_interpolation, false);
@@ -3801,8 +3801,16 @@ int Hermes::rhs(BoutReal t) {
             f = D * (Vort(i + 1, j, k) - Vort(i, j, k));
             ddt(Vort)(i, j, k) += f * x_factor;
             ddt(Vort)(i + 1, j, k) -= f * xp_factor;
+
+	    f = D * (VePsi(i + 1, j, k) - VePsi(i, j, k));
+            ddt(VePsi)(i, j, k) += f * x_factor;
+            ddt(VePsi)(i + 1, j, k) -= f * xp_factor;
+	    
 	    if (damp_core_vorticity){
 	      ddt(Vort)(i,j,k) -= 0.01 * Vort(i,j,k); 
+	    }
+	    if (damp_core_current){
+	      ddt(VePsi)(i,j,k) -= 1.0 * VePsi(i,j,k);
 	    }
 	    
           }
