@@ -1243,7 +1243,7 @@ int Hermes::init(bool restarting) {
 
 
   
-  OPTION(optsc, boussinesq, false);
+  OPTION(optsc, boussinesq, true);
   OPTION(optnumerics, check_finite, false);
   OPTION(optnumerics, floor_vel , -1.0);
   // Switches for different methods to support numerical stability
@@ -4739,11 +4739,18 @@ int Hermes::rhs(BoutReal t) {
     
     
     ddt(phi_1) = 0.0;
-    
-    if (!use_new_divagradperp){
-      ddt(phi_1) = lam1 * ( Div_a_Grad_perp_curv(div_all(1.0,SQ_all(coord->Bxy)), add_all(phi, Pi)) - Vort );
+    if (boussinesq) {
+      if (!use_new_divagradperp){
+	ddt(phi_1) = lam1 * ( Div_a_Grad_perp_curv(div_all(1.0,SQ_all(coord->Bxy)), add_all(phi, Pi)) - Vort );
+      } else {
+	ddt(phi_1) = lam1 * ( FCIDiv_a_Grad_perp(div_all(1.0,SQ_all(coord->Bxy)), add_all(phi, Pi)) - Vort );
+      }
     } else {
-      ddt(phi_1) = lam1 * ( FCIDiv_a_Grad_perp(div_all(1.0,SQ_all(coord->Bxy)), add_all(phi, Pi)) - Vort );
+      if (!use_new_divagradperp){
+        ddt(phi_1) = lam1 * ( Div_a_Grad_perp_curv(div_all(Ne,SQ_all(coord->Bxy)),phi) + Div_a_Grad_perp_curv(div_all(1.0,SQ_all(coord->Bxy)), Pi) - Vort );
+      } else {
+	ddt(phi_1) = lam1 * ( FCIDiv_a_Grad_perp(div_all(Ne,SQ_all(coord->Bxy)),phi) + FCIDiv_a_Grad_perp(div_all(1.0,SQ_all(coord->Bxy)),Pi) - Vort );
+      }
     }
     
     
