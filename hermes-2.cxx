@@ -1775,7 +1775,7 @@ int Hermes::init(bool restarting) {
   debug_vesheath = 0.0;
   debug_sheathexp = 0.0;
   debug_decay_Ne = 0.0;
-  
+  debug_jsheath = 0.0;
   debug_soundspeed = 0.0;
   debug_VePsisheath = 0.0;
   debug_phisheath = 0.0;
@@ -1873,7 +1873,7 @@ int Hermes::init(bool restarting) {
 
   if (output_sheath){
     SAVE_REPEAT(debug_phisheath);
-    SAVE_REPEAT(debug_visheath,debug_vesheath);
+    SAVE_REPEAT(debug_visheath,debug_vesheath, debug_jsheath);
   }
   
   if(kappa_limit_alpha>0.0){
@@ -2920,6 +2920,7 @@ int Hermes::rhs(BoutReal t) {
 	    debug_visheath[i] = visheath;
             debug_vesheath[i] = vesheath;
             debug_phisheath[i] = phisheath;
+	    debug_jsheath[i] = jsheath;
 	  }
 	  
 	  if (verbose){
