@@ -1896,3 +1896,73 @@ const Field3D Div_par_K_Grad_par_mod(const Field3D& K, const Field3D& f, bool bn
 }
 
 
+
+const Field3D Div_par_K_Grad_par_mod_lim(const Field3D& T, const Field3D& N, const BoutReal prefackappa, const BoutReal prefaclim ) {
+
+  TRACE("Check first field");
+
+  Mesh* mesh = T.getMesh();
+
+  Field3D result{zeroFrom(T)};
+
+  Coordinates* coord = T.getCoordinates();
+
+  BOUT_FOR(i, result.getRegion("RGN_NOBNDRY")) {
+    const auto iyp = i.yp();
+    const auto iypp = i.ypp();
+    const auto iym = i.ym();
+    const auto iymm = i.ymm();
+
+    BoutReal J;
+    BoutReal g_22;
+    BoutReal sqg22;
+
+    BoutReal kappa;
+    BoutReal grad_T;
+    BoutReal flux;
+    BoutReal gradient;
+    BoutReal c;
+    
+    J = 0.5 * (coord->J[i] + coord->J.yup()[iyp]); // Jacobian at boundary \                                                                
+    g_22 = 0.5 * (coord->g_22[i] + coord->g_22.yup()[iyp]);
+    sqg22 = sqrt( g_22 );
+    
+    BoutReal T_up = 0.5 * (T[i] + T.yup()[iyp]);
+    BoutReal N_up = 0.5	* (N[i] + N.yup()[iyp]);
+    
+    kappa = 0.5 * prefackappa * ( T[i] * T[i] * sqrt(T[i]) + T.yup()[iyp] * T.yup()[iyp] * sqrt(T.yup()[iyp]) );
+    grad_T = (T.yup()[iyp] - T[i]) / (coord->dy[i] * sqg22);
+
+    c = kappa * (1.0 + abs( (grad_T * kappa)/( prefaclim * N_up * T_up * sqrt(T_up)) ));
+    
+    gradient = 2. * (T.yup()[iyp] - T[i]) / (coord->dy[i] + coord->dy[i]);
+    flux = c * J * gradient / g_22;                                                                                                       
+    
+    result[i] += flux / (coord->dy[i] * coord->J[i]);
+    
+
+    
+    J = 0.5 * (coord->J[i] + coord->J.ydown()[iym]); // Jacobian at boundary                                                              
+    g_22 = 0.5 * (coord->g_22[i] + coord->g_22.ydown()[iym]);
+    sqg22 = sqrt(g_22);
+    
+    BoutReal T_down = 0.5 * (T[i] + T.ydown()[iym]);
+    BoutReal N_down = 0.5 * (N[i] + N.ydown()[iym]);
+
+    //kappa = prefackappa * ( T_down * T_down * sqrt(T_down) );
+    kappa = 0.5 * prefackappa * (T[i] * T[i] * sqrt(T[i]) + T.ydown()[iym] * T.ydown()[iym] * sqrt(T.ydown()[iym]));
+    grad_T = (T[i] - T.ydown()[iym]) / (coord->dy[i] * sqg22);
+
+    c = kappa * (1.0 + abs( (grad_T * kappa)/( prefaclim * N_down * T_down * sqrt(T_down)) ));
+    
+    gradient = 2. * (T[i] - T.ydown()[iym]) / (coord->dy[i] + coord->dy[i]);
+    
+    flux = c * J * gradient / g_22;                                                                                                       
+
+    result[i] -= flux / (coord->dy[i] * coord->J[i]);
+
+  }
+
+  return result;
+}
+

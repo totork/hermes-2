@@ -54,7 +54,7 @@ private:
  * @param[in] The field to be differentiated
  * @param[in] bndry_flux  Are fluxes through the boundary calculated?
  */
-
+const Field3D Div_par_K_Grad_par_mod_lim(const Field3D& T, const Field3D& N, const BoutReal prefackappa, const BoutReal prefaclim );
 const Field3D Div_par_K_Grad_par_mod(const Field3D& k, const Field3D& f, bool bndry_flux = false, bool higher_order = false);
 
 const Field3D Div_par_K_Grad_par_map(const Field3D& flux);

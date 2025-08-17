@@ -4054,16 +4054,8 @@ int Hermes::rhs(BoutReal t) {
 	TE_Pe_conduction = (2.0/3.0) * Div_par_K_Grad_par_map(heatflux_e);
       } else {
 	TE_Pe_conduction = (2.0/3.0) * Div_par_K_Grad_par_mod(kappa_epar,Te,true,use_conduction_higher);
-	//TE_Pe_conduction = (2.0/3.0) * kappa_epar * Div_par_K_Grad_par_mod(oness,Te,false);
       }
       
-      if (use_conduction_limiter){
-	TE_Pe_conduction = term_limiter(TE_Pe_conduction, conduction_limiter_value);
-      }
-
-      if (scale_lowT){
-	TE_Pe_conduction *= scale_Te;
-      }
 
       
       ddt(Pe) += TE_Pe_conduction;
