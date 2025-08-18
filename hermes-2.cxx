@@ -1232,7 +1232,7 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, limiter_lowT_value, 1.0 / Tnorm);
   OPTION(optnumerics, limiter_lowN, false);
   OPTION(optnumerics, limiter_lowN_value, 1e17 / Nnorm);
-  
+  OPTION(optnumerics, limiter_sheath, true);
   OPTION(optnumerics, ceil_Te, -1.0);
   OPTION(optnumerics, use_rhie_interpolation, false);
 
@@ -3279,37 +3279,19 @@ int Hermes::rhs(BoutReal t) {
     
     Field3D q_SH = kappa_epar * gradTe;
 
-    Field3D Ne_temp = 0.0;
-
-    if (limiter_lowN) {
-      BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")){
-	if (Ne[i] < limiter_lowN_value){
-	  Ne_temp[i] = limiter_lowN_value;
-	} else {
-	  Ne_temp[i] = Ne[i];
-	}
-      }
-
-    } else {
-      Ne_temp = 1.0 * Ne;
-    }
-
-    Field3D Te_temp = 0.0;
-    if (limiter_lowT) {
-      BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")){
-	if (Te[i] < limiter_lowT_value){
-          Te_temp[i] = limiter_lowT_value;
-        } else {
-          Te_temp[i] = Te[i];
-        }
-      }
-    } else {
-      Te_temp = 1.0 * Te;
-    }
-
-    Field3D q_fl = kappa_limit_alpha * sqrt(mi_me) * Ne_temp * Te_temp * sqrt(Te_temp);
+    Field3D q_fl = kappa_limit_alpha * sqrt(mi_me) * Ne * Te * sqrt(Te);
     
     Field3D denom = 1.0 + abs(q_SH / q_fl);
+
+    if (!limiter_sheath){
+      for (const auto &bndry_par :
+           mesh->getBoundariesPar(BoundaryParType::xout)) {
+	for (const auto& pnt : *bndry_par) {
+          const auto i = pnt.ind();
+          denom[i] = 1.0;
+        }
+      }
+    }
     
     debug_denom = denom;
     kappa_epar = kappa_epar / denom;
@@ -4746,14 +4728,7 @@ int Hermes::rhs(BoutReal t) {
           
       if (Vort_parflow){
 	TRACE("Vorticity parallel flow");
-	if (!use_new_div_par){
-	  Field3D VortVi = mul_all(Vort,Vi);
-	  TE_Vort_parflow = -Div_par(VortVi);
-	} else if (use_H3_div_par){
-	  TE_Vort_parflow = -Div_par_mod_H3(Vort,Vi,fastest_ispeed);
-	} else {
-	  TE_Vort_parflow = -Div_par_mod(Vort,Vi,fastest_ispeed, use_slope_limiter);
-	}
+	TE_Vort_parflow = - Vi * Div_par(Vort);
 	ddt(Vort) += TE_Vort_parflow;
       }
 
