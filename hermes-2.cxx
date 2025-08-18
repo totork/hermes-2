@@ -3278,20 +3278,38 @@ int Hermes::rhs(BoutReal t) {
     }
     
     Field3D q_SH = kappa_epar * gradTe;
-    Field3D q_fl = kappa_limit_alpha * sqrt(mi_me) * Ne * Te32;
-    
-    Field3D denom = 1.0 + abs(q_SH / q_fl);
 
-    if (limiter_lowT || limiter_lowN){
+    Field3D Ne_temp = 0.0;
+
+    if (limiter_lowN) {
       BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")){
-	if (limiter_lowN) {
-	  BoutReal temp = limiter_lowN_value / Ne[i];
-	  if (temp > 1.0){ // -> limiter_lowN_value > Ne[i]
-	    denom[i] = 1.0 + exp(-(temp - 1.0) * 2.0) * abs(q_SH[i] / q_fl[i]);
-	  }
+	if (Ne[i] < limiter_lowN_value){
+	  Ne_temp[i] = limiter_lowN_value;
+	} else {
+	  Ne_temp[i] = Ne[i];
 	}
       }
+
+    } else {
+      Ne_temp = 1.0 * Ne;
     }
+
+    Field3D Te_temp = 0.0;
+    if (limiter_lowT) {
+      BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")){
+	if (Te[i] < limiter_lowT_value){
+          Te_temp[i] = limiter_lowT_value;
+        } else {
+          Te_temp[i] = Te[i];
+        }
+      }
+    } else {
+      Te_temp = 1.0 * Te;
+    }
+
+    Field3D q_fl = kappa_limit_alpha * sqrt(mi_me) * Ne_temp * Te_temp * sqrt(Te_temp);
+    
+    Field3D denom = 1.0 + abs(q_SH / q_fl);
     
     debug_denom = denom;
     kappa_epar = kappa_epar / denom;
