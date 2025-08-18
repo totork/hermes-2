@@ -1228,6 +1228,10 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, low_diffuse_value_Te, low_diffuse_value);
   OPTION(optnumerics, low_diffuse_value_Ti, low_diffuse_value_Te);
   OPTION(optnumerics, limiter_interpolate, false);
+  OPTION(optnumerics, limiter_lowT, false);
+  OPTION(optnumerics, limiter_lowT_value, 1.0 / Tnorm);
+  OPTION(optnumerics, limiter_lowN, false);
+  OPTION(optnumerics, limiter_lowN_value, 1e17 / Nnorm);
   
   OPTION(optnumerics, ceil_Te, -1.0);
   OPTION(optnumerics, use_rhie_interpolation, false);
@@ -3278,6 +3282,17 @@ int Hermes::rhs(BoutReal t) {
     
     Field3D denom = 1.0 + abs(q_SH / q_fl);
 
+    if (limiter_lowT || limiter_lowN){
+      BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")){
+	if (limiter_lowN) {
+	  BoutReal temp = limiter_lowN_value / Ne[i];
+	  if (temp > 1.0){ // -> limiter_lowN_value > Ne[i]
+	    denom[i] = 1.0 + exp(-(temp - 1.0) * 2.0) * abs(q_SH[i] / q_fl[i]);
+	  }
+	}
+      }
+    }
+    
     debug_denom = denom;
     kappa_epar = kappa_epar / denom;
     kappa_epar.applyBoundary("neumann");
@@ -3304,7 +3319,7 @@ int Hermes::rhs(BoutReal t) {
     Field3D q_fl = kappa_limit_beta * Ne * Ti32;
 
     Field3D denom = 1.0 + abs(q_SH / q_fl);
-
+    
 
     kappa_ipar = kappa_ipar / denom;
     kappa_ipar.applyBoundary("neumann");
