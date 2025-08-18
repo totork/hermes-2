@@ -154,7 +154,7 @@ private:
   BoutReal eta_limit_alpha;   // Momentum flux limiter from SOLPS
   BoutReal floor_eta_epar;
   BoutReal scale_ExB;
-
+  bool limiter_interpolate;
   bool scale_lowT, scale_lowN;
   Field3D scale_Te, scale_Ti, scale_Ne;
   BoutReal scale_floorfactor;

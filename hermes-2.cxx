@@ -1227,7 +1227,7 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, low_diffuse_value_Ne, low_diffuse_value);
   OPTION(optnumerics, low_diffuse_value_Te, low_diffuse_value);
   OPTION(optnumerics, low_diffuse_value_Ti, low_diffuse_value_Te);
-
+  OPTION(optnumerics, limiter_interpolate, false);
   
   OPTION(optnumerics, ceil_Te, -1.0);
   OPTION(optnumerics, use_rhie_interpolation, false);
@@ -3251,12 +3251,27 @@ int Hermes::rhs(BoutReal t) {
     kappa_epar.applyParallelBoundary(parbc);
   } else {
     kappa_epar = 3.16 * mi_me * Te * Ne * tau_e;
-    
-    Field3D gradTe = Grad_par(Te);
-    gradTe.applyBoundary("neumann");
-    mesh->communicate(gradTe);
-    gradTe.applyParallelBoundary(parbc);
-
+    Field3D gradTe;
+    if (limiter_interpolate){
+      Field3D Te_first = 1.0 * Te;
+      Te_first.applyBoundary("neumann");
+      mesh->communicate(Te_first);
+      Te_first.applyParallelBoundary(parbc);
+      for (const auto &bndry_par :
+           mesh->getBoundariesPar(BoundaryParType::xout)) {
+        for (const auto& pnt : *bndry_par) {
+          const auto i = pnt.ind();
+	  pnt.ynext(Te_first) = interpolate_sheathneighbour(pnt.yprev(Te_first) , pnt.ythis(Te_first));
+	}
+      }
+      gradTe = Grad_par(Te_first);
+      
+    } else {
+      gradTe = Grad_par(Te);
+      gradTe.applyBoundary("neumann");
+      mesh->communicate(gradTe);
+      gradTe.applyParallelBoundary(parbc);
+    }
     
     Field3D q_SH = kappa_epar * gradTe;
     Field3D q_fl = kappa_limit_alpha * sqrt(mi_me) * Ne * Te32;
