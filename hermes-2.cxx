@@ -1235,8 +1235,8 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, limiter_sheath, true);
   OPTION(optnumerics, ceil_Te, -1.0);
   OPTION(optnumerics, use_rhie_interpolation, false);
-
-  
+  OPTION(optnumerics, limiter_grillix, false);
+  OPTION(optnumerics, limiter_R0, 5.5);
   if (use_rhie_interpolation){
     alloc_all(rhie_cor_up);
     alloc_all(rhie_cor_down);
@@ -1405,7 +1405,7 @@ int Hermes::init(bool restarting) {
   
   output.write("\t Cs={:e}, rho_s={:e}, Omega_ci={:e}\n", Cs0, rho_s0, Omega_ci);
   SAVE_ONCE(Cs0, rho_s0, Omega_ci);
-  
+  limiter_R0 /= rho_s0;
   // Collision times
   BoutReal lambda_ei = 24. - log(sqrt(Nnorm / 1e6) / Tnorm);
   BoutReal lambda_ii = 23. - log(sqrt(2. * Nnorm / 1e6) / pow(Tnorm, 1.5));
@@ -3253,7 +3253,7 @@ int Hermes::rhs(BoutReal t) {
     kappa_epar.applyBoundary("neumann");
     mesh->communicate(kappa_epar);
     kappa_epar.applyParallelBoundary(parbc);
-  } else {
+  } else if (!limiter_grillix) {
     kappa_epar = 3.16 * mi_me * Te * Ne * tau_e;
     Field3D gradTe;
     if (limiter_interpolate){
@@ -3288,7 +3288,9 @@ int Hermes::rhs(BoutReal t) {
            mesh->getBoundariesPar(BoundaryParType::xout)) {
 	for (const auto& pnt : *bndry_par) {
           const auto i = pnt.ind();
-          denom[i] = 1.0;
+	  if (abs(pnt.offset())==1){
+	    denom[i] = 1.0;
+	  }
         }
       }
     }
@@ -3298,6 +3300,16 @@ int Hermes::rhs(BoutReal t) {
     kappa_epar.applyBoundary("neumann");
     mesh->communicate(kappa_epar);
     kappa_epar.applyParallelBoundary(parbc);    
+  } else {
+    kappa_epar = 3.16 * mi_me * Te * Ne * tau_e;
+    // q = 
+    BoutReal limiter_q = 1.0;
+    Field3D denom = 1.0 + kappa_epar / (kappa_limit_alpha * sqrt(Te * mi_me) * Ne * limiter_q * limiter_R0);
+    debug_denom = denom;
+    kappa_epar = kappa_epar / denom;
+    kappa_epar.applyBoundary("neumann");
+    mesh->communicate(kappa_epar);
+    kappa_epar.applyParallelBoundary(parbc);
   }
 
 
@@ -3307,7 +3319,7 @@ int Hermes::rhs(BoutReal t) {
   // Ion parallel heat conduction
   if (kappa_limit_beta <= 0.0){
     kappa_ipar = mul_all(mul_all(mul_all(3.9, Ti), Ne), tau_i);
-  } else {
+  } else if (!limiter_grillix) {
     kappa_ipar = 3.9 * Ti * Ne * tau_i;
     Field3D gradTi = Grad_par(Ti);
     gradTi.applyBoundary("neumann");
@@ -3325,6 +3337,15 @@ int Hermes::rhs(BoutReal t) {
     kappa_ipar.applyBoundary("neumann");
     mesh->communicate(kappa_ipar);
     kappa_ipar.applyParallelBoundary(parbc);
+  } else {
+    kappa_ipar = 3.9 * Ti * Ne * tau_i;
+    // q =                                                                                                                                                                                                 
+    BoutReal limiter_q = 1.0;
+    Field3D denom = 1.0 + kappa_ipar / (kappa_limit_beta * sqrt(Ti) * Ne * limiter_q * limiter_R0);
+    kappa_ipar = kappa_ipar / denom;
+    kappa_ipar.applyBoundary("neumann");
+    mesh->communicate(kappa_ipar);
+    kappa_ipar.applyParallelBoundary(parbc);
   }
   
 
@@ -3334,13 +3355,21 @@ int Hermes::rhs(BoutReal t) {
     eta_epar.applyBoundary("neumann");
     mesh->communicate(eta_epar);
     eta_epar.applyParallelBoundary(parbc);
-  } else {
+  } else if (!limiter_grillix){
     eta_epar = 0.973 * mi_me * tau_e * Te;
     Field3D q_cl = eta_epar * Grad_par(Ve);
     Field3D q_fl = eta_limit_alpha * Pe * mi_me;
     Field3D denom = 1.0 + abs(q_cl / q_fl);
     eta_epar = eta_epar/denom;
     
+    eta_epar.applyBoundary("neumann");
+    mesh->communicate(eta_epar);
+    eta_epar.applyParallelBoundary(parbc);
+  } else {
+    eta_epar = 0.973 * mi_me * tau_e * Te;
+    BoutReal limiter_q = 1.0;
+    Field3D denom = 1.0 + eta_epar / (eta_limit_alpha * sqrt(Te * mi_me) * Ne * limiter_q * limiter_R0);
+    eta_epar = eta_epar / denom;
     eta_epar.applyBoundary("neumann");
     mesh->communicate(eta_epar);
     eta_epar.applyParallelBoundary(parbc);
@@ -4797,7 +4826,7 @@ int Hermes::precon(BoutReal t, BoutReal gamma, BoutReal delta) {
   
   neutralSolver->setCoefD(mul_all(-gamma,Dnn) );
   auto ddtNn = ddt(Nn);
-  ddtNn.applyBoundary("neumann");
+  ddtNn.applyBoundary("dirichlet");
   mesh->communicate(ddtNn);
   ddtNn.applyParallelBoundary("parallel_neumann_o2");
   
