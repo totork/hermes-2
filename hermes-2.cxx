@@ -1304,7 +1304,7 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, low_source_Te, floor_Te);
   OPTION(optnumerics, low_source_Ti, floor_Ti);
   OPTION(optnumerics, low_source_timescale, 1e-5);
-
+  OPTION(optnumerics, low_source_Nn, -1.0);
   
   OPTION(optnumerics, low_resistivity, false);
   OPTION(optnumerics, low_resistivity_exp, false);
@@ -4528,6 +4528,10 @@ int Hermes::rhs(BoutReal t) {
       ddt(Nn) += TE_Nn_numdiff;
     } // End Ne_numdiff
 
+    if (low_source){
+      if (low_source_Nn > 0.0)
+      ddt(Nn) += low_sourceterm(Nn, low_source_Nn, low_source_timescale);
+    }
 
 
     if (evolve_nnvn){
