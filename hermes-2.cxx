@@ -702,7 +702,7 @@ int Hermes::init(bool restarting) {
   NVi_hyper = optnvi["NVi_hyper"].doc("Use hyperdiffusion in ion momentum").withDefault<bool>(false);
   NVi_numdiff = optnvi["NVi_numdiff"].doc("Use parallel numerical diffusion in ion momentum").withDefault<bool>(false);
   NVi_supsonicdampening = optnvi["NVi_supsonicdampening"].doc("Use supersonic dampening in ion momentum").withDefault<bool>(false);
-
+  NVi_neutralfriction = optnvi["NVi_neutralfriction"].doc("Use friction with neutrals in ion momentum").withDefault<bool>(false);
   // bool Pe_ExB, Pe_mag, Pe_parflow, Pe_conduction, Pe_ohmic, Pe_thermalforce, Pe_thermalcurrent; 
   // bool Pe_collision, Pe_anomalous, Pe_sources, Pe_energyexchange;
 
@@ -923,6 +923,7 @@ int Hermes::init(bool restarting) {
   TE_NVi_hyper = 0.0;
   TE_NVi_numdiff = 0.0;
   TE_NVi_supsonicdampening = 0.0;
+  TE_NVi_neutralfriction = 0.0;
   if (TE_NVi) {
     if (NVi_ExB) {
       SAVE_REPEAT(TE_NVi_ExB);
@@ -953,6 +954,9 @@ int Hermes::init(bool restarting) {
     }
     if (NVi_supsonicdampening) {
       SAVE_REPEAT(TE_NVi_supsonicdampening);
+    }
+    if (NVi_neutralfriction) {
+      SAVE_REPEAT(TE_NVi_neutralfriction);
     }
   }
 
@@ -4033,8 +4037,9 @@ int Hermes::rhs(BoutReal t) {
     } // End NVi_supsonicdampening
 
 
-    if (evolve_neutrals && neutralplasmainteraction){
-      ddt(NVi) -= (Vi)  * (Rrc + Rcx);
+    if (evolve_neutrals && neutralplasmainteraction && NVi_neutralfriction){
+      TE_NVi_neutralfriction = -(Vi)  * (Rrc + Rcx);
+      ddt(NVi) += TE_NVi_neutralfriction;
     }
 
 
