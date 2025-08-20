@@ -1290,8 +1290,8 @@ int Hermes::init(bool restarting) {
   scale_Te = 1.0;
   scale_Ti = 1.0;
 
- 
-
+  OPTION(optnumerics, scale_ddt_VePsi, -1.0);
+  OPTION(optnumerics, scale_ddt_Pe, -1.0);
 
   
   OPTION(optnumerics, resistivity_multiply, 1.0);
@@ -4826,6 +4826,15 @@ int Hermes::rhs(BoutReal t) {
 	ddt(VePsi)[i] =	-max_ddt_VePsi;
       }
     }
+  }
+
+
+  if (scale_ddt_Pe > 0.0) {
+    ddt(Pe) *= scale_ddt_Pe;
+  }
+
+  if (scale_ddt_VePsi > 0.0) {
+    ddt(VePsi) *= scale_ddt_VePsi;
   }
   
   return 0;
