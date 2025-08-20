@@ -605,6 +605,8 @@ int Hermes::init(bool restarting) {
   } else {
     zero_all(VePsi);
   }
+
+  OPTION(optsc, max_ddt_VePsi, -1.0);
   
   // Vorticity
   evolve_vort = optsc["evolve_vort"].doc("Evolve Vorticity?").withDefault<bool>(false);
@@ -4811,7 +4813,15 @@ int Hermes::rhs(BoutReal t) {
     output_Ez = - DDZ(phi) / sqrt(coord->g_33);
   } // End output_analysis
 
-  
+  if (max_ddt_VePsi > 0.0){
+    BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")){
+      if (ddt(VePsi)[i] > max_ddt_VePsi) {
+	ddt(VePsi)[i] = max_ddt_VePsi;
+      } else if (ddt(VePsi)[i] < -max_ddt_VePsi) {
+	ddt(VePsi)[i] =	-max_ddt_VePsi;
+      }
+    }
+  }
   
   return 0;
 } // rhs

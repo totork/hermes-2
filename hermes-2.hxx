@@ -159,6 +159,8 @@ private:
   bool scale_lowT, scale_lowN;
   Field3D scale_Te, scale_Ti, scale_Ne;
   BoutReal scale_floorfactor;
+
+  BoutReal max_ddt_VePsi;
   
   Field3D eta_limit_denom;
   BoutReal floor_kappa_epar,floor_kappa_ipar;
