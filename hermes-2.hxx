@@ -157,7 +157,7 @@ private:
   BoutReal floor_eta_epar;
   BoutReal scale_ExB;
   bool limiter_interpolate, limiter_lowT, limiter_lowN, limiter_sheath, limiter_grillix;
-  BoutReal limiter_lowT_value, limiter_lowN_value, limiter_R0;
+  BoutReal limiter_lowT_value, limiter_lowN_value, limiter_R0, limiter_q;
   bool scale_lowT, scale_lowN;
   Field3D scale_Te, scale_Ti, scale_Ne;
   BoutReal scale_floorfactor;
