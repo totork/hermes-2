@@ -131,7 +131,7 @@ private:
   Field3D classical_mu_vort;
   
   BoutReal flux_limit_alpha;  // Flux limiter. < 0 disables
-  BoutReal kappa_limit_alpha; // Heat flux limiter from SOLPS
+  BoutReal kappa_limit_alpha, kappa_limit_beta; // Heat flux limiter from SOLPS
   BoutReal eta_limit_alpha;   // Momentum flux limiter from SOLPS
   BoutReal floor_eta_epar;
   BoutReal scale_ExB;
@@ -260,7 +260,8 @@ private:
   BoutReal viscosity_limiter_value;
   BoutReal conduction_limiter_value;
   bool use_Vi;
-  
+  bool limiter_grillix;
+  BoutReal limiter_q, limiter_R0;
   // Anomalous perpendicular diffusion coefficients
   BoutReal anomalous_D;    // Density diffusion
   BoutReal anomalous_chi;  // Electron thermal diffusion

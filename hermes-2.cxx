@@ -975,8 +975,9 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, use_slope_limiter, false);
   OPTION(optnumerics, use_H3_div_par, false);
   OPTION(optnumerics, low_diffuse_value, 1e-3);
-
-
+  OPTION(optnumerics, limiter_grillix, false);
+  OPTION(optnumerics, limiter_q, 1.0);
+  OPTION(optnumerics, limiter_R0, 1.0);
   OPTION(optnumerics, radial_buffers, false);
   OPTION(optnumerics, radial_inner_width, 5);
   OPTION(optnumerics, radial_outer_width, 5);
@@ -1019,6 +1020,7 @@ int Hermes::init(bool restarting) {
 
   OPTION(optnumerics, flux_limit_alpha, -1);
   OPTION(optnumerics, kappa_limit_alpha, -1);
+  OPTION(optnumerics, kappa_limit_beta, -1);
   OPTION(optnumerics, eta_limit_alpha, -1);
   OPTION(optnumerics, floor_eta_epar, -1);
 
@@ -1640,7 +1642,7 @@ int Hermes::init(bool restarting) {
   SAVE_ONCE(lambda_sheath);
   OPTION(optsc, test_profiles, false);
 
-
+  limiter_R0 /= rho_s0;
   
   return 0;
 }
@@ -2447,8 +2449,16 @@ int Hermes::rhs(BoutReal t) {
   TRACE("Parallel heat conduction");
   
   kappa_epar = mul_all(mul_all(mul_all(mul_all(3.16, mi_me), Te), Ne), tau_e);
-
-  if (kappa_limit_alpha > 0.0) {
+  
+  if (kappa_limit_alpha > 0.0 && limiter_grillix){
+    kappa_epar = 3.16 * mi_me * Te * Ne * tau_e;
+    Field3D denom = 1.0 + kappa_epar / (kappa_limit_alpha * sqrt(Te * mi_me) * Ne * limiter_q * limiter_R0);
+    debug_denom = denom;
+    kappa_epar = kappa_epar / denom;
+    kappa_epar.applyBoundary("neumann");
+    mesh->communicate(kappa_epar);
+    kappa_epar.applyParallelBoundary(parbc);
+  } else if (kappa_limit_alpha > 0.0) {
     TRACE("electron heat flux limiter");
     
     Field3D gradTe = Grad_par(Te);
@@ -2480,6 +2490,15 @@ int Hermes::rhs(BoutReal t) {
 
   // Ion parallel heat conduction
   kappa_ipar = mul_all(mul_all(mul_all(3.9, Ti), Ne), tau_i);
+  if (kappa_limit_beta > 0.0 && limiter_grillix){
+    kappa_ipar = 3.9 * Ti * Ne * tau_i;
+    Field3D denom = 1.0 + kappa_ipar / (kappa_limit_beta * sqrt(Ti) * Ne * limiter_q * limiter_R0);
+    kappa_ipar = kappa_ipar / denom;
+    kappa_ipar.applyBoundary("neumann");
+    mesh->communicate(kappa_ipar);
+    kappa_ipar.applyParallelBoundary(parbc);
+  }
+
   
   if (eta_limit_alpha <= 0.0){
 
