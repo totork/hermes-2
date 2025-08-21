@@ -2107,26 +2107,16 @@ int Hermes::rhs(BoutReal t) {
       Jpar = sub_all(NVi,mul_all(Ne,Ve));
       
     } else {
+            
+      Field3D Te_32 = Te * sqrt(Te);
+      Field3D tau_ee = (Cs0 / rho_s0) * tau_e0 * Te_32 / Ne;
+      Field3D nuu = resistivity_multiply / (1.96 * tau_ee * mi_me);
       
-      Te32= mul_all(Te,sqrt_all(Te));
-      Ti32= mul_all(Ti,sqrt_all(Ti));
-      tau_e = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_e0) , Te32) , Ne);
-      tau_i = div_all(mul_all(mul_all(div_all(Cs0 , rho_s0) , tau_i0) , Ti32) , Ne);
-      nu = div_all(resistivity_multiply,mul_all(1.96,mul_all(tau_e,mi_me)));
       Field3D gradparphi = Grad_par(phi);
       Field3D gradparTe = Grad_par(Te);
-      Field3D gradparPi = Grad_par(Pi);
+      Field3D gradparPe = Grad_par(Pe);
 
-      gradparphi.applyBoundary("neumann");
-      gradparTe.applyBoundary("neumann");
-      gradparPi.applyBoundary("neumann");
-      mesh->communicate(gradparphi ,gradparTe, gradparPi);
-      gradparphi.applyParallelBoundary(parbc);
-      gradparTe.applyParallelBoundary(parbc);
-      gradparPi.applyParallelBoundary(parbc);
-
-      Jpar = mul_all(mul_all(-1.0, Ne), div_all(gradparphi, nu)) + div_all(gradparPi, nu) + div_all(mul_all(0.71, mul_all(Ne, gradparTe)), nu);
-
+      Jpar = (Ne / nuu) * (gradparPe / Ne + 0.71 * gradparTe - gradparphi);      
       Jpar.applyBoundary("neumann");
       mesh->communicate(Jpar);
       Jpar.applyParallelBoundary(parbc);
