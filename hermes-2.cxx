@@ -1481,9 +1481,6 @@ int Hermes::init(bool restarting) {
       SAVE_REPEAT(Ve_dampening);
     }
     
-    if(kappa_limit_alpha>0.0){
-      SAVE_REPEAT(debug_denom);
-    }
     
     SAVE_REPEAT(kappa_epar,eta_epar); // Parallel electron heat conductivity
     SAVE_REPEAT(kappa_ipar); // Parallel ion heat conductivity
@@ -1492,6 +1489,9 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(debug_phisheath);
     SAVE_REPEAT(debug_VePsisheath);
     SAVE_REPEAT(a);
+  }
+  if(kappa_limit_alpha>0.0){
+    SAVE_REPEAT(debug_denom);
   }
 
   zero_all(phi);
