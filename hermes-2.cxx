@@ -2184,9 +2184,9 @@ int Hermes::rhs(BoutReal t) {
 	    BoutReal tisheath = 0.0;
 	    
 	    
-	    nesheath = pnt.ythis(Ne);
-	    tesheath = pnt.ythis(Te);
-	    tisheath = pnt.ythis(Ti);
+	    nesheath = (pnt.ythis(Ne) + pnt.ynext(Ne)) / 2.0;
+	    tesheath = (pnt.ythis(Te) + pnt.ynext(Te)) / 2.0;
+	    tisheath = (pnt.ythis(Ti) + pnt.ynext(Ti)) / 2.0;
 	    
 	    BoutReal phisheath = 0.0;
 	    if (!evolve_vort){
