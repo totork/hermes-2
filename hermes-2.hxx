@@ -126,6 +126,7 @@ private:
   Field3D Te_ythis,Te_ynext,Te_yprev;
   bool new_sheaths;
   bool sheath_interpolate;
+  bool sheath_extrapolate;
   bool sheath_infsink;
   bool sheath_simplephi;
   bool sheath_floating, sheath_floating_perp;

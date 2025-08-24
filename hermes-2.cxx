@@ -1387,7 +1387,7 @@ int Hermes::init(bool restarting) {
   
   OPTION(optsheath, sheath_interpolate, false);
   OPTION(optsheath, sheath_simplephi, true);
-  
+  OPTION(optsheath, sheath_extrapolate, false);
   
   // Output additional information
   OPTION(optsc, verbose, false);    // Save additional fields
@@ -2772,10 +2772,15 @@ int Hermes::rhs(BoutReal t) {
 	  // And ignores boundaries in the negative direction, only taking the positive one
 	  if (boundary_direction[i] > 10.9 && boundary_direction[i] < 11.1 && pnt.dir < 0.0);
 	  else{
-
-	  pnt.ynext(Ne) = floor(pnt.ythis(Ne), floor_Ne); // Not for Ne, sothat NVi does not increase if vi is constant                                                                                                                                                         
-	  pnt.ynext(Te) = floor(pnt.ythis(Te), floor_Te);
-	  pnt.ynext(Ti) = floor(pnt.ythis(Ti), floor_Ti);
+	    if (!sheath_extrapolate){
+	      pnt.ynext(Ne) = floor(pnt.ythis(Ne), floor_Ne); // Not for Ne, sothat NVi does not increase if vi is constant                                                                                                                                                     
+	      pnt.ynext(Te) = floor(pnt.ythis(Te), floor_Te);
+	      pnt.ynext(Ti) = floor(pnt.ythis(Ti), floor_Ti);
+	    } else {
+	      pnt.ynext(Ne) = floor(interpolate_sheathneighbour(pnt.yprev(Ne), pnt.ythis(Ne)), floor_Ne);
+              pnt.ynext(Te) = floor(interpolate_sheathneighbour(pnt.yprev(Te), pnt.ythis(Te)), floor_Te);
+              pnt.ynext(Ti) = floor(interpolate_sheathneighbour(pnt.yprev(Ti), pnt.ythis(Ti)), floor_Ti);
+	    }
 
 	  
 	  pnt.ynext(Pi) = pnt.ynext(Ne)*pnt.ynext(Ti);
@@ -2789,9 +2794,9 @@ int Hermes::rhs(BoutReal t) {
 	  BoutReal tisheath = 0.0;
 
 
-	  nesheath = pnt.ythis(Ne);
-	  tesheath = pnt.ythis(Te);
-	  tisheath = pnt.ythis(Ti);
+	  nesheath = (pnt.ythis(Ne) + pnt.ynext(Ne))/2.0;
+	  tesheath = (pnt.ythis(Te) + pnt.ynext(Te))/2.0;
+	  tisheath = (pnt.ythis(Ti) + pnt.ynext(Ti))/2.0;
 
 	  BoutReal phisheath = 0.0;
 	  if (sheath_floating){
@@ -2804,9 +2809,13 @@ int Hermes::rhs(BoutReal t) {
 	    phisheath = floor(phisheath, 0.0);
 	    pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
 	  } else {
-	    // Assuming zero gradient of potential into the sheath
-	    phisheath = floor(pnt.ythis(phi), 0.0);
-	    pnt.ynext(phi) = phisheath;
+	    if (!sheath_extrapolate){
+	      phisheath = floor(pnt.ythis(phi), 0.0);
+	      pnt.ynext(phi) = phisheath;
+	    } else {	      
+	      pnt.ynext(phi) = interpolate_sheathneighbour(pnt.yprev(phi), pnt.ythis(phi));
+	      phisheath = (pnt.ynext(phi) + pnt.ythis(phi)) / 2.0;
+	    }
 	  }
 
 	  
@@ -2861,15 +2870,6 @@ int Hermes::rhs(BoutReal t) {
 	    }
 	  }
 
-	  if (sheath_lowT_dirichlet){
-	    if (pnt.ythis(Ti) < sheath_lowT_value){
-	      visheath = 0.0;
-	    }
-	    if (pnt.ythis(Te) < sheath_lowT_value){
-	      vesheath = 0.0;
-            }
-
-	  }
 	  
 	  BoutReal pre_vesheath = vesheath;
 	  if (sheath_allow_supersonic_Te){
@@ -2906,20 +2906,12 @@ int Hermes::rhs(BoutReal t) {
 	  const BoutReal jsheath = nesheath * (visheath - vesheath);
 	  const BoutReal nvisheath = nesheath * visheath;
 
-	  if (sheath_interpolate){
-	    pnt.ynext(Vi) = interpolate_sheathneighbour(pnt.ythis(Vi), visheath);
-	    pnt.ynext(Ve) = interpolate_sheathneighbour(pnt.ythis(Ve), vesheath);
-	    pnt.ynext(Jpar) = interpolate_sheathneighbour(pnt.ythis(Jpar), jsheath);
-	    pnt.ynext(NVi) = interpolate_sheathneighbour(pnt.ythis(NVi), nvisheath);
-	    pnt.ynext(Vort) = pnt.ythis(Vort);
 
-	  } else {
-	    pnt.ynext(Vi) = visheath;
-	    pnt.ynext(Ve) = vesheath;
-	    pnt.ynext(Jpar) = jsheath;
-	    pnt.ynext(NVi) = nvisheath;
-	    pnt.ynext(Vort) = pnt.ythis(Vort);
-	  }
+	  pnt.ynext(Vi) = interpolate_sheathneighbour(pnt.ythis(Vi), visheath);
+	  pnt.ynext(Ve) = interpolate_sheathneighbour(pnt.ythis(Ve), vesheath);
+	  pnt.ynext(Jpar) = interpolate_sheathneighbour(pnt.ythis(Jpar), jsheath);
+	  pnt.ynext(NVi) = interpolate_sheathneighbour(pnt.ythis(NVi), nvisheath);
+	  pnt.ynext(Vort) = pnt.ythis(Vort);
 
 	  if (evolve_neutrals && evolve_nnvn){
 	    BoutReal sheathneutralvelocity = interpolate_sheathneighbour(pnt.ythis(Vn), 0.0);
