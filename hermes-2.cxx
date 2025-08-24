@@ -2857,7 +2857,8 @@ int Hermes::rhs(BoutReal t) {
 	Field3D VortVi = mul_all(Vort,Vi);
 	TE_Vort_parflow = -Div_par(VortVi);
       } else if (use_H3_div_par) {
-	TE_Vort_parflow = -Div_par_mod_H3(Vort,Vi,fastest_ispeed);
+	//TE_Vort_parflow = -Div_par_mod_H3(Vort,Vi,fastest_ispeed);
+	TE_Vort_parflow = - Vi * Div_par(Vort);
       } else {
 	TE_Vort_parflow = -Div_par_mod(Vort,Vi,fastest_ispeed, use_slope_limiter);
       }    
