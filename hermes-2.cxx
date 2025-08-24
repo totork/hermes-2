@@ -1026,7 +1026,13 @@ int Hermes::init(bool restarting) {
 
   
   OPTION(optnumerics, scale_ExB, 1.0);
-  OPTION(optnumerics, resistivity_multiply, 1.0);
+
+  resistivity_multiply = optnumerics["resistivity_multiply"].doc("Multiplication factor for resistivity").withDefault<Field3D>({1.0});
+  resistivity_multiply.applyBoundary("neumann");
+  mesh->communicate(resistivity_multiply);
+  resistivity_multiply.applyParallelBoundary(parbc);
+  
+  SAVE_ONCE(resistivity_multiply);
   OPTION(optnumerics, electron_weight, 1.0);
   OPTION(optnumerics, poloidal_flows, false);
 
@@ -3815,10 +3821,10 @@ int Hermes::rhs(BoutReal t) {
             ddt(VePsi)(i, j, k) += f * x_factor;
             ddt(VePsi)(i + 1, j, k) -= f * xp_factor;
 	    
-	    if (damp_core_vorticity){
-	      ddt(Vort)(i,j,k) -= 0.01 * Vort(i,j,k); 
-	    }
-	    if (damp_core_current){
+
+	    ddt(Vort)(i,j,k) -= 1.0 * Vort(i,j,k); 
+
+	    if (evolve_vepsi){
 	      ddt(VePsi)(i,j,k) -= 1.0 * VePsi(i,j,k);
 	    }
 	    

@@ -126,7 +126,7 @@ private:
   Field3D tau_e, tau_i;          // Collision times for electrons and ions
   Field3D Wi;                    // Energy transfer from electrons to ions
   Field3D Pi_ciperp, Pi_cipar, Pi_ci;   // Ion collisional stress tensor
-  BoutReal resistivity_multiply; ///< Factor in front of nu
+  Field3D resistivity_multiply; ///< Factor in front of nu
 
   Field3D classical_mu_vort;
   
