@@ -3037,7 +3037,9 @@ int Hermes::rhs(BoutReal t) {
 	    sheath_dpe[i] -= (3.0/2.0) * power_e;
 
 	    if (evolve_neutrals && Recycling_coef>0.0){
-	      Recycling_flux[i] = Recycling_coef*abs(visheath * nesheath) * coord->J[i]/( sqrt(coord->g_22[i])*coord->dy[i]*coord->J[i]);
+	      BoutReal recflux = Recycling_coef*abs(visheath * nesheath) * (coord->J[i] + pnt.ynext(coord->J)) / (sqrt(coord->g_22[i]) + sqrt(pnt.ynext(coord->g_22)));
+	      // Recycling_flux[i] = Recycling_coef*abs(visheath * nesheath) * coord->J[i]/( sqrt(coord->g_22[i])*coord->dy[i]*coord->J[i]);
+	      Recycling_flux[i] = recflux / (coord->dy[i] * coord->J[i]);
 	    }
 	    
 	    // Also set the values in the interpolated value after the sheath, here neumann
