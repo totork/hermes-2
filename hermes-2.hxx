@@ -217,7 +217,7 @@ private:
   bool Ne_ExB, Ne_mag, Ne_parflow, Ne_collision, Ne_anomalous, Ne_sources,Ne_hyper, Ne_numdiff, Ne_lowdiffuse;
 
   // Ion momentum
-  bool NVi_ExB, NVi_mag, NVi_parflow, NVi_parpressure, NVi_parviscos, NVi_collision, NVi_anomalous,NVi_hyper,NVi_numdiff; 
+  bool NVi_ExB, NVi_mag, NVi_parflow, NVi_parpressure, NVi_parviscos, NVi_collision, NVi_anomalous,NVi_hyper,NVi_numdiff, NVi_anomalous_par; 
   bool NVi_supsonicdampening, NVi_neutralfriction;
   
   // Electron pressure
@@ -248,7 +248,7 @@ private:
   Field3D TE_Ne_ExB, TE_Ne_mag, TE_Ne_parflow, TE_Ne_collision, TE_Ne_anomalous, TE_Ne_sources, TE_Ne_hyper, TE_Ne_numdiff, TE_Ne_lowdiffuse;
   
   // Fields for ion momentum terms
-  Field3D TE_NVi_ExB, TE_NVi_mag, TE_NVi_parflow, TE_NVi_parpressure, TE_NVi_parviscos, TE_NVi_collision, TE_NVi_anomalous, 
+  Field3D TE_NVi_ExB, TE_NVi_mag, TE_NVi_parflow, TE_NVi_parpressure, TE_NVi_parviscos, TE_NVi_collision, TE_NVi_anomalous, TE_NVi_anomalous_par, 
     TE_NVi_hyper, TE_NVi_numdiff;
   Field3D TE_NVi_supsonicdampening, TE_NVi_neutralfriction;
   // Fields for electron pressure terms
@@ -344,6 +344,8 @@ private:
   
   BoundaryRegionPar* bndry_par;
 
+  Field3D l1_f, l2_f, l3_f, l2_l23_f;
+  Field3D l1_b, l2_b, l3_b, l2_l23_b;
   Field2D wall_flux; // Particle flux to wall (diagnostic)
   Field2D wall_power; // Power flux to wall (diagnostic)
   

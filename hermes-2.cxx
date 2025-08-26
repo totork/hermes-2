@@ -106,8 +106,17 @@ BoutReal logicgrowth_mod(BoutReal x, BoutReal a){
 
 
 
+BoutReal leg_fill_f3(BoutReal fb,BoutReal f2, BoutReal l2, BoutReal l3){
+  return fb * (l2+l3)/l2 - f2 * l3 / l2;
+}
 
-
+BoutReal leg_fill_value(BoutReal fb, BoutReal f2, BoutReal l2_for, BoutReal l2_back, BoutReal l3_for, BoutReal l3_back, BoutReal bndrydirection){
+  if (bndrydirection > 0.5) {
+    return leg_fill_f3(fb, f2, l2_for, l3_for);
+  } else {
+    return leg_fill_f3(fb, f2, l2_back, l3_back);
+  }
+}
 
 
 
@@ -699,6 +708,7 @@ int Hermes::init(bool restarting) {
   NVi_parviscos = optnvi["NVi_parviscos"].doc("Use parallel viscosity in ion momentum").withDefault<bool>(false);
   NVi_collision = optnvi["NVi_collision"].doc("Use collisional effects in ion momentum").withDefault<bool>(false);
   NVi_anomalous = optnvi["NVi_anomalous"].doc("Use anomalous transport in ion momentum").withDefault<bool>(false);
+  NVi_anomalous_par = optnvi["NVi_anomalous_par"].doc("Use parallel anomalous transport in ion momentum").withDefault<bool>(false);
   NVi_hyper = optnvi["NVi_hyper"].doc("Use hyperdiffusion in ion momentum").withDefault<bool>(false);
   NVi_numdiff = optnvi["NVi_numdiff"].doc("Use parallel numerical diffusion in ion momentum").withDefault<bool>(false);
   NVi_supsonicdampening = optnvi["NVi_supsonicdampening"].doc("Use supersonic dampening in ion momentum").withDefault<bool>(false);
@@ -924,6 +934,7 @@ int Hermes::init(bool restarting) {
   TE_NVi_numdiff = 0.0;
   TE_NVi_supsonicdampening = 0.0;
   TE_NVi_neutralfriction = 0.0;
+  TE_NVi_anomalous_par = 0.0;
   if (TE_NVi) {
     if (NVi_ExB) {
       SAVE_REPEAT(TE_NVi_ExB);
@@ -957,6 +968,9 @@ int Hermes::init(bool restarting) {
     }
     if (NVi_neutralfriction) {
       SAVE_REPEAT(TE_NVi_neutralfriction);
+    }
+    if (NVi_anomalous_par) {
+      SAVE_REPEAT(TE_NVi_anomalous_par);
     }
   }
 
@@ -2045,6 +2059,47 @@ int Hermes::init(bool restarting) {
     phi_1 += lam2 * lambda_sheath * Pe / Ne + 2.0;
     mesh->communicate(phi_1);
   }
+
+
+
+  if (par_sheath_model == 1){
+    mesh->get(l2_l23_f, "lvf_forward", 0.0);
+    mesh->get(l2_l23_b, "lvf_backward", 0.0);
+    SAVE_ONCE(l2_l23_f, l2_l23_b);
+    l1_f = 0.0;
+    l1_b = 0.0;
+    l2_f = 0.0;
+    l2_b = 0.0;
+    l3_f = 0.0;
+    l3_b = 0.0;
+
+    SAVE_ONCE(l1_f, l1_b, l2_f, l2_b, l3_f, l3_b);
+    
+    for (const auto &bndry_par :
+           mesh->getBoundariesPar(BoundaryParType::xout)) {
+        for (const auto& pnt : *bndry_par) {
+          const auto i = pnt.ind();
+	  const auto iyp = i.yp();
+	  const auto iym = i.ym();
+	  const auto iypp = i.ypp();
+	  const auto iymm = i.ymm();
+	  if (pnt.dir > 0.5){
+	    l1_f[i] = coord->dy[i] * 0.5 * ( sqrt(coord->g_22[i]) + sqrt(coord->g_22.ydown()[iym]) );
+	    BoutReal len_l23 = coord->dy[i] * 0.5 * ( sqrt(coord->g_22[i]) + sqrt(coord->g_22.yup()[iyp]) );
+	    l2_f[i] = l2_l23_f[i] * len_l23;
+	    l3_f[i] = (1.0 - l2_l23_f[i]) * len_l23;
+	  } else {
+	    l1_b[i] = coord->dy[i] * 0.5 * ( sqrt(coord->g_22[i]) + sqrt(coord->g_22.yup()[iyp]) );
+	    BoutReal len_l23 = coord->dy[i] * 0.5 * ( sqrt(coord->g_22[i]) + sqrt(coord->g_22.ydown()[iym]) );
+	    l2_b[i] = l2_l23_b[i] * len_l23;
+            l3_b[i] = (1.0 - l2_l23_b[i]) * len_l23;
+	  }	  
+	}
+    }
+    
+  } // End if (par_sheath_model == 1)
+
+  
   
   return 0;
 }
@@ -2990,36 +3045,22 @@ int Hermes::rhs(BoutReal t) {
 	    TRACE("Sheath offset==1, set double next fields");
 
 	    const int offset_factor = 1;
-	    if(sheath_interpolate){	      
-	      //pnt.getAt<false>(Ne, offset_factor) = floor(pnt.ythis(Ne)*decay_Ne*decay_Ne, floor_Ne);
-	      pnt.getAt<false>(Ne, offset_factor) = floor(pnt.ynext(Ne), floor_Ne);
-	      pnt.getAt<false>(Te, offset_factor) = floor(pnt.ynext(Te), floor_Te);
-	      pnt.getAt<false>(Ti, offset_factor) = floor(pnt.ynext(Ti), floor_Ti);
-	      pnt.getAt<false>(Pe, offset_factor) = pnt.getAt<false>(Ne, offset_factor) * pnt.getAt<false>(Te, offset_factor);
-	      pnt.getAt<false>(Pi, offset_factor) = pnt.getAt<false>(Ne, offset_factor) * pnt.getAt<false>(Ti, offset_factor);
-
-	      pnt.getAt<false>(phi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(phi),pnt.ynext(phi));
-	      pnt.getAt<false>(Vi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Vi),pnt.ynext(Vi));
-	      pnt.getAt<false>(Ve, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Ve),pnt.ynext(Ve));
-	      pnt.getAt<false>(Jpar, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Jpar),pnt.ynext(Jpar));
-	      pnt.getAt<false>(NVi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(NVi),pnt.ynext(NVi));
-	      pnt.getAt<false>(Vort, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Vort),pnt.ynext(Vort));
-	    } else {       	    
-	      pnt.getAt<false>(Ne, offset_factor) = pnt.ynext(Ne);
-	      pnt.getAt<false>(Te, offset_factor) = pnt.ynext(Te);
-	      pnt.getAt<false>(Pe, offset_factor) = pnt.ynext(Pe);
-	      pnt.getAt<false>(Ti, offset_factor) = pnt.ynext(Ti);
-	      pnt.getAt<false>(Pi, offset_factor) = pnt.ynext(Pi);
-	    
-	      pnt.getAt<false>(phi, offset_factor) = pnt.ynext(phi);
-	      pnt.getAt<false>(Vi, offset_factor) = pnt.ynext(Vi);
-	      pnt.getAt<false>(Ve, offset_factor) = pnt.ynext(Ve);
-	      pnt.getAt<false>(Jpar, offset_factor) = pnt.ynext(Jpar);
-	      pnt.getAt<false>(NVi, offset_factor) = pnt.ynext(NVi);
-	      pnt.getAt<false>(Vort, offset_factor) = pnt.ynext(Vort);
-	    }
 	  
-	  } // End interpolate_sheathneighbour
+	   
+	    pnt.getAt<false>(Ne, offset_factor) = floor(pnt.ynext(Ne), floor_Ne);
+	    pnt.getAt<false>(Te, offset_factor) = floor(pnt.ynext(Te), floor_Te);
+	    pnt.getAt<false>(Ti, offset_factor) = floor(pnt.ynext(Ti), floor_Ti);
+	    pnt.getAt<false>(Pe, offset_factor) = pnt.getAt<false>(Ne, offset_factor) * pnt.getAt<false>(Te, offset_factor);
+	    pnt.getAt<false>(Pi, offset_factor) = pnt.getAt<false>(Ne, offset_factor) * pnt.getAt<false>(Ti, offset_factor);
+
+	    pnt.getAt<false>(phi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(phi),pnt.ynext(phi));
+	    pnt.getAt<false>(Vi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Vi),pnt.ynext(Vi));
+	    pnt.getAt<false>(Ve, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Ve),pnt.ynext(Ve));
+	    pnt.getAt<false>(Jpar, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Jpar),pnt.ynext(Jpar));
+	    pnt.getAt<false>(NVi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(NVi),pnt.ynext(NVi));
+	    pnt.getAt<false>(Vort, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Vort),pnt.ynext(Vort));
+	  
+	  } // End offset
 	  }
 	  
 	} // End for (const auto& pnt : region)
@@ -3029,10 +3070,15 @@ int Hermes::rhs(BoutReal t) {
       break;
     } // End case 0
     case 1:{
-            sheath_ramp_factor = rampfactor(t,sheath_ramp_time);
+      sheath_ramp_factor = rampfactor(t,sheath_ramp_time);
       sheath_dpe = 0.0;
       sheath_dpi = 0.0;
       Recycling_flux = 0.0;
+      
+      if (VePsi_sheathdissipation && evolve_vepsi){
+	TE_VePsi_sheathdissipation = 0.0;
+      }
+      
       for (const auto &bndry_par :
            mesh->getBoundariesPar(BoundaryParType::xout)) {
 	for (const auto& pnt : *bndry_par) {
@@ -3041,54 +3087,195 @@ int Hermes::rhs(BoutReal t) {
 	  // And ignores boundaries in the negative direction, only taking the positive one
 	  if (boundary_direction[i] > 10.9 && boundary_direction[i] < 11.1 && pnt.dir < 0.0);
 	  else{
-
-	  pnt.ynext(Ne) = floor(pnt.ythis(Ne), floor_Ne); // Not for Ne, sothat NVi does not increase if vi is constant                                                                                                                                                         
+	  
+	  pnt.ynext(Ne) = floor(pnt.ythis(Ne), floor_Ne); // Not for Ne, sothat NVi does not increase if vi is constant                                                                                                                                                     
 	  pnt.ynext(Te) = floor(pnt.ythis(Te), floor_Te);
 	  pnt.ynext(Ti) = floor(pnt.ythis(Ti), floor_Ti);
-
 	  
 	  pnt.ynext(Pi) = pnt.ynext(Ne)*pnt.ynext(Ti);
 	  pnt.ynext(Pe) = pnt.ynext(Ne)*pnt.ynext(Te);
 
 	  
-	  BoutReal nesheath = pnt.ythis(Ne);
-	  BoutReal tesheath = pnt.ythis(Te);
-	  BoutReal tisheath = pnt.ythis(Ti);
+	  TRACE("Sheath offset==2, interpolate sheath values");
 
-	  pnt.ynext(phi) = interpolate_sheathneighbour(pnt.yprev(phi), pnt.ythis(phi));
-	  BoutReal phisheath = 0.5 * (pnt.ythis(phi) + pnt.ynext(phi));
-	  
-	  pnt.ynext(Ve) = interpolate_sheathneighbour(pnt.yprev(Ve), pnt.ythis(Ve));
-	  BoutReal vesheath = 0.5 * (pnt.ythis(Ve) + pnt.ynext(Ve));
+	  BoutReal nesheath = 0.0;
+	  BoutReal tesheath = 0.0;
+	  BoutReal tisheath = 0.0;
+
+
+	  nesheath = (pnt.ythis(Ne) + pnt.ynext(Ne))/2.0;
+	  tesheath = (pnt.ythis(Te) + pnt.ynext(Te))/2.0;
+	  tisheath = (pnt.ythis(Ti) + pnt.ynext(Ti))/2.0;
+
+	  BoutReal phisheath = 0.0;
+	  if (sheath_floating){
+	    // Set potential to be zero current
+	    if (sheath_simplephi){
+	      phisheath = lambda_sheath*tesheath;
+	    } else {
+	      phisheath = tesheath * (lambda_sheath + log(sqrt(tesheath/(tesheath+tisheath))));
+	    }
+	    phisheath = floor(phisheath, 0.0);
+	    pnt.ynext(phi) = interpolate_sheathneighbour(pnt.ythis(phi),phisheath);
+	  } else {
+	    if (!sheath_extrapolate){
+	      phisheath = floor(pnt.ythis(phi), 0.0);
+	      pnt.ynext(phi) = phisheath;
+	    } else {	      
+	      pnt.ynext(phi) = interpolate_sheathneighbour(pnt.yprev(phi), pnt.ythis(phi));
+	      phisheath = (pnt.ynext(phi) + pnt.ythis(phi)) / 2.0;
+	    }
+	  }
+
 	  
 	  if(steady_state){
 	    pnt.ynext(phi_1) = pnt.ynext(phi) * lam2;
 	  }
 
-	  BoutReal visheath = pnt.dir * sqrt(tesheath + tisheath);
-	  pnt.ynext(Vi) = interpolate_sheathneighbour(pnt.ythis(Vi), visheath);
+	  BoutReal visheath = 0.0;
+	  if (sheath_simplephi){
+	    if (!sheath_ramp){
+              visheath = pnt.dir * sqrt(tesheath);
+            } else {
+              visheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath));
+            }	    
+	  } else {
+	    if (!sheath_ramp){
+	      visheath = pnt.dir * sqrt(tisheath + tesheath);
+	    } else {
+	      visheath = sheath_ramp_factor * (pnt.dir * sqrt(tisheath + tesheath));
+	    }  
+	  }
+
 	  
+	  if (sheath_allow_supersonic){
+	    if (pnt.dir > 0.99 && pnt.dir < 1.01){
+	      if (pnt.ythis(Vi) > visheath){
+		visheath = pnt.ythis(Vi);
+	      }
+	    } else {
+	      if (pnt.ythis(Vi) < visheath){
+		visheath = pnt.ythis(Vi);
+	      }
+	    }
+	  }
+
+	  // lambda_sheath = log( sqrt( mi_me/(2*PI) ) )
+
+	  BoutReal vesheath = 0.0;
+	  if (sheath_floating){
+	    vesheath = visheath;
+	  } else if (sheath_simplephi){
+	    if (!sheath_ramp){
+	      vesheath = pnt.dir * sqrt(tesheath) * sqrt(mi_me/(2.0*PI)) * exp(-(floor(phisheath, phisheath_floor)/tesheath));
+	    } else {
+	      vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * sqrt(mi_me/(2.0*PI)) * exp(-(floor(phisheath, phisheath_floor)/tesheath)));
+	    }
+	  } else {
+	    if (!sheath_ramp){
+	      vesheath = pnt.dir * sqrt(tesheath) * sqrt(mi_me/(2.0*PI)) * exp(-(floor(phisheath, phisheath_floor)/tesheath));
+	    } else {
+	      vesheath = sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * sqrt(mi_me/(2.0*PI))  * exp(-(floor(phisheath, phisheath_floor)/tesheath)));
+	    }
+	  }
+
 	  
+	  BoutReal pre_vesheath = vesheath;
+	  if (sheath_allow_supersonic_Te){
+	    if (pnt.dir > 0.99 && pnt.dir < 1.01){
+	      if (pnt.ythis(Ve) > vesheath){
+		vesheath = pnt.ythis(Ve);
+		if (VePsi_sheathdissipation && abs(pnt.offset())==1){
+		  const auto iyp = i.yp();
+		  const auto iym = i.ym();
+		  BoutReal g_22up = 0.5 * (sqrt(coord->g_22[i]) + sqrt(coord->g_22.yup()[iyp]));
+		  BoutReal Jup  = 0.5 * ((coord->J[i]) + (coord->J.yup()[iyp]));
+		  BoutReal fluxup = 0.5 * fastest_espeed[i] * (vesheath - pre_vesheath) * Jup / g_22up;
+		  // SIGNS FLIPPED BECAUSE ADVECTION = -divpar() ...                                                                                                                                                                                                             
+		  TE_VePsi_sheathdissipation[i] = -fluxup / (coord->dy[i]*coord->J[i]);
+		}		
+	      }
+	    } else {
+	      if (pnt.ythis(Ve) < vesheath){
+		vesheath = pnt.ythis(Ve);
+		if (VePsi_sheathdissipation && abs(pnt.offset())==1){
+		  const auto iyp = i.yp();
+		  const auto iym = i.ym();
+		  BoutReal g_22down = 0.5 * (sqrt(coord->g_22[i]) + sqrt(coord->g_22.ydown()[iym]));
+		  BoutReal Jdown  = 0.5 * ((coord->J[i]) + (coord->J.ydown()[iym]));
+		  BoutReal fluxdown= -0.5 * fastest_espeed[i] * (abs(vesheath) - abs(pre_vesheath)) * Jdown / g_22down;
+		  TE_VePsi_sheathdissipation[i] = -fluxdown / (coord->dy[i]*coord->J[i]);
+		}
+	      }
+	    }
+	  }
+
 	 	  
 	  
-	  pnt.ynext(Jpar) = pnt.ynext(Ne) * (pnt.ynext(Vi) - pnt.ynext(Ve));
-	  BoutReal Jsheath = 0.5 * (pnt.ythis(Jpar) + pnt.ynext(Jpar));
-	  
-	  pnt.ynext(NVi) = pnt.ynext(Ne) * pnt.ynext(Vi);
-	  BoutReal nvisheath = 0.5 * (pnt.ythis(NVi) + pnt.ynext(NVi));
+	  const BoutReal jsheath = nesheath * (visheath - vesheath);
+	  const BoutReal nvisheath = nesheath * visheath;
 
+
+	  //pnt.ynext(Vi) = interpolate_sheathneighbour(pnt.ythis(Vi), visheath);
+	  //pnt.ynext(Ve) = interpolate_sheathneighbour(pnt.ythis(Ve), vesheath);
+	  //pnt.ynext(Jpar) = interpolate_sheathneighbour(pnt.ythis(Jpar), jsheath);
+	  //pnt.ynext(NVi) = interpolate_sheathneighbour(pnt.ythis(NVi), nvisheath);
+	  //pnt.ynext(Vort) = pnt.ythis(Vort);
+	  
+	  // BoutReal leg_fill_value(BoutReal fb, BoutReal f2, BoutReal l2_for, BoutReal l2_back, BoutReal l3_for, BoutReal l3_back, BoutReal bndrydirection)
+	  pnt.ynext(Vi) = leg_fill_value(visheath, pnt.ythis(Vi), l2_f[i], l2_b[i], l3_f[i], l3_b[i], pnt.dir);
+	  pnt.ynext(Ve) = leg_fill_value(vesheath, pnt.ythis(Ve), l2_f[i], l2_b[i], l3_f[i], l3_b[i], pnt.dir);
+	  pnt.ynext(Jpar) = leg_fill_value(visheath, pnt.ythis(Jpar), l2_f[i], l2_b[i], l3_f[i], l3_b[i], pnt.dir);
+	  pnt.ynext(NVi) = leg_fill_value(nvisheath, pnt.ythis(NVi), l2_f[i], l2_b[i], l3_f[i], l3_b[i], pnt.dir);
 	  pnt.ynext(Vort) = pnt.ythis(Vort);
 	  
+	  if (evolve_neutrals && evolve_nnvn){
+	    BoutReal sheathneutralvelocity = interpolate_sheathneighbour(pnt.ythis(Vn), 0.0);
+	    pnt.ynext(Vn) = sheathneutralvelocity;
+	    pnt.ynext(NnVn) = pnt.ythis(Nn) * sheathneutralvelocity;	    
+	  }
+	  
+	  if (output_sheath){
+	    debug_visheath[i] = visheath;
+            debug_vesheath[i] = vesheath;
+            debug_phisheath[i] = phisheath;
+	    debug_jsheath[i] = jsheath;
+	  }
+	  
 	  if (abs(pnt.offset())==1){	              	   	    
-	    
+
+
+	    if (Vort_sheathdissipation){
+              BoutReal dissvel = 0.0;
+              const auto iyp = i.yp();
+              const auto iym = i.ym();
+              if (sheathdissipation_espeed){
+                dissvel = fastest_espeed[i];
+              } else {
+                dissvel = fastest_ispeed[i];
+              }
+
+              if (pnt.dir > 0.5) {
+                BoutReal g_22up = 0.5 * (sqrt(coord->g_22[i]) + sqrt(coord->g_22.yup()[iyp]));
+                BoutReal Jup  = 0.5 * ((coord->J[i]) + (coord->J.yup()[iyp]));
+                BoutReal fluxup = 0.5 * dissvel * Vort[i] * Jup / g_22up;
+		// SIGNS FLIPPED BECAUSE ADVECTION = -divpar() ... 
+                TE_Vort_sheathdissipation[i] = -fluxup / (coord->dy[i]*coord->J[i]);
+              } else {
+                BoutReal g_22down = 0.5 * (sqrt(coord->g_22[i]) + sqrt(coord->g_22.ydown()[iym]));
+                BoutReal Jdown  = 0.5 * ((coord->J[i]) + (coord->J.ydown()[iym]));
+                BoutReal fluxdown= -0.5 * dissvel * Vort[i] * Jdown / g_22down;
+                TE_Vort_sheathdissipation[i] = fluxdown / (coord->dy[i]*coord->J[i]);
+              }
+            }
 
 	    TRACE("Sheath offset==1, sheath power calculation");
 
-            const BoutReal q_e = floor( (sheath_gamma_e - 1.5) * tesheath * nesheath * vesheath * pnt.dir , 0.0);                                                                                         
+            const BoutReal q_e = floor( (sheath_gamma_e - 1.5) * tesheath * nesheath * 0.5 * (pnt.ythis(Ve) + pnt.ynext(Ve)) * pnt.dir , 0.0);                                                                                         
             const BoutReal flux_e = q_e * coord->J[i] / sqrt(coord->g_22[i]);
 	    BoutReal power_e = 0.0;
                                                                                                                                                                                                           
-            const BoutReal q_i = floor( (sheath_gamma_i - 1.0) * tisheath * nesheath * visheath * pnt.dir , 0.0);                                                                                         
+            const BoutReal q_i = floor( (sheath_gamma_i - 1.0) * tisheath * nesheath * 0.5 * (pnt.ythis(Vi) + pnt.ynext(Vi)) * pnt.dir , 0.0);                                                                                         
             const BoutReal flux_i = q_i * coord->J[i] / sqrt(coord->g_22[i]);
 	    BoutReal power_i = 0.0;
 
@@ -3112,42 +3299,28 @@ int Hermes::rhs(BoutReal t) {
 	    TRACE("Sheath offset==1, set double next fields");
 
 	    const int offset_factor = 1;
-	    if(sheath_interpolate){	      
-	      //pnt.getAt<false>(Ne, offset_factor) = floor(pnt.ythis(Ne)*decay_Ne*decay_Ne, floor_Ne);
-	      pnt.getAt<false>(Ne, offset_factor) = floor(pnt.ynext(Ne), floor_Ne);
-	      pnt.getAt<false>(Te, offset_factor) = floor(pnt.ynext(Te), floor_Te);
-	      pnt.getAt<false>(Ti, offset_factor) = floor(pnt.ynext(Ti), floor_Ti);
-	      pnt.getAt<false>(Pe, offset_factor) = pnt.getAt<false>(Ne, offset_factor) * pnt.getAt<false>(Te, offset_factor);
-	      pnt.getAt<false>(Pi, offset_factor) = pnt.getAt<false>(Ne, offset_factor) * pnt.getAt<false>(Ti, offset_factor);
-
-	      pnt.getAt<false>(phi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(phi),pnt.ynext(phi));
-	      pnt.getAt<false>(Vi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Vi),pnt.ynext(Vi));
-	      pnt.getAt<false>(Ve, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Ve),pnt.ynext(Ve));
-	      pnt.getAt<false>(Jpar, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Jpar),pnt.ynext(Jpar));
-	      pnt.getAt<false>(NVi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(NVi),pnt.ynext(NVi));
-	      pnt.getAt<false>(Vort, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Vort),pnt.ynext(Vort));
-	    } else {       	    
-	      pnt.getAt<false>(Ne, offset_factor) = pnt.ynext(Ne);
-	      pnt.getAt<false>(Te, offset_factor) = pnt.ynext(Te);
-	      pnt.getAt<false>(Pe, offset_factor) = pnt.ynext(Pe);
-	      pnt.getAt<false>(Ti, offset_factor) = pnt.ynext(Ti);
-	      pnt.getAt<false>(Pi, offset_factor) = pnt.ynext(Pi);
 	    
-	      pnt.getAt<false>(phi, offset_factor) = pnt.ynext(phi);
-	      pnt.getAt<false>(Vi, offset_factor) = pnt.ynext(Vi);
-	      pnt.getAt<false>(Ve, offset_factor) = pnt.ynext(Ve);
-	      pnt.getAt<false>(Jpar, offset_factor) = pnt.ynext(Jpar);
-	      pnt.getAt<false>(NVi, offset_factor) = pnt.ynext(NVi);
-	      pnt.getAt<false>(Vort, offset_factor) = pnt.ynext(Vort);
-	    }
-	  
+	    
+	    pnt.getAt<false>(Ne, offset_factor) = floor(pnt.ynext(Ne), floor_Ne);
+	    pnt.getAt<false>(Te, offset_factor) = floor(pnt.ynext(Te), floor_Te);
+	    pnt.getAt<false>(Ti, offset_factor) = floor(pnt.ynext(Ti), floor_Ti);
+	    pnt.getAt<false>(Pe, offset_factor) = pnt.getAt<false>(Ne, offset_factor) * pnt.getAt<false>(Te, offset_factor);
+	    pnt.getAt<false>(Pi, offset_factor) = pnt.getAt<false>(Ne, offset_factor) * pnt.getAt<false>(Ti, offset_factor);
+	    
+	    pnt.getAt<false>(phi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(phi),pnt.ynext(phi));
+	    pnt.getAt<false>(Vi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Vi),pnt.ynext(Vi));
+	    pnt.getAt<false>(Ve, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Ve),pnt.ynext(Ve));
+	    pnt.getAt<false>(Jpar, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Jpar),pnt.ynext(Jpar));
+	    pnt.getAt<false>(NVi, offset_factor) = interpolate_sheathneighbour(pnt.ythis(NVi),pnt.ynext(NVi));
+	    pnt.getAt<false>(Vort, offset_factor) = interpolate_sheathneighbour(pnt.ythis(Vort),pnt.ynext(Vort));
+	    
 	  } // End interpolate_sheathneighbour
 	  }
 	  
 	} // End for (const auto& pnt : region)
       } // End iter_regions([&](auto& region)
 
-
+	  
       break;
     } // End case 1
       
@@ -4033,6 +4206,11 @@ int Hermes::rhs(BoutReal t) {
     }
 
 
+    if (NVi_anomalous_par) {
+      TE_NVi_anomalous_par = Div_par_K_Grad_par_mod(mul_all(Ne, a_nu3d_par), Vi);
+      ddt(NVi) += TE_NVi_anomalous_par;
+    }
+    
 
     
   } // End evolve_nvi
@@ -4192,15 +4370,9 @@ int Hermes::rhs(BoutReal t) {
       ddt(Pe) += TE_Pe_neutrals;
     }
 
-    if (parallel_sheaths && Pe_sources){
-      switch (par_sheath_model) {
-      case 0 :{
-	TE_Pe_sheath = sheath_dpe;
-	ddt(Pe) += TE_Pe_sheath;
-	
-	break;
-      } 
-      } // End switch
+    if (parallel_sheaths && Pe_sources){      
+      TE_Pe_sheath = sheath_dpe;
+      ddt(Pe) += TE_Pe_sheath;
     } //End parallel_sheaths
 
 
@@ -4407,12 +4579,7 @@ int Hermes::rhs(BoutReal t) {
     
 
     if (parallel_sheaths && Pi_sources){
-      switch (par_sheath_model) {
-      case 0 :{
-	ddt(Pi) += sheath_dpi;	
-	break;
-      } // End Case 1
-      } // End Swith 
+      ddt(Pi) += sheath_dpi;	
     } //End parallel_sheaths
 
     if (Pi_hyper){
