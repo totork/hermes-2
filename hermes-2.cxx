@@ -106,15 +106,15 @@ BoutReal logicgrowth_mod(BoutReal x, BoutReal a){
 
 
 
-BoutReal leg_fill_f3(BoutReal fb,BoutReal f2, BoutReal l2, BoutReal l3){
-  return fb * (l2+l3)/l2 - f2 * l3 / l2;
+BoutReal leg_fill_f3(BoutReal fb,BoutReal f2, BoutReal l2, BoutReal l3, BoutReal f1, BoutReal l1){
+  return f1 * (l2*l2*l3 + l2 * l3* l3)/(l1*l1*l2 + l1*l2*l2) + fb * l1 * (l1+l2+l3)*(l2+l3)/(l1*l1*l2 + l1*l2*l2) - f2 * l3 * ((l1+l2)*l3 + (l1+l2)*(l1+l2)) /(l1*l1*l2 + l1*l2*l2);
 }
 
-BoutReal leg_fill_value(BoutReal fb, BoutReal f2, BoutReal l2_for, BoutReal l2_back, BoutReal l3_for, BoutReal l3_back, BoutReal bndrydirection){
+BoutReal leg_fill_value(BoutReal fb, BoutReal f2, BoutReal l2_for, BoutReal l2_back, BoutReal l3_for, BoutReal l3_back, BoutReal bndrydirection, BoutReal f1, BoutReal l1_for, BoutReal l1_back){
   if (bndrydirection > 0.5) {
-    return leg_fill_f3(fb, f2, l2_for, l3_for);
+    return leg_fill_f3(fb, f2, l2_for, l3_for, f1, l1_for);
   } else {
-    return leg_fill_f3(fb, f2, l2_back, l3_back);
+    return leg_fill_f3(fb, f2, l2_back, l3_back, f1, l1_back);
   }
 }
 
@@ -3225,10 +3225,10 @@ int Hermes::rhs(BoutReal t) {
 	  //pnt.ynext(Vort) = pnt.ythis(Vort);
 	  
 	  // BoutReal leg_fill_value(BoutReal fb, BoutReal f2, BoutReal l2_for, BoutReal l2_back, BoutReal l3_for, BoutReal l3_back, BoutReal bndrydirection)
-	  pnt.ynext(Vi) = leg_fill_value(visheath, pnt.ythis(Vi), l2_f[i], l2_b[i], l3_f[i], l3_b[i], pnt.dir);
-	  pnt.ynext(Ve) = leg_fill_value(vesheath, pnt.ythis(Ve), l2_f[i], l2_b[i], l3_f[i], l3_b[i], pnt.dir);
-	  pnt.ynext(Jpar) = leg_fill_value(visheath, pnt.ythis(Jpar), l2_f[i], l2_b[i], l3_f[i], l3_b[i], pnt.dir);
-	  pnt.ynext(NVi) = leg_fill_value(nvisheath, pnt.ythis(NVi), l2_f[i], l2_b[i], l3_f[i], l3_b[i], pnt.dir);
+	  pnt.ynext(Vi) = leg_fill_value(visheath, pnt.ythis(Vi), l2_f[i], l2_b[i], l3_f[i], l3_b[i], pnt.dir, pnt.yprev(Vi), l1_f[i], l1_b[i]);
+	  pnt.ynext(Ve) = leg_fill_value(vesheath, pnt.ythis(Ve), l2_f[i], l2_b[i], l3_f[i], l3_b[i], pnt.dir, pnt.yprev(Ve), l1_f[i], l1_b[i]);
+	  pnt.ynext(Jpar) = leg_fill_value(visheath, pnt.ythis(Jpar), l2_f[i], l2_b[i], l3_f[i], l3_b[i], pnt.dir, pnt.yprev(Jpar), l1_f[i], l1_b[i]);
+	  pnt.ynext(NVi) = leg_fill_value(nvisheath, pnt.ythis(NVi), l2_f[i], l2_b[i], l3_f[i], l3_b[i], pnt.dir, pnt.yprev(NVi), l1_f[i], l1_b[i]);
 	  pnt.ynext(Vort) = pnt.ythis(Vort);
 	  
 	  if (evolve_neutrals && evolve_nnvn){
