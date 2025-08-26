@@ -3018,11 +3018,11 @@ int Hermes::rhs(BoutReal t) {
 	    TRACE("Sheath offset==1, sheath power calculation");
 
             const BoutReal q_e = floor( (sheath_gamma_e - 1.5) * tesheath * nesheath * vesheath * pnt.dir , 0.0);                                                                                         
-            const BoutReal flux_e = q_e * coord->J[i] / sqrt(coord->g_22[i]);
+            const BoutReal flux_e = q_e * (coord->J[i]+pnt.ynext(coord->J)) / (sqrt(coord->g_22[i]) + sqrt(pnt.ynext(coord->g_22)));
 	    BoutReal power_e = 0.0;
                                                                                                                                                                                                           
             const BoutReal q_i = floor( (sheath_gamma_i - 1.0) * tisheath * nesheath * visheath * pnt.dir , 0.0);                                                                                         
-            const BoutReal flux_i = q_i * coord->J[i] / sqrt(coord->g_22[i]);
+            const BoutReal flux_i = q_i * (coord->J[i] + pnt.ynext(coord->J)) / (sqrt(coord->g_22[i]) + sqrt(pnt.ynext(coord->g_22)));
 	    BoutReal power_i = 0.0;
 
 	    if (!sheath_ramp){
@@ -3271,13 +3271,13 @@ int Hermes::rhs(BoutReal t) {
 
 	    TRACE("Sheath offset==1, sheath power calculation");
 
-            const BoutReal q_e = floor( (sheath_gamma_e - 1.5) * tesheath * nesheath * 0.5 * (pnt.ythis(Ve) + pnt.ynext(Ve)) * pnt.dir , 0.0);                                                                                         
-            const BoutReal flux_e = q_e * coord->J[i] / sqrt(coord->g_22[i]);
-	    BoutReal power_e = 0.0;
-                                                                                                                                                                                                          
-            const BoutReal q_i = floor( (sheath_gamma_i - 1.0) * tisheath * nesheath * 0.5 * (pnt.ythis(Vi) + pnt.ynext(Vi)) * pnt.dir , 0.0);                                                                                         
-            const BoutReal flux_i = q_i * coord->J[i] / sqrt(coord->g_22[i]);
-	    BoutReal power_i = 0.0;
+	    const BoutReal q_e = floor( (sheath_gamma_e - 1.5) * tesheath * nesheath * vesheath * pnt.dir , 0.0);
+            const BoutReal flux_e = q_e * (coord->J[i]+pnt.ynext(coord->J)) / (sqrt(coord->g_22[i]) + sqrt(pnt.ynext(coord->g_22)));
+            BoutReal power_e = 0.0;
+
+            const BoutReal q_i = floor( (sheath_gamma_i - 1.0) * tisheath * nesheath * visheath * pnt.dir , 0.0);
+            const BoutReal flux_i = q_i * (coord->J[i] + pnt.ynext(coord->J)) / (sqrt(coord->g_22[i]) + sqrt(pnt.ynext(coord->g_22)));
+	    BoutReal power_i = 0.0;	    
 
 	    if (!sheath_ramp){
 	      power_e = flux_e / (coord->dy[i] * coord->J[i]);
