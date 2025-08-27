@@ -88,6 +88,15 @@ BoutReal interpolate_sheathneighbour(BoutReal fc, BoutReal finterface){
   return finterface + (finterface-fc);
 }
 
+BoutReal extrapolate_limit(BoutReal fthis, BoutReal fprev){
+  if (fthis > fprev){
+    return fthis;
+  } else {
+    return 2.0 * fprev - fthis;
+  }
+}
+
+
 BoutReal rampfactor(BoutReal thistime, BoutReal timecut){
   if (thistime>timecut){
     return 1.0;
@@ -2832,9 +2841,9 @@ int Hermes::rhs(BoutReal t) {
 	      pnt.ynext(Te) = floor(pnt.ythis(Te), floor_Te);
 	      pnt.ynext(Ti) = floor(pnt.ythis(Ti), floor_Ti);
 	    } else {
-	      pnt.ynext(Ne) = floor(interpolate_sheathneighbour(pnt.yprev(Ne), pnt.ythis(Ne)), floor_Ne);
-              pnt.ynext(Te) = floor(interpolate_sheathneighbour(pnt.yprev(Te), pnt.ythis(Te)), floor_Te);
-              pnt.ynext(Ti) = floor(interpolate_sheathneighbour(pnt.yprev(Ti), pnt.ythis(Ti)), floor_Ti);
+	      pnt.ynext(Ne) = floor(extrapolate_limit(pnt.ythis(Ne), pnt.yprev(Ne)), floor_Ne);
+	      pnt.ynext(Te) = floor(extrapolate_limit(pnt.ythis(Te), pnt.yprev(Te)), floor_Te);
+	      pnt.ynext(Ti) = floor(extrapolate_limit(pnt.ythis(Ti), pnt.yprev(Ti)), floor_Ti);
 	    }
 
 	  
@@ -4281,20 +4290,24 @@ int Hermes::rhs(BoutReal t) {
     } // End Pe_parflow
 
 
-    if (Pe_conduction){//Row 3
+    if (Pe_conduction){//Row 3     
       TRACE("Pe_conduction");
-      
-      if (!use_new_conduction){
-	TE_Pe_conduction = (2.0 / 3.0) * Div_par_K_Grad_par(kappa_epar, Te);
-      } else if(use_div_par_q) {
-	TE_Pe_conduction = (2.0/3.0) * Div_par_K_Grad_par_map(heatflux_e);
-      } else {
+
+      if (sheath_extrapolate){
+	// When extrapolating, we get finite gradients and thus still finite conduction, even though we calculate it separately,                                                                                  
+        // So now take the coefficients and set the parallel boundaries and then use for conduction                                                                                                               
+	Field3D new_kappa_epar = 1.0 * kappa_epar;
+        Field3D new_Te = 1.0 * Te;
+	mesh->communicate(new_kappa_epar, new_Te);
+        new_kappa_epar.applyParallelBoundary("parallel_neumann_o1");
+        new_Te.applyParallelBoundary("parallel_neumann_o1");
+        TE_Pe_conduction = (2. / 3) * Div_par_K_Grad_par_mod(new_kappa_epar, new_Te, true, use_conduction_higher);
+      } else {      
 	TE_Pe_conduction = (2.0/3.0) * Div_par_K_Grad_par_mod(kappa_epar,Te,true,use_conduction_higher);
       }
       
-
-      
       ddt(Pe) += TE_Pe_conduction;
+      
     } // End Pe_conduction
   
 
@@ -4506,19 +4519,19 @@ int Hermes::rhs(BoutReal t) {
 
     if (Pi_conduction){//Row 5 Term 1
       TRACE("Pi thermal conduction");
-      if (!use_new_conduction){
-	TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par(kappa_ipar, Ti);
-      } else if(use_div_par_q) {
-        TE_Pi_conduction = (2.0/3.0) * Div_par_K_Grad_par_map(heatflux_i);
+      if (sheath_extrapolate){
+	// When extrapolating, we get finite gradients and thus still finite conduction, even though we calculate it separately,
+	// So now take the coefficients and set the parallel boundaries and then use for conduction
+	Field3D new_kappa_ipar = 1.0 * kappa_ipar;
+	Field3D new_Ti = 1.0 * Ti;
+	mesh->communicate(new_kappa_ipar, new_Ti);
+	new_kappa_ipar.applyParallelBoundary("parallel_neumann_o1");
+	new_Ti.applyParallelBoundary("parallel_neumann_o1");
+	TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par_mod(new_kappa_ipar, new_Ti, true, use_conduction_higher);
+	
       } else {
 	TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par_mod(kappa_ipar, Ti, true, use_conduction_higher);
       }
-
-      if (scale_lowT){
-	TE_Pi_conduction *= scale_Ti;
-      }
-
-      
       ddt(Pi) += TE_Pi_conduction;
     } // End Pi_conduction 
 
