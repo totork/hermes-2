@@ -2078,7 +2078,7 @@ int Hermes::rhs(BoutReal t) {
       } else {
 	Field3D tmp = mul_all(Ne, mul_all(-0.5, mul_all(beta_e, mi_me)));
 	aparSolver->setCoefs(oness,tmp);
-	psi = aparSolver->solve(mul_all(-1.0, mul_all(VePsi, Ne)), psi);
+	psi = aparSolver->solve(mul_all(-1.0, mul_all(VePsi, Ne)), oness);
       }
       
       
