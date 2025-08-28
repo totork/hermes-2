@@ -760,6 +760,44 @@ const Field3D Div_par_mod_H3(const Field3D& f_in, const Field3D& v_in, const Fie
 }
 
 
+const Field3D Div_par_mod_H3_flow(const Field3D& f_in, const Field3D& v_in, const Field3D& wave_speed_in, Field3D& flowup, Field3D& flowdown){
+
+  Coordinates* coord = f_in.getCoordinates();
+  ASSERT1(f_in.hasParallelSlices());
+  ASSERT1(v_in.hasParallelSlices());
+
+  const auto& f_up = f_in.yup();
+  const auto& f_down = f_in.ydown();
+
+  const auto& v_up = v_in.yup();
+  const auto& v_down = v_in.ydown();
+
+  Field3D result{emptyFrom(f_in)};
+  BOUT_FOR(i, f_in.getRegion("RGN_NOBNDRY")) {
+    const auto iyp = i.yp();
+    const auto iym = i.ym();
+
+    // Maximum local wave speed                                                                                                                       
+    const BoutReal amax = BOUTMAX(wave_speed_in[i],
+                                    fabs(v_in[i]),
+                                    fabs(v_up[iyp]),
+                                    fabs(v_down[iym]));
+    BoutReal fluxup = 0.5 * (f_in[i] * (v_in[i] + amax) +
+                          f_up[iyp] * (v_up[iyp] - amax))
+      * (coord->J[i] + coord->J.yup()[iyp]) / (sqrt(coord->g_22[i]) + sqrt(coord->g_22.yup()[iyp]));
+    flowup[i] = fluxup;
+    BoutReal fluxdown = 0.5 * (f_in[i] * (v_in[i] - amax) +
+                          f_down[iym] * (v_down[iym] + amax))
+      * (coord->J[i] + coord->J.ydown()[iym]) / (sqrt(coord->g_22[i]) + sqrt(coord->g_22.ydown()[iym]));
+    flowdown[i] = fluxdown;
+    result[i] = (fluxup - fluxdown) / (coord->dy[i] * coord->J[i]);
+    
+  }
+  return result;
+
+}
+
+
 
 
 

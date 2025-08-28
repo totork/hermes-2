@@ -1796,7 +1796,11 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(Jpar);
   }
 
-  
+  Ne_flowup = 0.0;
+  Ne_flowdown = 0.0;
+  if (evolve_neutrals){
+    SAVE_REPEAT(Ne_flowup, Ne_flowdown);
+  }
   SAVE_REPEAT(Ve);
   SAVE_REPEAT(Vi);
   psi = 0.0;
@@ -2022,9 +2026,10 @@ int Hermes::init(bool restarting) {
     alloc_all(Dnn);
 
     if (output_neutrals){
-      SAVE_REPEAT(Sneutral,Fn,Rn,Qin,Riz,Rrc,Rcx,Recycling_flux);
+      SAVE_REPEAT(Sneutral,Fn,Rn,Qin,Riz,Rrc,Rcx);
     }
     SAVE_REPEAT(Dnn);
+    SAVE_REPEAT(Recycling_flux);
   }
 
 
@@ -2822,7 +2827,6 @@ int Hermes::rhs(BoutReal t) {
       sheath_ramp_factor = rampfactor(t,sheath_ramp_time);
       sheath_dpe = 0.0;
       sheath_dpi = 0.0;
-      Recycling_flux = 0.0;
       
       if (VePsi_sheathdissipation && evolve_vepsi){
 	TE_VePsi_sheathdissipation = 0.0;
@@ -3045,11 +3049,6 @@ int Hermes::rhs(BoutReal t) {
 	    sheath_dpi[i] -= (3.0/2.0) * power_i;                                                                                                                                                         
 	    sheath_dpe[i] -= (3.0/2.0) * power_e;
 
-	    if (evolve_neutrals && Recycling_coef>0.0){
-	      BoutReal recflux = Recycling_coef*abs(visheath * nesheath) * (coord->J[i] + pnt.ynext(coord->J)) / (sqrt(coord->g_22[i]) + sqrt(pnt.ynext(coord->g_22)));
-	      // Recycling_flux[i] = Recycling_coef*abs(visheath * nesheath) * coord->J[i]/( sqrt(coord->g_22[i])*coord->dy[i]*coord->J[i]);
-	      Recycling_flux[i] = recflux / (coord->dy[i] * coord->J[i]);
-	    }
 	    
 	    // Also set the values in the interpolated value after the sheath, here neumann
 
@@ -3084,7 +3083,6 @@ int Hermes::rhs(BoutReal t) {
       sheath_ramp_factor = rampfactor(t,sheath_ramp_time);
       sheath_dpe = 0.0;
       sheath_dpi = 0.0;
-      Recycling_flux = 0.0;
       
       if (VePsi_sheathdissipation && evolve_vepsi){
 	TE_VePsi_sheathdissipation = 0.0;
@@ -3301,9 +3299,6 @@ int Hermes::rhs(BoutReal t) {
 	    sheath_dpi[i] -= (3.0/2.0) * power_i;                                                                                                                                                         
 	    sheath_dpe[i] -= (3.0/2.0) * power_e;
 
-	    if (evolve_neutrals && Recycling_coef>0.0){
-	      Recycling_flux[i] = Recycling_coef*abs(visheath * nesheath) * coord->J[i]/( sqrt(coord->g_22[i])*coord->dy[i]*coord->J[i]);
-	    }
 	    
 	    // Also set the values in the interpolated value after the sheath, here neumann
 
@@ -3691,7 +3686,9 @@ int Hermes::rhs(BoutReal t) {
 	} else if(use_rhie_interpolation){
 	  TE_Ne_parflow = -Div_par_rhie(Ne, Ve, add_all(Pe,Pi), rhie_cor_up, rhie_cor_down);
 	} else if (use_H3_div_par){
-	  TE_Ne_parflow = -Div_par_mod_H3(Ne, Ve, fastest_espeed);
+	  Ne_flowup = 0.0;
+	  Ne_flowdown = 0.0;
+	  TE_Ne_parflow = -Div_par_mod_H3_flow(Ne, Ve, fastest_espeed, Ne_flowup, Ne_flowdown);
 	} else {
 	  TE_Ne_parflow = -Div_par_mod(Ne,Ve,fastest_espeed, use_slope_limiter);
 	}
@@ -3703,7 +3700,9 @@ int Hermes::rhs(BoutReal t) {
 	} else if (use_rhie_interpolation){
 	  TE_Ne_parflow = -Div_par_rhie(Ne, Vi, add_all(Pe,Pi), rhie_cor_up, rhie_cor_down);
 	} else if (use_H3_div_par){
-	  TE_Ne_parflow = -Div_par_mod_H3(Ne,Vi,fastest_espeed);
+	  Ne_flowup = 0.0;
+          Ne_flowdown = 0.0;
+	  TE_Ne_parflow = -Div_par_mod_H3_flow(Ne, Vi, fastest_espeed, Ne_flowup, Ne_flowdown);
 	} else {
 	  TE_Ne_parflow = -Div_par_mod(Ne,Vi,fastest_espeed, use_slope_limiter);
 	}
@@ -4690,7 +4689,27 @@ int Hermes::rhs(BoutReal t) {
     if (Nn_sources && neutralplasmainteraction){
       TE_Nn_sources += Sneutral;
     }
+    
     if (Nn_sources && Recycling_coef > 0.0){
+      Recycling_flux = 0.0;
+      for (const auto &bndry_par :
+           mesh->getBoundariesPar(BoundaryParType::xout)) {
+	for (const auto& pnt : *bndry_par) {
+          const auto i = pnt.ind();
+          // This if statement catech double boundaries                                                                                              
+          // And ignores boundaries in the negative direction, only taking the positive one                                                          
+          if (boundary_direction[i] > 10.9 && boundary_direction[i] < 11.1 && pnt.dir < 0.0);
+          else{
+	    if (abs(pnt.offset())==1){
+	      if (pnt.dir > 0.5){
+		Recycling_flux[i] = Recycling_coef * abs(Ne_flowup[i]) / (coord->dy[i] * coord->J[i]);
+	      } else {
+		Recycling_flux[i] = Recycling_coef * abs(Ne_flowdown[i]) / (coord->dy[i] * coord->J[i]);
+	      }
+	    }
+	  }
+	}
+      }
       TE_Nn_sources += Recycling_flux;
     }
     ddt(Nn) += TE_Nn_sources;

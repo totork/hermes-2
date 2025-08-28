@@ -117,7 +117,7 @@ private:
   bool inner_NVi_dirichlet;
   bool inner_VePsi_dirichlet;
 
-  
+  Field3D Ne_flowup, Ne_flowdown;
   
   bool inner_Ti_dirichlet;
   BoutReal inner_Ti_value;

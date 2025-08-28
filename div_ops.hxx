@@ -67,6 +67,8 @@ const Field3D Div_par_mod(const Field3D& f, const Field3D& fastest, const bool& 
 
 const Field3D Div_par_mod_H3(const Field3D& f_in, const Field3D& v_in, const Field3D& wave_speed_in);
 
+const Field3D Div_par_mod_H3_flow(const Field3D& f_in, const Field3D& v_in, const Field3D& wave_speed_in, Field3D& flowup, Field3D& flowdown);
+
 const Field3D Grad_par_mod(const Field3D& f);
 
 const Field3D Div_par_nvv_mod(const Field3D& f, const Field3D& v, const Field3D& fastest);
