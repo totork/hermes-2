@@ -301,6 +301,8 @@ private:
   
   BoundaryRegionPar* bndry_par;
 
+  int boolinnerbndryflag, boolouterbndryflag;
+  
   Field2D wall_flux; // Particle flux to wall (diagnostic)
   Field2D wall_power; // Power flux to wall (diagnostic)
   

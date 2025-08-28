@@ -1627,8 +1627,10 @@ int Hermes::init(bool restarting) {
 
   setPrecon((preconfunc)&Hermes::precon);
 
+  boolinnerbndryflag = opt["phiSolver"]["inner_boundary_flags"];
+  boolouterbndryflag = opt["phiSolver"]["outer_boundary_flags"];
+  
   if (phi_boundary_relax){
-    auto boolinnerbndryflag = opt["phiSolver"]["inner_boundary_flags"];
     if (boolinnerbndryflag != 16){
       output.write("\t Phi solver inner boundary flag is  = {:e}\n", boolinnerbndryflag);
       throw BoutException("Wrong inner boundary flag in phi solver with potential relaxation");
@@ -1636,9 +1638,8 @@ int Hermes::init(bool restarting) {
   }
 
   if (phi_sheath_relax){
-    auto boolinnerbndryflag = opt["phiSolver"]["outer_boundary_flags"];
-    if (boolinnerbndryflag != 16){
-      output.write("\t Phi solver outer boundary flag is  = {:e}\n", boolinnerbndryflag);
+    if (boolouterbndryflag != 16){
+      output.write("\t Phi solver outer boundary flag is  = {:e}\n", boolouterbndryflag);
       throw BoutException("Wrong outer boundary flag in phi solver with potential relaxation");
     }
   }
@@ -1872,7 +1873,7 @@ int Hermes::rhs(BoutReal t) {
   TRACE("Electrostatic potential");
   if (calc_potential){
     Field3D phi_boundary3d;
-    phi_boundary3d = 0.0;
+    phi_boundary3d = add_all(phi,Pi);
     
     if (boussinesq) {
       if (!isMMS){
@@ -1882,11 +1883,16 @@ int Hermes::rhs(BoutReal t) {
 	    Field3D averaged_phi = DC(phi);
 	    for (int j = mesh->ystart; j <= mesh->yend; j++) {
 	      for (int k = 0; k < mesh->LocalNz; k++) {
-		if (phi_dirichlet){
+		if (boolinnerbndryflag = 0){
 		  //phi_boundary3d(mesh->xstart - 2, j, k) = Pi(mesh->xstart, j, k ) + averaged_phi(mesh->xstart, j, k);
 		  phi_boundary3d(mesh->xstart - 1, j, k) = 0.5 * (Pi(mesh->xstart - 1, j, k) + Pi(mesh->xstart, j, k));
-		} else {
+		  phi_boundary3d(mesh->xstart - 2, j, k) = phi_boundary3d(mesh->xstart - 1, j, k);
+		} else if (boolinnerbndryflag == 16) {
 		  phi_boundary3d(mesh->xstart - 1, j, k) = 0.5 * ( 3.0*(Te(mesh->xstart - 1, j, k) + Te(mesh->xstart, j, k)) + Pi(mesh->xstart - 1, j, k) + Pi(mesh->xstart, j, k));
+		  phi_boundary3d(mesh->xstart - 2, j, k) = phi_boundary3d(mesh->xstart - 1, j, k);
+		} else if (boolinnerbndryflag == 2){
+		  phi_boundary3d(mesh->xstart - 1, j, k) = phi_boundary3d(mesh->xstart, j, k);
+		  phi_boundary3d(mesh->xstart - 2, j, k) = phi_boundary3d(mesh->xstart, j, k);		    
 		}
 	      }
 	    }
@@ -1907,7 +1913,7 @@ int Hermes::rhs(BoutReal t) {
 		  BoutReal oldvalue = 0.5 * (phi(mesh->xstart, j, k) + phi(mesh->xstart-1, j, k));
 		  BoutReal newvalue = weight * oldvalue + (1. - weight) * phivalue;
 		  BoutReal newvaluecelledge = 2.0 * newvalue - phi(mesh->xstart, j, k);
-		  phi_boundary3d(mesh->xstart - 1, j, k) = newvaluecelledge + 0.5 * (Pi(mesh->xstart - 1, j, k) + Pi(mesh->xstart, j, k));												   
+		  phi_boundary3d(mesh->xstart - 1, j, k) = newvaluecelledge + 0.5 * (Pi(mesh->xstart - 1, j, k) + Pi(mesh->xstart, j, k));			       phi_boundary3d(mesh->xstart - 2, j, k) = phi_boundary3d(mesh->xstart - 1, j, k);
 		}
 	      }
 	    } // mesh->firstX
@@ -1923,11 +1929,15 @@ int Hermes::rhs(BoutReal t) {
 	  if (mesh->lastX()) {
 	    for (int j = mesh->ystart; j <= mesh->yend; j++) {
 	      for (int k = 0; k < mesh->LocalNz; k++) {
-		if (phi_dirichlet){
+		if (boolouterbndryflag == 0){
 		  phi_boundary3d(mesh->xend + 1, j, k) = 0.5 * (Pi(mesh->xend + 1, j, k) + Pi(mesh->xend, j, k));
-		} else {
-		  
+		  phi_boundary3d(mesh->xend + 2, j, k) = phi_boundary3d(mesh->xend + 1, j, k);
+		} else if (boolouterbndryflag == 16) {		  
 		  phi_boundary3d(mesh->xend + 1, j, k) = 0.5 * ( lambda_sheath*( Te(mesh->xend + 1, j, k) + Te(mesh->xend, j, k) ) + Pi(mesh->xend + 1, j, k) + Pi(mesh->xend, j, k) );
+		  phi_boundary3d(mesh->xend + 2, j, k) = phi_boundary3d(mesh->xend + 1, j, k);
+		} else if (boolouterbndryflag == 2){
+		  phi_boundary3d(mesh->xend + 1, j, k) = phi_boundary3d(mesh->xend, j, k);
+		  phi_boundary3d(mesh->xend + 2, j, k) = phi_boundary3d(mesh->xend, j, k);
 		}
 	      }
 	    }
@@ -2028,25 +2038,11 @@ int Hermes::rhs(BoutReal t) {
       
       // Hot ion term in vorticity
       debug_phibndry3d = phi_boundary3d;
-      //phi.applyBoundary("neumann");
+      phi.applyBoundary("neumann");
       mesh->communicate(phi);
-      phi.applyParallelBoundary(parbc);
-      
+      phi.applyParallelBoundary(parbc);      
       phi = sub_all(phi, Pi);
 
-      // Set the potential manually at the last cell to keep interpolation intact
-      
-      if (mesh->lastX()) {
-	int n = mesh->LocalNx;
-	for (int j = mesh->ystart; j <= mesh->yend; j++) {
-	  for (int k = 0; k < mesh->LocalNz; k++) {
-	    phi(n - 1, j, k) = phi(n - 2, j, k);
-	  }
-	}
-      }
-      
-      mesh->communicate(phi);
-      phi.applyParallelBoundary(parbc);
     } else {
       ////////////////////////////////////////////
       // Non-Boussinesq
