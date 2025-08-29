@@ -2318,23 +2318,23 @@ int Hermes::rhs(BoutReal t) {
   if (steady_state && !isMMS){
     // phi_1 = lam2 * phi        
     if (mesh->lastX()) {
+      int n = mesh->LocalNx;
       for (int j = mesh->ystart; j <= mesh->yend; j++) {
 	for (int k = 0; k < mesh->LocalNz; k++) {
 	  // 2.83879629 =  log(0.5 * sqrt(1. / (Me_Mp * PI)))
 	  //phi_1(mesh->xend + 1, j, k) = lam2 * 0.5 * ( 2.83879629*( Te(mesh->xend + 1, j, k) + Te(mesh->xend, j, k) ) );
 	  if (sheath_floating_perp){
-	    BoutReal thiste = Te(mesh->xend + 1, j, k);
-	    BoutReal thisti = Ti(mesh->xend + 1, j, k);
+	    BoutReal thiste = Te(n-2, j, k);
+	    BoutReal thisti = Ti(n-2, j, k);
 	    if (sheath_simplephi){
-	      phi_1(mesh->xend + 1, j, k) = lam2 * thiste * lambda_sheath;
+	      phi_1(n-2, j, k) = lam2 * thiste * lambda_sheath;
 	    } else {
-	      phi_1(mesh->xend + 1, j, k) = lam2 * ( (lambda_sheath + log(sqrt( thiste/(thiste+thisti) )) ))*thiste;
+	      phi_1(n-2, j, k) = lam2 * ( (lambda_sheath + log(sqrt( thiste/(thiste+thisti) )) ))*thiste;
 	    }
 	  } else {
-	    phi_1(mesh->xend + 1, j, k) = phi_1(mesh->xend, j, k);
+	    phi_1(n-2, j, k) = phi_1(mesh->xend, j, k);
 	  }
 	  
-	  phi_1(mesh->xend + 2, j, k) = phi_1(mesh->xend + 1, j, k);
 	}
         
       }
