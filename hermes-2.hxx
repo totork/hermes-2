@@ -105,6 +105,7 @@ private:
   
   Field3D Vi_sheath , Ve_sheath , Jpar_sheath , Ne_sheath , Te_sheath , Ti_sheath , Vort_sheath,phi_sheath;
   Field3D Te_ythis,Te_ynext,Te_yprev;
+  bool vort_dissipation_espeed;
   bool new_sheaths;
   bool sheath_interpolate;
   bool sheath_extrapolate;

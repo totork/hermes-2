@@ -986,7 +986,7 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, damp_edge_vorticity, false);
   OPTION(optnumerics, damp_core_current, false);
   OPTION(optvort, sheathdissipation_espeed, false);
-  
+  OPTION(optvort, vort_dissipation_espeed, false);
   OPTION(optnumerics, use_rhie_interpolation, false);
   if (use_rhie_interpolation){
     alloc_all(rhie_cor_up);
@@ -2889,12 +2889,10 @@ int Hermes::rhs(BoutReal t) {
 
     if (Vort_phidissipation){
 
-      if(!use_new_div_par){       
-	TE_Vort_phidissipation = -Div_par(-phi, zeroes);
-      } else if (use_H3_div_par){
-        TE_Vort_phidissipation = -Div_par_mod_H3(mul_all(-1.0, phi),zeroes,fastest_espeed);
+      if (vort_dissipation_espeed) {
+	TE_Vort_phidissipation = -Div_par_mod_H3(mul_all(-1.0, phi),zeroes,fastest_espeed);
       } else {
-	TE_Vort_phidissipation = -Div_par_mod(mul_all(-1.0, phi),zeroes,fastest_espeed, use_slope_limiter) ;
+	TE_Vort_phidissipation = -Div_par_mod_H3(mul_all(-1.0, phi),zeroes,fastest_ispeed);
       }
 
       ddt(Vort) += TE_Vort_phidissipation;
@@ -3828,12 +3826,14 @@ int Hermes::rhs(BoutReal t) {
             ddt(VePsi)(i, j, k) += f * x_factor;
             ddt(VePsi)(i + 1, j, k) -= f * xp_factor;
 	    
-
-	    ddt(Vort)(i,j,k) -= 1.0 * Vort(i,j,k); 
-
-	    if (evolve_vepsi){
+	    if (damp_core_vorticity) {
+	      ddt(Vort)(i,j,k) -= 1.0 * Vort(i,j,k); 
+	    }
+	      
+	    if (evolve_vepsi && damp_core_current){
 	      ddt(VePsi)(i,j,k) -= 1.0 * VePsi(i,j,k);
 	    }
+	    
 	    
           }
         }
