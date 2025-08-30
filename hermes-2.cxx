@@ -1685,6 +1685,8 @@ int Hermes::init(bool restarting) {
 
   
   if(fci_transform){
+    div_all_inp(coord->Bxy, Bnorm);
+    
     mesh->get(Bxyz, "B",1.0);
     mesh->get(coord->Bxy, "Bxy", 1.0);
 
