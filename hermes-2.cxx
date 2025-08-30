@@ -1328,6 +1328,8 @@ int Hermes::init(bool restarting) {
     mesh->get(Bxyz, "B",1.0);
     mesh->get(coord->Bxy, "Bxy", 1.0);
 
+    div_all_inp(coord->Bxy, Bnorm);
+    
     Bxy = coord->Bxy;
     
     Bxy.applyBoundary("neumann");
@@ -2771,10 +2773,10 @@ int Hermes::rhs(BoutReal t) {
 	  Field3D vEdotGradPi =  bracket(phi, Pi, BRACKET_ARAKAWA) * bracket_factor;
 	  vEdotGradPi.applyBoundary("neumann");
 	  
-	  Field3D DelpPhi_2B2 = 0.5 * new_Delp2(phi) / SQ(Bxyz);
+	  Field3D DelpPhi_2B2 = 0.5 * new_Delp2(phi) / SQ(Bxy);
 	  DelpPhi_2B2.applyBoundary("neumann");
 	  
-	  Field3D inv_2sqb = 0.5 / SQ(Bxyz);
+	  Field3D inv_2sqb = 0.5 / SQ(Bxy);
 	  inv_2sqb.applyBoundary("neumann");
 
 	  mesh->communicate(vEdotGradPi, DelpPhi_2B2, inv_2sqb);
