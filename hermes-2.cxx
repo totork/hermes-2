@@ -4001,7 +4001,8 @@ int Hermes::rhs(BoutReal t) {
 	if(!use_new_div_par){
 	  TE_VePsi_parflow = -Ve * Div_par(sub_all(Ve,Vi));
 	} else if (use_H3_div_par){
-	  TE_VePsi_parflow = - Div_par_mod_H3(Ve,sub_all(Ve, Vi),fastest_espeed);
+	  //TE_VePsi_parflow = - Div_par_mod_H3(Ve,sub_all(Ve, Vi),fastest_espeed);
+	  TE_VePsi_parflow = -Ve * Div_par(sub_all(Ve,Vi));
 	} else {
 	  TE_VePsi_parflow = -Ve * Div_par_mod(sub_all(Ve,Vi), fastest_espeed, use_slope_limiter);
 	}
@@ -4009,7 +4010,8 @@ int Hermes::rhs(BoutReal t) {
 	if(!use_new_div_par){
 	  TE_VePsi_parflow = -Vi * Div_par(sub_all(Ve,Vi));
 	} else if (use_H3_div_par){
-          TE_VePsi_parflow = - Div_par_mod_H3(Vi,sub_all(Ve, Vi),fastest_ispeed);
+          //TE_VePsi_parflow = - Div_par_mod_H3(Vi,sub_all(Ve, Vi),fastest_ispeed);
+	  TE_VePsi_parflow = -Vi * Div_par(sub_all(Ve,Vi));
 	} else {
 	  TE_VePsi_parflow = -Vi * Div_par_mod(sub_all(Ve,Vi), fastest_espeed, use_slope_limiter);
 	}       
