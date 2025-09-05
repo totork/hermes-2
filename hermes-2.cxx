@@ -127,6 +127,17 @@ BoutReal leg_fill_value(BoutReal fb, BoutReal f2, BoutReal l2_for, BoutReal l2_b
   }
 }
 
+BoutReal leg_fill_fb(BoutReal f2, BoutReal f3, BoutReal l2, BoutReal l3){
+  return (l2*f3 + l3*f2)/(l2+l3);
+}
+
+BoutReal leg_fill_boundary(BoutReal f2, BoutReal f3, BoutReal l2_for, BoutReal l2_back, BoutReal l3_for, BoutReal l3_back, BoutReal bndrydirection){
+  if (bndrydirection > 0.5) {
+    return leg_fill_fb(f2, f3, l2_for, l3_for);
+  } else {
+    return leg_fill_fb(f2, f3, l2_back, l3_back);
+  }
+}
 
 
 BoutReal clip(BoutReal value, BoutReal min, BoutReal max) {
@@ -3099,13 +3110,20 @@ int Hermes::rhs(BoutReal t) {
 	  if (boundary_direction[i] > 10.9 && boundary_direction[i] < 11.1 && pnt.dir < 0.0);
 	  else{
 	  
-	  pnt.ynext(Ne) = floor(pnt.ythis(Ne), floor_Ne); // Not for Ne, sothat NVi does not increase if vi is constant                                                                                                                                                     
-	  pnt.ynext(Te) = floor(pnt.ythis(Te), floor_Te);
-	  pnt.ynext(Ti) = floor(pnt.ythis(Ti), floor_Ti);
-	  
+	  if (!sheath_extrapolate){
+	      pnt.ynext(Ne) = floor(pnt.ythis(Ne), floor_Ne); // Not for Ne, sothat NVi does not increase if vi is constant                                                                                                                                                     
+	      pnt.ynext(Te) = floor(pnt.ythis(Te), floor_Te);
+	      pnt.ynext(Ti) = floor(pnt.ythis(Ti), floor_Ti);
+	    } else {
+	      pnt.ynext(Ne) = floor(extrapolate_limit(pnt.ythis(Ne), pnt.yprev(Ne)), floor_Ne);
+	      pnt.ynext(Te) = floor(extrapolate_limit(pnt.ythis(Te), pnt.yprev(Te)), floor_Te);
+	      pnt.ynext(Ti) = floor(extrapolate_limit(pnt.ythis(Ti), pnt.yprev(Ti)), floor_Ti);
+	    }
+
 	  pnt.ynext(Pi) = pnt.ynext(Ne)*pnt.ynext(Ti);
 	  pnt.ynext(Pe) = pnt.ynext(Ne)*pnt.ynext(Te);
 
+	  
 	  
 	  TRACE("Sheath offset==2, interpolate sheath values");
 
@@ -3113,11 +3131,12 @@ int Hermes::rhs(BoutReal t) {
 	  BoutReal tesheath = 0.0;
 	  BoutReal tisheath = 0.0;
 
+	  // leg_fill_boundary(BoutReal f2, BoutReal f3, BoutReal l2_for, BoutReal l2_back, BoutReal l3_for, BoutReal l3_back, BoutReal bndrydirection)
+	  nesheath = leg_fill_boundary(pnt.ythis(Ne), pnt.ynext(Ne), l2_f[i], l2_b[i], l3_f[i], l3_b[i], pnt.dir);
+	  tesheath = leg_fill_boundary(pnt.ythis(Te), pnt.ynext(Te), l2_f[i], l2_b[i], l3_f[i], l3_b[i], pnt.dir);
+	  tisheath = leg_fill_boundary(pnt.ythis(Ti), pnt.ynext(Ti), l2_f[i], l2_b[i], l3_f[i], l3_b[i], pnt.dir);
 
-	  nesheath = (pnt.ythis(Ne) + pnt.ynext(Ne))/2.0;
-	  tesheath = (pnt.ythis(Te) + pnt.ynext(Te))/2.0;
-	  tisheath = (pnt.ythis(Ti) + pnt.ynext(Ti))/2.0;
-
+	    
 	  BoutReal phisheath = 0.0;
 	  if (sheath_floating){
 	    // Set potential to be zero current
@@ -3236,7 +3255,7 @@ int Hermes::rhs(BoutReal t) {
 	  // BoutReal leg_fill_value(BoutReal fb, BoutReal f2, BoutReal l2_for, BoutReal l2_back, BoutReal l3_for, BoutReal l3_back, BoutReal bndrydirection)
 	  pnt.ynext(Vi) = leg_fill_value(visheath, pnt.ythis(Vi), l2_f[i], l2_b[i], l3_f[i], l3_b[i], pnt.dir, pnt.yprev(Vi), l1_f[i], l1_b[i]);
 	  pnt.ynext(Ve) = leg_fill_value(vesheath, pnt.ythis(Ve), l2_f[i], l2_b[i], l3_f[i], l3_b[i], pnt.dir, pnt.yprev(Ve), l1_f[i], l1_b[i]);
-	  pnt.ynext(Jpar) = leg_fill_value(visheath, pnt.ythis(Jpar), l2_f[i], l2_b[i], l3_f[i], l3_b[i], pnt.dir, pnt.yprev(Jpar), l1_f[i], l1_b[i]);
+	  pnt.ynext(Jpar) = leg_fill_value(jsheath, pnt.ythis(Jpar), l2_f[i], l2_b[i], l3_f[i], l3_b[i], pnt.dir, pnt.yprev(Jpar), l1_f[i], l1_b[i]);
 	  pnt.ynext(NVi) = leg_fill_value(nvisheath, pnt.ythis(NVi), l2_f[i], l2_b[i], l3_f[i], l3_b[i], pnt.dir, pnt.yprev(NVi), l1_f[i], l1_b[i]);
 	  pnt.ynext(Vort) = pnt.ythis(Vort);
 	  
@@ -3282,11 +3301,11 @@ int Hermes::rhs(BoutReal t) {
 
 	    TRACE("Sheath offset==1, sheath power calculation");
 
-	    const BoutReal q_e = floor( (sheath_gamma_e - 1.5) * tesheath * nesheath * vesheath * pnt.dir , 0.0);
+	    const BoutReal q_e = floor( (sheath_gamma_e - 1.5) * tesheath * nesheath * 0.5 * (pnt.ythis(Ve) + pnt.ynext(Ve)) * pnt.dir , 0.0);
             const BoutReal flux_e = q_e * (coord->J[i]+pnt.ynext(coord->J)) / (sqrt(coord->g_22[i]) + sqrt(pnt.ynext(coord->g_22)));
             BoutReal power_e = 0.0;
 
-            const BoutReal q_i = floor( (sheath_gamma_i - 1.0) * tisheath * nesheath * visheath * pnt.dir , 0.0);
+            const BoutReal q_i = floor( (sheath_gamma_i - 1.0) * tisheath * nesheath * 0.5 * (pnt.ythis(Vi) + pnt.ynext(Vi)) * pnt.dir , 0.0);
             const BoutReal flux_i = q_i * (coord->J[i] + pnt.ynext(coord->J)) / (sqrt(coord->g_22[i]) + sqrt(pnt.ynext(coord->g_22)));
 	    BoutReal power_i = 0.0;	    
 
