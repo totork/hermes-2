@@ -438,7 +438,7 @@ private:
   bool pe_bndry_flux;   // Allow flux of pe through radial boundaries
   bool ne_bndry_flux;   // Allow flux of ne through radial boundaries
   bool vort_bndry_flux; // Allow flux of vorticity through radial boundaries
-  
+  bool ExB_inflow;
   // Normalisation parameters
   BoutReal Tnorm, Nnorm, Bnorm;
   BoutReal AA, Cs0, rho_s0, Omega_ci;

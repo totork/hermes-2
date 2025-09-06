@@ -81,7 +81,7 @@ const Field3D Div_par_ssdissipation(const Field3D& f, const Field3D& fastest);
 
 const Field3D Div_par_diffusion_index(const Field3D &f, bool bndry_flux=true);
 
-const Field3D Div_n_bxGrad_f_B_XPPM(const Field3D &n, const Field3D &f, bool bndry_flux, bool poloidal, bool positive, const Field3D &bf);
+const Field3D Div_n_bxGrad_f_B_XPPM(const Field3D &n, const Field3D &f, bool bndry_flux, bool poloidal, bool positive, const Field3D &bf, bool inflow=true);
 
 const Field3D Div_Perp_Lap_FV_Index(const Field3D &a, const Field3D &f, bool xflux);
 

@@ -230,7 +230,7 @@ void XPPM(Stencil1D &n, const BoutReal h) {
 
 const Field3D Div_n_bxGrad_f_B_XPPM(const Field3D &n, const Field3D &f,
                                     bool bndry_flux, bool poloidal,
-                                    bool positive, const Field3D &bf) {
+                                    bool positive, const Field3D &bf, bool inflow) {
   Field3D result{0.0};
 
   Coordinates *coord = mesh->getCoordinates();
@@ -310,7 +310,11 @@ const Field3D Div_n_bxGrad_f_B_XPPM(const Field3D &n, const Field3D &f,
           flux = vR * s.R * bfR;
         } else {
           // Flux in from boundary
-          flux = vR * 0.5 * (n[ind.xp()] + n[ind]) * bfR;
+	  if (inflow){
+	    flux = vR * 0.5 * (n[ind.xp()] + n[ind]) * bfR;
+	  } else {
+	    flux = 0.0;
+	  }
         }
         result[ind] += flux / (coord->dx[ind] * coord->J[ind]);
         result[ind.xp()] -=
@@ -339,7 +343,11 @@ const Field3D Div_n_bxGrad_f_B_XPPM(const Field3D &n, const Field3D &f,
 	  flux = vL * s.L;
 	} else {
 	  // Flux in from boundary
-	  flux = vL * 0.5 * (n[ind.xm()] + n[ind]);
+	  if (inflow) {
+	    flux = vL * 0.5 * (n[ind.xm()] + n[ind]);
+	  } else {
+	    flux = 0.0;
+	  }
 	}
         flux *= bfL;
         result[ind] -= flux / (coord->dx[ind] * coord->J[ind]);
