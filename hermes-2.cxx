@@ -2005,7 +2005,7 @@ int Hermes::init(bool restarting) {
 
   alloc_all(Te32);
   alloc_all(Ti32);
-  
+  averaged_phi_1 = 0.0;
 
   alloc_all(Ne);
   alloc_all(Te);
@@ -2355,11 +2355,20 @@ int Hermes::rhs(BoutReal t) {
   
     
     if (mesh->firstX()) {
-        for (int j = mesh->ystart; j <= mesh->yend; j++) {
-          for (int k = 0; k < mesh->LocalNz; k++) {
-            phi_1(0, j, k) = phi_1(1, j, k);
-          }
-        }
+      if (phi_inneraverage) {
+        averaged_phi_1 = DC(phi_1);
+      }
+      for (int j = mesh->ystart; j <= mesh->yend; j++) {
+	for (int k = 0; k < mesh->LocalNz; k++) {
+	  
+	  if (phi_inneraverage){
+	    phi_1(1,j,k) = averaged_phi_1(1,j,k);
+	    phi_1(0,j,k) = phi_1(1,j,k);
+	  } else {
+	    phi_1(0, j, k) = phi_1(1, j, k);
+	  }
+	}
+      }
     }
   }
   

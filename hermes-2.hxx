@@ -107,7 +107,7 @@ private:
   bool soft_floor;
   bool inner_Te_dirichlet;
   BoutReal inner_Te_value;
-
+  Field3D averaged_phi_1;
   BoutReal soundspeed_limit;
   
   
@@ -480,7 +480,7 @@ private:
   bool phi_boundary_relax; ///< Relax the boundary towards Neumann?
   BoutReal phi_boundary_timescale; ///< Relaxation timescale
   BoutReal phi_boundary_last_update; ///< The last time the boundary was updated
-  
+
   bool newXZsolver; 
   std::unique_ptr<Laplacian> phiSolver{nullptr}; // Old Laplacian in X-Z
   std::unique_ptr<LaplaceXZ> newSolver{nullptr};
