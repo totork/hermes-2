@@ -1384,6 +1384,13 @@ int Hermes::init(bool restarting) {
 
   OPTION(optnumerics, inner_NVi_dirichlet, false);
   OPTION(optnumerics, inner_VePsi_dirichlet, false);
+
+
+  OPTION(optnumerics, radial_buffers, false);
+  OPTION(optnumerics, radial_inner_width, 5);
+  OPTION(optnumerics, radial_buffer_D, 1.0);
+
+  
   // Sheath switches
   
   OPTION(optsheath, sheath_model, 0);
@@ -5036,6 +5043,132 @@ int Hermes::rhs(BoutReal t) {
         
   } // End if steady_state
 
+  
+  if (radial_buffers) {
+    /// Radial buffer regions
+
+    // Calculate flux sZ averages
+    if (evolve_te){
+      PeDC = averageY(DC(Pe));
+    }
+    if (evolve_ti){
+      PiDC = averageY(DC(Pi));
+    }
+    if (evolve_ne) {
+      NeDC = averageY(DC(Ne));
+    }
+    if (evolve_vort) {
+      VortDC = averageY(DC(Vort));
+    }
+    if (steady_state) {
+      phi_1DC = averageY(DC(phi_1));
+    }
+    
+    if ((mesh->getGlobalXIndex(mesh->xstart) - mesh->xstart) < radial_inner_width) {
+      // This processor contains points inside the inner radial boundary
+
+      int imax = mesh->xstart + radial_inner_width - 1
+                 - (mesh->getGlobalXIndex(mesh->xstart) - mesh->xstart);
+      if (imax > mesh->xend) {
+        imax = mesh->xend;
+      }
+
+      int imin = mesh->xstart;
+      if (!mesh->firstX()) {
+        --imin; // Calculate in guard cells, for radial fluxes
+      }
+      int ncz = mesh->LocalNz;
+
+      for (int i = imin; i <= imax; ++i) {
+        // position inside the boundary (0 = on boundary, 0.5 = first cell)
+        BoutReal pos =
+            static_cast<BoutReal>(mesh->getGlobalXIndex(i) - mesh->xstart) + 0.5;
+
+        // Diffusion coefficient which increases towards the boundary
+        BoutReal D = radial_buffer_D * (1. - pos / radial_inner_width);
+
+        for (int j = mesh->ystart; j <= mesh->yend; ++j) {
+          for (int k = 0; k < ncz; ++k) {
+            BoutReal dx = coord->dx(i, j, k);
+            BoutReal dx_xp = coord->dx(i + 1, j, k);
+            BoutReal J = coord->J(i, j, k);
+            BoutReal J_xp = coord->J(i + 1, j, k);
+	    BoutReal sqg_11 = sqrt(coord->g_11(i,j,k));
+	    BoutReal sqg_11_xp = sqrt(coord->g_11(i+1,j,k));
+	    
+            // Calculate metric factors for radial fluxes
+            BoutReal rad_flux_factor = 0.25 * (J + J_xp) * (dx + dx_xp) * 0.5 * (sqg_11 + sqg_11_xp);
+            BoutReal x_factor = rad_flux_factor / (J * dx * sqg_11);
+            BoutReal xp_factor = rad_flux_factor / (J_xp * dx_xp * sqg_11_xp);
+            // Relax towards constant value on flux surface
+	    if (evolve_te) {
+	      ddt(Pe)(i, j, k) -= D * (Pe(i, j, k) - PeDC(i, j));
+	    }
+	    if (evolve_ti) {
+	      ddt(Pi)(i, j, k) -= D * (Pi(i, j, k) - PiDC(i, j));
+	    }
+	    if (evolve_ne) {
+	      ddt(Ne)(i, j, k) -= D * (Ne(i, j, k) - NeDC(i, j));
+	    }
+	    if (evolve_vort) {
+	      ddt(Vort)(i, j, k) -= D * (Vort(i, j, k) - VortDC(i, j));
+	    }
+	    if (steady_state) {
+	      ddt(phi_1)(i, j, k) -= D * (phi_1(i, j, k) - phi_1DC(i, j));
+	    }
+	    
+            // Radial fluxes
+	    if (evolve_ne) {
+	      BoutReal f = D * (Ne(i + 1, j, k) - Ne(i, j, k));
+	      ddt(Ne)(i, j, k) += f * x_factor;
+	      ddt(Ne)(i + 1, j, k) -= f * xp_factor;
+	    }
+
+	    if (evolve_te) {
+	      BoutReal f = D * (Pe(i + 1, j, k) - Pe(i, j, k));
+	      ddt(Pe)(i, j, k) += f * x_factor;
+	      ddt(Pe)(i + 1, j, k) -= f * xp_factor;
+	    }
+
+	    if (evolve_ti) {
+	      BoutReal f = D * (Pi(i + 1, j, k) - Pi(i, j, k));
+	      ddt(Pi)(i, j, k) += f * x_factor;
+	      ddt(Pi)(i + 1, j, k) -= f * xp_factor;
+	    }
+
+	    if (evolve_vort) {
+	      BoutReal f = D * (Vort(i + 1, j, k) - Vort(i, j, k));
+	      ddt(Vort)(i, j, k) += f * x_factor;
+	      ddt(Vort)(i + 1, j, k) -= f * xp_factor;
+	    }
+
+	    if (steady_state) {
+	      BoutReal f = D * (phi_1(i + 1, j, k) - phi_1(i, j, k));
+              ddt(phi_1)(i, j, k) += f * x_factor;
+              ddt(phi_1)(i + 1, j, k) -= f * xp_factor;
+	    }
+	    
+          }
+        }
+      }
+    }
+
+  } // End radial_buffers
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
   if (output_analysis){
     output_Er = - DDX(phi) / sqrt(coord->g_11);
     output_Ez = - DDZ(phi) / sqrt(coord->g_33);
@@ -5059,6 +5192,11 @@ int Hermes::rhs(BoutReal t) {
   if (scale_ddt_VePsi > 0.0) {
     ddt(VePsi) *= scale_ddt_VePsi;
   }
+
+
+
+
+  
   
   return 0;
 } // rhs

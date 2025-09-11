@@ -89,6 +89,15 @@ private:
   Field3D psi;        // Electromagnetic potential (-A_||)
   Field3D phi;        // Electrostatic potential
 
+  bool radial_buffers;
+  int radial_inner_width;
+  BoutReal radial_buffer_D;
+
+  Field2D PeDC;
+  Field2D PiDC;
+  Field2D NeDC ;
+  Field2D VortDC ;
+  Field2D phi_1DC;
   
   // DEBUG VARIABLES
   Field3D a;
