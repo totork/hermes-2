@@ -788,6 +788,7 @@ int Hermes::init(bool restarting) {
   Vort_dissipation_par = optvort["Vort_dissipation_par"].doc("Use dissipation in vorticity in parallel direction").withDefault<bool>(false);
   Vort_dissipation_perp = optvort["Vort_dissipation_perp"].doc("Use dissipation in vorticity in perpendicular direction").withDefault<bool>(false);
   Vort_sheathdissipation = optvort["Vort_sheathdissipation"].doc("Use dissipation of vorticity infront of sheath").withDefault<bool>(false);
+  Vort_phidissipation = optvort["Vort_phidissipation"].doc("Use dissipation for parallel electric field").withDefault<bool>(false);
   
   if (optvort["bndry_xout"] == "dirichlet"){
     Vort_dirichlet=true;
@@ -1143,6 +1144,7 @@ int Hermes::init(bool restarting) {
   TE_Vort_parflow = 0.0;
   TE_Vort_dissipation = 0.0;
   TE_Vort_sheathdissipation = 0.0;
+  TE_Vort_phidissipation = 0.0;
   if (TE_Vort) {
     if (Vort_mag) {
       SAVE_REPEAT(TE_Vort_mag);
@@ -1176,6 +1178,9 @@ int Hermes::init(bool restarting) {
     }
     if (Vort_sheathdissipation) {
       SAVE_REPEAT(TE_Vort_sheathdissipation);
+    }
+    if (Vort_phidissipation) {
+      SAVE_REPEAT(TE_Vort_phidissipation);
     }
   }
   
@@ -5014,6 +5019,11 @@ int Hermes::rhs(BoutReal t) {
 	  TE_Vort_collision = Div_a_Grad_perp_mod(classical_mu_vort, Vort);
 	}
 	ddt(Vort) += TE_Vort_collision;
+      }
+
+      if (Vort_phidissipation){
+     	TE_Vort_phidissipation = -Div_par_mod_H3(mul_all(-1.0, phi),zeroes,fastest_ispeed);
+	ddt(Vort) += TE_Vort_phidissipation;
       }
       
       
