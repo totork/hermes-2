@@ -1245,7 +1245,7 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, low_resistivity_Ne, 1e17 / Nnorm);
   OPTION(optnumerics, low_resistivity_Te, 1.0 / Tnorm);
 
-  
+  OPTION(optnumerics, second_source, false);
   FieldFactory fact(mesh);
 
   
@@ -1255,6 +1255,7 @@ int Hermes::init(bool restarting) {
     NeSource /= Omega_ci;
     Sn = NeSource;
 
+    
   
     PeSource = optpe["source"].withDefault(Field3D{0.0});
     PeSource /= Omega_ci;
@@ -1263,8 +1264,19 @@ int Hermes::init(bool restarting) {
     PiSource = optpi["source"].withDefault(Field3D{0.0});
     PiSource /= Omega_ci;
     Spi = PiSource;
-
     SAVE_ONCE(Sn, Spe, Spi);
+    if (second_source){
+      NeSource2 = optne["source2"].doc("Source term in ddt(Ne)").withDefault(Field3D{0.0});
+      NeSource2 /= Omega_ci;
+
+      PeSource2 = optpe["source2"].withDefault(Field3D{0.0});
+      PeSource2 /= Omega_ci;
+
+      PiSource2 = optpi["source2"].withDefault(Field3D{0.0});
+      PiSource2 /= Omega_ci;
+      
+    }
+    
   }
 
   /////////////////////////////////////////////////////////
@@ -2690,6 +2702,10 @@ int Hermes::rhs(BoutReal t) {
       if (evolve_neutrals && neutralplasmainteraction){
 	TE_Ne_sources -= Sneutral;
       }
+
+      if (second_source) {
+	ddt(Ne) += NeSource2;
+      }
       
       ddt(Ne) += TE_Ne_sources;
     }  // End Ne_sources
@@ -3324,6 +3340,10 @@ int Hermes::rhs(BoutReal t) {
       if (evolve_neutrals && neutralplasmainteraction){
 	TE_Pe_sources += -(2.0/3.0) * Rn; 
       }
+
+      if (second_source) {
+	ddt(Pe) += PeSource2;
+      }
       
       ddt(Pe) += TE_Pe_sources;
     } //End Pe_sources
@@ -3486,6 +3506,10 @@ int Hermes::rhs(BoutReal t) {
 	
       if (evolve_neutrals && neutralplasmainteraction){
 	TE_Pi_sources += -(2.0/3.0) * Qin;
+      }
+
+      if (second_source) {
+	ddt(Pi) += PiSource2;
       }
       
       ddt(Pi) += TE_Pi_sources;

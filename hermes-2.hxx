@@ -164,6 +164,8 @@ private:
 
   bool low_source;
   BoutReal low_source_Ne, low_source_Te, low_source_Ti, low_source_timescale;
+
+  bool second_source;
   
   bool radial_buffers;
   int radial_inner_width;
@@ -384,6 +386,7 @@ private:
   BoutReal source_p, source_i;  // Proportional-Integral controller
   Coordinates::FieldMetric Sn, Spe, Spi; // Sources in density, Pe and Pi
   Field3D NeSource, PeSource, PiSource, VortSource; // Actual sources added
+  Field3D NeSource2, PeSource2, PiSource2;
   bool density_inflow;  // Does incoming density have momentum?
   
   bool source_vary_g11; // Multiply source by g11
