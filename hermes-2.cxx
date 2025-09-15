@@ -2068,15 +2068,21 @@ int Hermes::rhs(BoutReal t) {
   if (electromagnetic) {
     if (FiniteElMass) {
 
-
+      /* 
+	 if (!use_old_aparSolver){
+	 aparSolver = LaplaceXZ::create(mesh,&opt["aparSolver"],CELL_CENTER);
+	 } else {
+	 oldaparSolver = Laplacian::create(&opt["aparSolver"]);
+	 }
+      */
       if (use_old_aparSolver){
 	oldaparSolver->setCoefD(1.0);
 	oldaparSolver->setCoefA(-Ne*0.5*beta_e*mi_me);
-	psi = oldaparSolver->solve(-VePsi*Ne,psi);
+	psi = oldaparSolver->solve(-VePsi*Ne,zeroes);
       } else {
 	Field3D tmp = mul_all(Ne, mul_all(-0.5, mul_all(beta_e, mi_me)));
 	aparSolver->setCoefs(oness,tmp);
-	psi = aparSolver->solve(mul_all(-1.0, mul_all(VePsi, Ne)), oness);
+	psi = aparSolver->solve(mul_all(-1.0, mul_all(VePsi, Ne)), zeroes);
       }
       
       
