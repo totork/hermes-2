@@ -322,7 +322,8 @@ private:
   Field3D hyper_D, hyper_chi, hyper_nu;
   Field3D num_D, num_nu, num_chi;
   Field3D num_Vort, num_VePsi;
-  
+  bool anomalous_ballooning;
+  BoutReal ballooning_alpha, ballooning_beta, ballooning_Bref;
   Field3D a_d3d, a_chi3d, a_nu3d, a_nu3d_par; // 3D coef
   bool anomalous_D_nvi; // Include terms in momentum equation
   bool anomalous_D_pepi; // Include terms in Pe, Pi equations

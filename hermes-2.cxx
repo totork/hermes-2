@@ -1589,6 +1589,13 @@ int Hermes::init(bool restarting) {
   OPTION(opttransport,anomalous_r2, 1.0);
   OPTION(opttransport,anomalous_f1, 0.5);
   OPTION(opttransport,anomalous_f2, 1.0);
+
+
+  OPTION(opttransport, anomalous_ballooning, false);
+  OPTION(opttransport, ballooning_alpha, 1.0);
+  OPTION(opttransport, ballooning_beta, 1.0);
+  OPTION(opttransport, ballooning_Bref, Bnorm);
+
   
   if (anomalous_spatial) {
     
@@ -1774,6 +1781,31 @@ int Hermes::init(bool restarting) {
 
 
 
+
+  //////////////////////////////////////////////////////////////                                                                                                                                                   
+  // Ballooning transport coefficients like SOLPS
+  // https://onlinelibrary.wiley.com/doi/epdf/10.1002/ctpp.200610001
+  // Page 36
+
+  if (anomalous_ballooning) {
+    BOUT_FOR(i, Ne.getRegion("RGN_NOY")) {
+      BoutReal ballooning_factor;
+      ballooning_factor = ballooning_beta * pow((ballooning_Bref / Bxy[i]), ballooning_alpha);
+      a_d3d[i] *= ballooning_factor;
+      a_chi3d[i] *= ballooning_factor;
+      a_nu3d[i] *= ballooning_factor;
+    }
+    a_d3d.applyBoundary("neumann");
+    a_chi3d.applyBoundary("neumann");
+    a_nu3d.applyBoundary("neumann");
+    mesh->communicate(a_d3d, a_chi3d, a_nu3d);
+    a_d3d.applyParallelBoundary("parallel_neumann_o1");
+    a_chi3d.applyParallelBoundary("parallel_neumann_o1");
+    a_nu3d.applyParallelBoundary("parallel_neumann_o1");
+    SAVE_ONCE(a_nu3d, a_chi3d, a_d3d);
+  }
+
+  
   //////////////////////////////////////////////////////////////
   // Electromagnetic fields
 
