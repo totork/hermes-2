@@ -2704,7 +2704,7 @@ int Hermes::rhs(BoutReal t) {
       }
 
       if (second_source) {
-	ddt(Ne) += NeSource2;
+	TE_Ne_sources += NeSource2;
       }
       
       ddt(Ne) += TE_Ne_sources;
@@ -3342,7 +3342,7 @@ int Hermes::rhs(BoutReal t) {
       }
 
       if (second_source) {
-	ddt(Pe) += PeSource2;
+        TE_Pe_sources += PeSource2;
       }
       
       ddt(Pe) += TE_Pe_sources;
@@ -3509,7 +3509,7 @@ int Hermes::rhs(BoutReal t) {
       }
 
       if (second_source) {
-	ddt(Pi) += PiSource2;
+	TE_Pi_sources += PiSource2;
       }
       
       ddt(Pi) += TE_Pi_sources;
