@@ -825,7 +825,7 @@ int Hermes::init(bool restarting) {
   TE_Pi = optsc["TE_Pi"].doc("Save all terms in time evolution of ion pressure").withDefault<bool>(false);
   TE_Vort = optsc["TE_Vort"].doc("Save all terms in time evolution of vorticity").withDefault<bool>(false);
   TE_VePsi = optsc["TE_VePsi"].doc("Save all terms in time evolution of electron velocity").withDefault<bool>(false);
-  TE_phi_1 = optsc["TE_phi_1"].doc("Save all terms in time evolution of potential relaxation").withDefault<bool>(steady_state);
+  TE_phi_1 = optsc["TE_phi_1"].doc("Save all terms in time evolution of potential relaxation").withDefault<bool>(false);
 
   // Neutral model variables
 
