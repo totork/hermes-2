@@ -825,7 +825,7 @@ int Hermes::init(bool restarting) {
   TE_Pi = optsc["TE_Pi"].doc("Save all terms in time evolution of ion pressure").withDefault<bool>(false);
   TE_Vort = optsc["TE_Vort"].doc("Save all terms in time evolution of vorticity").withDefault<bool>(false);
   TE_VePsi = optsc["TE_VePsi"].doc("Save all terms in time evolution of electron velocity").withDefault<bool>(false);
-
+  TE_phi_1 = optsc["TE_phi_1"].doc("Save all terms in time evolution of potential relaxation").withDefault<bool>(false);
 
   // Neutral model variables
 
@@ -894,6 +894,15 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(TE_Pn_parflow, TE_Pn_perpflow, TE_Pn_parcompression, TE_Pn_perpdiffusion, TE_Pn_sources, TE_Pn_hyper, TE_Pn_numdiff);
   }
 
+  bool TE_phi_1;
+  Field3D TE_phi_1_pol,	TE_phi_1_phi;
+
+  TE_phi_1_pol = 0.0;
+  TE_phi_1_phi = 0.0;
+  if (TE_phi_1) {
+    SAVE_REPEAT(TE_phi_1_pol , TE_phi_1_phi);
+  }
+  
   OPTION(optneutrals,Recycling_coef, 0.95);
   OPTION(optneutrals, floor_Nn, 1e-9);
   OPTION(optneutrals, floor_Tn, 0.001/20.0);
@@ -2170,7 +2179,7 @@ int Hermes::init(bool restarting) {
     
   } // End if (par_sheath_model == 1)
 
-  
+  inv_SQB = div_all(1.0,SQ_all(coord->Bxy));
   
   return 0;
 }
@@ -5069,16 +5078,23 @@ int Hermes::rhs(BoutReal t) {
     ddt(phi_1) = 0.0;
     if (boussinesq) {
       if (!use_new_divagradperp){
-	ddt(phi_1) = lam1 * ( Div_a_Grad_perp_curv(div_all(1.0,SQ_all(coord->Bxy)), add_all(phi, Pi)) - Vort );
+	TE_phi_1_pol = Div_a_Grad_perp_curv(inv_SQB, Pi);
+	TE_phi_1_phi = Div_a_Grad_perp_curv(inv_SQB, phi);
+
       } else {
-	ddt(phi_1) = lam1 * ( FCIDiv_a_Grad_perp(div_all(1.0,SQ_all(coord->Bxy)), add_all(phi, Pi)) - Vort );
+	TE_phi_1_pol = FCIDiv_a_Grad_perp(inv_SQB, Pi);
+        TE_phi_1_phi = FCIDiv_a_Grad_perp(inv_SQB, phi);
       }
+      ddt(phi_1) = lam1 * (TE_phi_1_pol + TE_phi_1_phi - Vort);
     } else {
       if (!use_new_divagradperp){
-        ddt(phi_1) = lam1 * ( Div_a_Grad_perp_curv(div_all(Ne,SQ_all(coord->Bxy)),phi) + Div_a_Grad_perp_curv(div_all(1.0,SQ_all(coord->Bxy)), Pi) - Vort );
+	TE_phi_1_pol = Div_a_Grad_perp_curv(inv_SQB, Pi);
+        TE_phi_1_phi = Div_a_Grad_perp_curv(mul_all(Ne, inv_SQB), phi);
       } else {
-	ddt(phi_1) = lam1 * ( FCIDiv_a_Grad_perp(div_all(Ne,SQ_all(coord->Bxy)),phi) + FCIDiv_a_Grad_perp(div_all(1.0,SQ_all(coord->Bxy)),Pi) - Vort );
+	TE_phi_1_pol = FCIDiv_a_Grad_perp(inv_SQB, Pi);
+        TE_phi_1_phi = FCIDiv_a_Grad_perp(mul_all(Ne, inv_SQB), phi);
       }
+      ddt(phi_1) = lam1 * (TE_phi_1_pol + TE_phi_1_phi - Vort);
     }
     
     

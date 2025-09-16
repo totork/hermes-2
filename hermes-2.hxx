@@ -403,6 +403,9 @@ private:
   bool TE_Pn;
   bool Pn_parflow, Pn_perpflow, Pn_parcompression, Pn_perpdiffusion, Pn_sources, Pn_hyper, Pn_numdiff;
   Field3D TE_Pn_parflow, TE_Pn_perpflow, TE_Pn_parcompression, TE_Pn_perpdiffusion, TE_Pn_sources, TE_Pn_hyper, TE_Pn_numdiff;
+
+  bool TE_phi_1;
+  Field3D TE_phi_1_pol, TE_phi_1_phi;
   
   // Numerical dissipation
 
@@ -459,7 +462,7 @@ private:
 
   Vector3D bxcv;
   Field3D bxcvx,bxcvy,bxcvz;
-  
+  Field3D inv_SQB;
   // Perturbed parallel gradient operators
   Field3D Grad_parP(const Field3D &f);
   Field3D Div_parP(const Field3D &f, const bool newop);
