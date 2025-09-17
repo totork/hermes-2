@@ -1071,7 +1071,7 @@ int Hermes::init(bool restarting) {
   
   
   // Sheath switches
-  
+  OPTION(optsheath, immersed_boundary, false);
   OPTION(optsheath, sheath_model, 0);
   OPTION(optsheath, sheath_gamma_e, 7.0);
   OPTION(optsheath, sheath_gamma_i, 3.0);
@@ -1367,7 +1367,18 @@ int Hermes::init(bool restarting) {
   B32 = mul_all(B12, coord->Bxy); // B^(3/2)
   B42 = SQ_all(coord->Bxy);
 
+  //////////////////////////////////////////////////////////////
+  // Immersed boundary stuff
 
+  if (immersed_boundary){
+    mesh->get(immersed_len, "immersed_len", 0.0);
+    mesh->get(immersed_dir, "immersed_dir", 0.0);
+    epsilon_P = optsheath["epsilon_P"].doc("user_defined number to adjust strength").withDefault<Field3D>({1.0});
+    SAVE_ONCE(immersed_len,immersed_dir);
+    
+
+    
+  }
 
 
   //////////////////////////////////////////////////////////////
@@ -3926,6 +3937,66 @@ int Hermes::rhs(BoutReal t) {
     }
   }
 
+
+  if (immersed_boundary) {
+
+
+    BOUT_FOR(i, NVi.getRegion("RGN_NOBNDRY")){
+      if (evolve_nvi) {
+
+	BoutReal visheath = 0.0;
+	BoutReal sheathvel = sqrt(Te[i]+Ti[i]);
+	if (abs(Vi[i])> sheathvel){
+	  visheath =  immersed_dir[i] * abs(Vi[i]);
+	} else {
+	  visheath = immersed_dir[i] * sheathvel;
+	}	
+	ddt(NVi)[i] = (1.0 - chi_P[i]) * ddt(NVi)[i] + chi_P[i] / epsilon_P[i] * (visheath - Vi[i]);
+      }
+      
+    }
+    
+
+
+    sheath_dpe = 0.0;
+    sheath_dpi = 0.0;
+
+    for (const auto &bndry_par :
+           mesh->getBoundariesPar(BoundaryParType::xout)) {
+      for (const auto& pnt : *bndry_par) {
+	const auto i = pnt.ind();
+
+	if (boundary_direction[i] > 10.9 && boundary_direction[i] < 11.1 && pnt.dir < 0.0);
+	else{
+
+	  if (abs(pnt.offset())==1){
+	    const BoutReal q_e = floor( (sheath_gamma_e - 1.5) * Te[i] * Ne[i] * abs(Ve[i]) * pnt.dir , 0.0);                                                                                         
+            const BoutReal flux_e = q_e * (coord->J[i]+pnt.ynext(coord->J)) / (sqrt(coord->g_22[i]) + sqrt(pnt.ynext(coord->g_22)));
+	    BoutReal power_e = 0.0;
+                                                                                                                                                                                                          
+            const BoutReal q_i = floor( (sheath_gamma_i - 1.0) * Ti[i] * Ne[i] * abs(Vi[i]) * pnt.dir , 0.0);                                                                                         
+            const BoutReal flux_i = q_i * (coord->J[i] + pnt.ynext(coord->J)) / (sqrt(coord->g_22[i]) + sqrt(pnt.ynext(coord->g_22)));
+	    BoutReal power_i = 0.0;
+
+
+	    power_e = flux_e / (coord->dy[i] * coord->J[i]);
+	    power_i = flux_i / (coord->dy[i] * coord->J[i]);
+
+	    sheath_dpi[i] -= (3.0/2.0) * power_i * chi_P[i];                                                                                                                                                      
+	    sheath_dpe[i] -= (3.0/2.0) * power_e * chi_P[i];
+	  }
+	  
+	}
+
+	
+      }
+    } // End for (const auto &bndry_par :
+    ddt(Pe) += sheath_dpe;
+    ddt(Pi) += sheath_dpi;
+    
+    
+    
+  }
 
   
 

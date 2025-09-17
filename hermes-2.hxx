@@ -301,7 +301,9 @@ private:
   Field3D sheath_dpe, sheath_dpi; 
 
   Field3D fastest_ispeed,fastest_espeed;
-  
+
+  bool immersed_boundary;
+  Field3D epsilon_P, chi_P , immersed_len , immersed_dir;
   BoundaryRegionPar* bndry_par;
 
   int boolinnerbndryflag, boolouterbndryflag;
