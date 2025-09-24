@@ -82,6 +82,16 @@ BoutReal limitFree(BoutReal fm, BoutReal fc){
   return fp;
 }
 
+BoutReal smooth_step(BoutReal x, BoutReal edge, BoutReal shift){
+  if ((x-shift) <= 0.0){
+    return 1.0;
+  } else if ((x-shift) >= edge) {
+    return 0.0;
+  } else {
+    BoutReal temp = (x - shift) / edge;
+    return 1.0 - 3.0 * temp * temp + 2.0 * temp * temp * temp;
+  }
+}
 
 
 BoutReal interpolate_sheathneighbour(BoutReal fc, BoutReal finterface){
@@ -511,6 +521,8 @@ int Hermes::init(bool restarting) {
   // Check which variables should be evolved
   OPTION(optsc, phi_inneraverage, false);
   OPTION(optsc,output_ddt,false);
+  OPTION(optsc, output_sheath, false);
+  OPTION(optsc, par_linear_extrapolation, false);
   // Electron density
   evolve_ne = optsc["evolve_ne"].doc("Evolve density?").withDefault<bool>(false);
   if (evolve_ne){
@@ -1072,6 +1084,10 @@ int Hermes::init(bool restarting) {
   
   // Sheath switches
   OPTION(optsheath, immersed_boundary, false);
+  OPTION(optsheath, immersed_sheathdissipation, false);
+  OPTION(optsheath, immersed_cutoff, 0.1);
+  OPTION(optsheath, immersed_shift, 0.0);
+  OPTION(optsheath, immersed_diffusion, -1.0);
   OPTION(optsheath, sheath_model, 0);
   OPTION(optsheath, sheath_gamma_e, 7.0);
   OPTION(optsheath, sheath_gamma_i, 3.0);
@@ -1146,7 +1162,7 @@ int Hermes::init(bool restarting) {
   anomalous_nu = opttransport["anomalous_nu"].doc("Anomalous viscosity").withDefault(0.0);
   anomalous_nu_par = opttransport["anomalous_nu_par"].doc("Anomalous parallel viscosity").withDefault(0.0);
   anomalous_chi = opttransport["anomalous_chi"].doc("Anomalous condoctivity").withDefault(0.0);
-
+  
   hyper_D = opttransport["hyper_D"].doc("hyperdiffusion").withDefault(Field3D{0.0});
   hyper_chi = opttransport["hyper_chi"].doc("hyperconductivity").withDefault(Field3D{0.0});
   hyper_nu = opttransport["hyper_nu"].doc("hyperviscosity").withDefault(Field3D{0.0});
@@ -1371,12 +1387,25 @@ int Hermes::init(bool restarting) {
   // Immersed boundary stuff
 
   if (immersed_boundary){
+
     mesh->get(immersed_len, "immersed_len", 0.0);
     mesh->get(immersed_dir, "immersed_dir", 0.0);
     epsilon_P = optsheath["epsilon_P"].doc("user_defined number to adjust strength").withDefault<Field3D>({1.0});
-    SAVE_ONCE(immersed_len,immersed_dir);
-    
+    SAVE_ONCE(immersed_len,immersed_dir, epsilon_P, immersed_shift);
 
+    chi_P = 0.0;
+    BOUT_FOR(i, Ne.getRegion("RGN_NOY")) {
+      chi_P[i] = smooth_step(immersed_len[i], immersed_cutoff, immersed_shift);
+    }
+    SAVE_ONCE(chi_P);
+
+    if (immersed_diffusion > 0.0) {
+      immersed_diffusion /= rho_s0 * rho_s0 * Omega_ci;
+      immersed_D = immersed_diffusion;
+      immersed_D.applyBoundary("neumann");
+      mesh->communicate(immersed_D);
+      immersed_D.applyParallelBoundary("parallel_neumann_o1");
+    }
     
   }
 
@@ -1525,6 +1554,10 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(debug_denom);
   }
 
+  if (immersed_boundary) {
+    SAVE_REPEAT(debug_visheath);
+  }
+
   zero_all(phi);
   zero_all(psi);
 
@@ -1544,13 +1577,10 @@ int Hermes::init(bool restarting) {
   
 
   
-  if (evolve_te && parallel_sheaths){
-    SAVE_REPEAT(sheath_dpe);
+  if (output_sheath) {
+    SAVE_REPEAT(sheath_dpe, sheath_dpi);
   }
-
-  if (evolve_ti && parallel_sheaths){
-    SAVE_REPEAT(sheath_dpi);
-  }
+  
   zero_all(Ve);
   
   // Magnetic field in boundary
@@ -1830,6 +1860,34 @@ int Hermes::rhs(BoutReal t) {
     }
   }
 
+  if (par_linear_extrapolation) {
+    for (const auto &bndry_par :
+           mesh->getBoundariesPar(BoundaryParType::xout)) {
+	for (const auto& pnt : *bndry_par) {
+          const auto i = pnt.ind();
+	  if (evolve_ne) {
+	    pnt.ynext(Ne) = floor(interpolate_sheathneighbour(pnt.yprev(Ne), pnt.ythis(Ne)), floor_Ne);
+	  }
+	  if (evolve_nvi) {
+	    pnt.ynext(NVi) = pnt.ynext(Ne) * interpolate_sheathneighbour(pnt.yprev(Vi), pnt.ythis(Vi));
+	  }
+	  if (evolve_te) {
+            pnt.ynext(Pe) = pnt.ynext(Ne) * floor(interpolate_sheathneighbour(pnt.yprev(Te), pnt.ythis(Te)), floor_Te);
+          }
+	  if (evolve_ti) {
+            pnt.ynext(Pi) = pnt.ynext(Ne) * floor(interpolate_sheathneighbour(pnt.yprev(Ti), pnt.ythis(Ti)), floor_Ti);
+          }
+	  if (evolve_vepsi) {
+	    pnt.ynext(VePsi) = interpolate_sheathneighbour(pnt.yprev(Ve), pnt.ythis(Ve)) - pnt.ynext(NVi) / pnt.ynext(Ne);
+	  }
+	  if (evolve_vort) {
+            pnt.ynext(Vort) =  interpolate_sheathneighbour(pnt.yprev(Vort), pnt.ythis(Vort));
+          }
+	  
+			      
+	}
+      }
+  }
 
 
   
@@ -2067,7 +2125,17 @@ int Hermes::rhs(BoutReal t) {
       mesh->communicate(phi);
       phi.applyParallelBoundary(parbc);      
       phi = sub_all(phi, Pi);
-
+      /*
+      if (par_linear_extrapolation) {
+	for (const auto &bndry_par :
+	       mesh->getBoundariesPar(BoundaryParType::xout)) {
+	  for (const auto& pnt : *bndry_par) {
+	    const auto i = pnt.ind();
+	    pnt.ynext(phi) = interpolate_sheathneighbour(pnt.yprev(phi), pnt.ythis(phi));
+	  }	
+	}
+      } // End par_linear_extrapolation
+      */
     } else {
       ////////////////////////////////////////////
       // Non-Boussinesq
@@ -3267,9 +3335,14 @@ int Hermes::rhs(BoutReal t) {
 
     if (Pe_conduction){//Row 3
       TRACE("Pe_conduction");
-      
-      if (!use_new_conduction){
-	TE_Pe_conduction = (2.0 / 3.0) * Div_par_K_Grad_par(kappa_epar, Te);
+
+      if (par_linear_extrapolation){
+	Field3D new_kappa_epar = 1.0 * kappa_epar;
+        Field3D new_Te = 1.0 * Te;
+	mesh->communicate(new_kappa_epar, new_Te);
+        new_kappa_epar.applyParallelBoundary("parallel_neumann_o1");
+        new_Te.applyParallelBoundary("parallel_neumann_o1");
+        TE_Pe_conduction = (2.0/3.0) * Div_par_K_Grad_par_mod(new_kappa_epar, new_Te, false);
       } else {
 	TE_Pe_conduction = (2.0/3.0) * Div_par_K_Grad_par_mod(kappa_epar,Te,false);
       }
@@ -3485,14 +3558,15 @@ int Hermes::rhs(BoutReal t) {
 
     if (Pi_conduction){//Row 5 Term 1
       TRACE("Pi thermal conduction");
-      if (!use_new_conduction){
-	//TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par(kappa_ipar, Ti);
-	TE_Pi_conduction = (2.0/3.0) * kappa_ipar * Grad2_par2(Ti);
-      } else if (use_conduction_map){
-	//TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par_map(qi);
-	TE_Pi_conduction = (2. / 3) * Div_par(qi);
+      if (par_linear_extrapolation) {
+	Field3D new_kappa_ipar = 1.0 * kappa_ipar;
+	Field3D new_Ti = 1.0 * Ti;
+	mesh->communicate(new_kappa_ipar, new_Ti);
+	new_kappa_ipar.applyParallelBoundary("parallel_neumann_o1");
+	new_Ti.applyParallelBoundary("parallel_neumann_o1");
+	TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par_mod(new_kappa_ipar, new_Ti, false);
       } else {
-	TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par_mod(kappa_ipar, Ti);
+	TE_Pi_conduction = (2. / 3) * Div_par_K_Grad_par_mod(kappa_ipar, Ti, false);
       }
       ddt(Pi) += TE_Pi_conduction;
     } // End Pi_conduction 
@@ -3937,7 +4011,7 @@ int Hermes::rhs(BoutReal t) {
     }
   }
 
-
+  
   if (immersed_boundary) {
 
 
@@ -3946,58 +4020,74 @@ int Hermes::rhs(BoutReal t) {
 
 	BoutReal visheath = 0.0;
 	BoutReal sheathvel = sqrt(Te[i]+Ti[i]);
-	if (abs(Vi[i])> sheathvel){
+	if (abs(Vi[i])> sheathvel && sheath_allow_supersonic){
 	  visheath =  immersed_dir[i] * abs(Vi[i]);
 	} else {
 	  visheath = immersed_dir[i] * sheathvel;
-	}	
-	ddt(NVi)[i] = (1.0 - chi_P[i]) * ddt(NVi)[i] + chi_P[i] / epsilon_P[i] * (visheath - Vi[i]);
-      }
+	}
+	debug_visheath[i] = visheath;
+	ddt(NVi)[i] = (1.0 - chi_P[i]) * ddt(NVi)[i] + chi_P[i] / epsilon_P[i] * Ne[i] * (visheath - Vi[i]);
+      }// end evolve_nvi
+
+      if (evolve_vepsi) {
+
+	// sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (sqrt(2.0*PI))) * exp(-(phisheath/tesheath)));
+	BoutReal vesheath = 0.0;
+        BoutReal sheathvel = sqrt(Te[i]) * sqrt(mi_me) / (sqrt(2.0*PI)) * exp(-(floor(phi[i], 0.0)/Te[i]));
+        if (abs(Ve[i])> sheathvel && sheath_allow_supersonic){
+          vesheath =  immersed_dir[i] * abs(Ve[i]);
+        } else {
+          vesheath = immersed_dir[i] * sheathvel;
+	}
+        // VePsi = Ve - Vi + 0.5 * mi_me * beta_e * psi
+	// Ve = VePsi + Vi
+	ddt(VePsi)[i] = (1.0 - chi_P[i]) * ddt(VePsi)[i] + chi_P[i] / epsilon_P[i] * (vesheath - (VePsi[i] + Vi[i]));
+					    
+      }// End evolve_vepsi
       
     }
+
+    
     
 
 
     sheath_dpe = 0.0;
     sheath_dpi = 0.0;
 
-    for (const auto &bndry_par :
-           mesh->getBoundariesPar(BoundaryParType::xout)) {
-      for (const auto& pnt : *bndry_par) {
-	const auto i = pnt.ind();
-
-	if (boundary_direction[i] > 10.9 && boundary_direction[i] < 11.1 && pnt.dir < 0.0);
-	else{
-
-	  if (abs(pnt.offset())==1){
-	    const BoutReal q_e = floor( (sheath_gamma_e - 1.5) * Te[i] * Ne[i] * abs(Ve[i]) * pnt.dir , 0.0);                                                                                         
-            const BoutReal flux_e = q_e * (coord->J[i]+pnt.ynext(coord->J)) / (sqrt(coord->g_22[i]) + sqrt(pnt.ynext(coord->g_22)));
-	    BoutReal power_e = 0.0;
-                                                                                                                                                                                                          
-            const BoutReal q_i = floor( (sheath_gamma_i - 1.0) * Ti[i] * Ne[i] * abs(Vi[i]) * pnt.dir , 0.0);                                                                                         
-            const BoutReal flux_i = q_i * (coord->J[i] + pnt.ynext(coord->J)) / (sqrt(coord->g_22[i]) + sqrt(pnt.ynext(coord->g_22)));
-	    BoutReal power_i = 0.0;
+    BOUT_FOR(i, NVi.getRegion("RGN_NOBNDRY")){
 
 
-	    power_e = flux_e / (coord->dy[i] * coord->J[i]);
-	    power_i = flux_i / (coord->dy[i] * coord->J[i]);
+      const BoutReal q_e = floor( (sheath_gamma_e - 1.5) * Te[i] * Ne[i] * (Ve[i]) * immersed_dir[i] , 0.0);
+      const BoutReal flux_e = q_e * (coord->J[i]) / (sqrt(coord->g_22[i]) );
+      BoutReal power_e = 0.0;
 
-	    sheath_dpi[i] -= (3.0/2.0) * power_i * chi_P[i];                                                                                                                                                      
-	    sheath_dpe[i] -= (3.0/2.0) * power_e * chi_P[i];
-	  }
-	  
-	}
-
-	
-      }
-    } // End for (const auto &bndry_par :
+      const BoutReal q_i = floor( (sheath_gamma_i - 1.0) * Ti[i] * Ne[i] * (Vi[i]) * immersed_dir[i] , 0.0);
+      const BoutReal flux_i = q_i * (coord->J[i] ) / (sqrt(coord->g_22[i]) );
+      BoutReal power_i = 0.0;
+      
+      power_e = flux_e / (coord->dy[i] * coord->J[i]);
+      power_i = flux_i / (coord->dy[i] * coord->J[i]);
+      sheath_dpi[i] -= (3.0/2.0) * power_i * chi_P[i];                                                                                                                                              
+      sheath_dpe[i] -= (3.0/2.0) * power_e * chi_P[i];
+      
+    }
+    
     ddt(Pe) += sheath_dpe;
     ddt(Pi) += sheath_dpi;
     
-    
-    
-  }
+    if (immersed_diffusion > 0.0) {
+      ddt(Vort) += chi_P * Div_par_K_Grad_par_mod(immersed_D, Vort, false);
+    }
 
+    if (immersed_sheathdissipation) {
+      BOUT_FOR(i, NVi.getRegion("RGN_NOBNDRY")){
+	BoutReal dissflux = fastest_espeed[i] * Vort[i] * coord->J[i] / sqrt(coord->g_22[i]);
+	ddt(Vort)[i] += -dissflux * chi_P[i] / (coord->dy[i]*coord->J[i]);  
+      }
+    }
+    
+  } // End immersed_boundary
+  
   
 
   

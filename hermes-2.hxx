@@ -74,6 +74,7 @@ private:
 
   Field3D solution_psi;
 
+  bool par_linear_extrapolation;
 
   BoutReal lambda_sheath;
   
@@ -302,10 +303,11 @@ private:
 
   Field3D fastest_ispeed,fastest_espeed;
 
-  bool immersed_boundary;
-  Field3D epsilon_P, chi_P , immersed_len , immersed_dir;
+  bool immersed_boundary, immersed_sheathdissipation;
+  Field3D epsilon_P, chi_P , immersed_len , immersed_dir, immersed_D;
+  BoutReal immersed_cutoff, immersed_shift, immersed_diffusion;
   BoundaryRegionPar* bndry_par;
-
+  
   int boolinnerbndryflag, boolouterbndryflag;
   
   Field2D wall_flux; // Particle flux to wall (diagnostic)
@@ -317,8 +319,8 @@ private:
   
   // Output switches for additional information
   bool verbose;    // Outputs additional fields, mainly for debugging
-  bool output_ddt; // Output time derivatives
-
+  bool output_ddt, output_sheath; // Output time derivatives
+  
   
 
   // neutral variables
