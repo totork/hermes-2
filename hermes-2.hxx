@@ -182,7 +182,7 @@ private:
   // Switches for all the terms in the equations
 
   // Density equation
-  bool Ne_ExB, Ne_mag, Ne_parflow, Ne_collision, Ne_anomalous, Ne_sources,Ne_hyper, Ne_numdiff, Ne_lowdiffuse;
+  bool Ne_ExB, Ne_mag, Ne_parflow, Ne_collision, Ne_anomalous, Ne_sources,Ne_hyper, Ne_numdiff, Ne_lowdiffuse, Ne_anomalous_par;
 
   // Ion momentum
   bool NVi_ExB, NVi_mag, NVi_parflow, NVi_parpressure, NVi_parviscos, NVi_collision, NVi_anomalous,NVi_hyper,NVi_numdiff; 
@@ -215,7 +215,7 @@ private:
   bool TE_Ne,TE_NVi,TE_Pe,TE_Pi,TE_Vort,TE_VePsi;
 
   Field3D TE_Ne_ExB, TE_Ne_mag, TE_Ne_parflow, TE_Ne_collision, TE_Ne_anomalous, TE_Ne_sources, TE_Ne_hyper, TE_Ne_numdiff, TE_Ne_lowdiffuse;
-  
+  Field3D TE_Ne_anomalous_par;
   // Fields for ion momentum terms
   Field3D TE_NVi_ExB, TE_NVi_mag, TE_NVi_parflow, TE_NVi_parpressure, TE_NVi_parviscos, TE_NVi_collision, TE_NVi_anomalous, 
     TE_NVi_hyper, TE_NVi_numdiff;
@@ -268,7 +268,7 @@ private:
   bool limiter_grillix;
   BoutReal limiter_q, limiter_R0;
   // Anomalous perpendicular diffusion coefficients
-  BoutReal anomalous_D;    // Density diffusion
+  BoutReal anomalous_D, anomalous_D_par;    // Density diffusion
   BoutReal anomalous_chi;  // Electron thermal diffusion
   BoutReal anomalous_nu;   // Momentum diffusion (kinematic viscosity)
   BoutReal anomalous_nu_par;
@@ -276,7 +276,7 @@ private:
   Field3D num_D, num_nu, num_chi;
   Field3D num_Vort, num_VePsi;
   
-  Field3D a_d3d, a_chi3d, a_nu3d, a_nu3d_par; // 3D coef
+  Field3D a_d3d, a_chi3d, a_nu3d, a_nu3d_par, a_d3d_par; // 3D coef
   bool anomalous_D_nvi; // Include terms in momentum equation
   bool anomalous_D_pepi; // Include terms in Pe, Pi equations
   
@@ -303,7 +303,7 @@ private:
 
   Field3D fastest_ispeed,fastest_espeed;
 
-  bool immersed_boundary, immersed_sheathdissipation;
+  bool immersed_boundary, immersed_sheathdissipation, immersed_neumann;
   Field3D epsilon_P, chi_P , immersed_len , immersed_dir, immersed_D;
   BoutReal immersed_cutoff, immersed_shift, immersed_diffusion;
   BoundaryRegionPar* bndry_par;
