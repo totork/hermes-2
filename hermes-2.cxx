@@ -3362,12 +3362,13 @@ int Hermes::rhs(BoutReal t) {
             }
 
 	    TRACE("Sheath offset==1, sheath power calculation");
-
-	    const BoutReal q_e = floor( (sheath_gamma_e - 1.5) * tesheath * nesheath * 0.5 * (pnt.ythis(Ve) + pnt.ynext(Ve)) * pnt.dir , 0.0);
+	    BoutReal pressureflux_e = (pnt.ythis(Ve) + pnt.ynext(Ve)) * (pnt.ythis(Te) + pnt.ynext(Te)) * (pnt.ythis(Ne) + pnt.ynext(Ne)) / 8.0; 
+	    const BoutReal q_e = floor( (sheath_gamma_e - 1.5) * pressureflux_e * pnt.dir , 0.0);
             const BoutReal flux_e = q_e * (coord->J[i]+pnt.ynext(coord->J)) / (sqrt(coord->g_22[i]) + sqrt(pnt.ynext(coord->g_22)));
             BoutReal power_e = 0.0;
 
-            const BoutReal q_i = floor( (sheath_gamma_i - 1.0) * tisheath * nesheath * 0.5 * (pnt.ythis(Vi) + pnt.ynext(Vi)) * pnt.dir , 0.0);
+	    BoutReal pressureflux_i = (pnt.ythis(Vi) + pnt.ynext(Vi)) * (pnt.ythis(Ti) + pnt.ynext(Ti)) * (pnt.ythis(Ne) + pnt.ynext(Ne)) / 8.0;
+            const BoutReal q_i = floor( (sheath_gamma_i - 1.0) * pressureflux_i * pnt.dir , 0.0);
             const BoutReal flux_i = q_i * (coord->J[i] + pnt.ynext(coord->J)) / (sqrt(coord->g_22[i]) + sqrt(pnt.ynext(coord->g_22)));
 	    BoutReal power_i = 0.0;	    
 
