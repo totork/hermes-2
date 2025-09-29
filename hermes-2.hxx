@@ -303,7 +303,7 @@ private:
 
   Field3D fastest_ispeed,fastest_espeed;
 
-  bool immersed_boundary, immersed_sheathdissipation, immersed_neumann;
+  bool immersed_boundary, immersed_sheathdissipation, immersed_neumann, immersed_extrapolation;
   Field3D epsilon_P, chi_P , immersed_len , immersed_dir, immersed_D;
   BoutReal immersed_cutoff, immersed_shift, immersed_diffusion;
   BoundaryRegionPar* bndry_par;
