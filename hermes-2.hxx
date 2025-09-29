@@ -456,6 +456,12 @@ private:
   BoutReal Tnorm, Nnorm, Bnorm;
   BoutReal AA, Cs0, rho_s0, Omega_ci;
   BoutReal mi_me, me_mi, beta_e;
+
+
+  bool immersed_boundary, immersed_sheathdissipation, immersed_neumann, immersed_extrapolation;
+  Field3D epsilon_P, chi_P , immersed_len , immersed_dir, immersed_D;
+  BoutReal immersed_cutoff, immersed_shift, immersed_diffusion;
+
   
   // Curvature, Grad-B drift
   Vector3D Curlb_B; // Curl(b/B)

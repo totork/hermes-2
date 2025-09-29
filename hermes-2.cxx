@@ -72,6 +72,35 @@ BoutReal limitFreeExp(BoutReal fm, BoutReal fc) {
   return fp;
 }
 
+BoutReal smooth_step(BoutReal x, BoutReal edge, BoutReal shift){
+  if ((x-shift) <= 0.0){
+    return 1.0;
+  } else if ((x-shift) >= edge) {
+    return 0.0;
+  } else {
+    BoutReal temp = (x - shift) / edge;
+    return 1.0 - 3.0 * temp * temp + 2.0 * temp * temp * temp;
+  }
+}
+
+
+
+BoutReal limitfree_cellcenter(BoutReal fm, BoutReal fc) {
+  if (fc>fm){
+    return fc;
+  }
+  BoutReal fp = fc + (fc-fm);
+  return fp;
+}
+
+BoutReal limitfree_velocity(BoutReal fm, BoutReal fc) {
+  if (abs(fc) > abs(fm)){
+    return fc;
+  }
+  BoutReal fp = fc + (fc-fm);
+  return fp;
+}
+
 
 
 BoutReal limitFree(BoutReal fm, BoutReal fc){
@@ -1406,6 +1435,15 @@ int Hermes::init(bool restarting) {
 
   
   // Sheath switches
+
+  OPTION(optsheath, immersed_boundary, false);
+  OPTION(optsheath, immersed_neumann, false);
+  OPTION(optsheath, immersed_sheathdissipation, false);
+  OPTION(optsheath, immersed_cutoff, 0.1);
+  OPTION(optsheath, immersed_shift, 0.0);
+  OPTION(optsheath, immersed_diffusion, -1.0);
+  OPTION(optsheath, immersed_extrapolation, false);
+
   
   OPTION(optsheath, sheath_model, 0);
   OPTION(optsheath, sheath_gamma_e, 7.0);
@@ -1756,6 +1794,31 @@ int Hermes::init(bool restarting) {
   B42 = SQ_all(coord->Bxy);
 
 
+
+  if (immersed_boundary){
+
+    mesh->get(immersed_len, "immersed_len", 0.0);
+    mesh->get(immersed_dir, "immersed_dir", 0.0);
+    epsilon_P = optsheath["epsilon_P"].doc("user_defined number to adjust strength").withDefault<Field3D>({1.0});
+    SAVE_ONCE(immersed_len,immersed_dir, epsilon_P, immersed_shift);
+
+    chi_P = 0.0;
+    BOUT_FOR(i, Ne.getRegion("RGN_NOY")) {
+      chi_P[i] = smooth_step(immersed_len[i], immersed_cutoff, immersed_shift);
+    }
+    SAVE_ONCE(chi_P);
+
+    if (immersed_diffusion > 0.0) {
+      immersed_diffusion /= rho_s0 * rho_s0 * Omega_ci;
+      immersed_D = immersed_diffusion;
+      immersed_D.applyBoundary("neumann");
+      mesh->communicate(immersed_D);
+      immersed_D.applyParallelBoundary("parallel_neumann_o1");
+    }
+    
+  }
+
+  
 
   if (!use_bracket){
     TRACE("Reading curvature for the curvature drifts");
@@ -5254,6 +5317,124 @@ int Hermes::rhs(BoutReal t) {
 
 
 
+  if (immersed_boundary) {
+
+    sheath_dpe = 0.0;
+    sheath_dpi = 0.0;
+    BOUT_FOR(i, NVi.getRegion("RGN_NOBNDRY")){
+      if (evolve_nvi) {
+
+	BoutReal visheath = 0.0;
+	BoutReal sheathvel = sqrt(Te[i]+Ti[i]);
+	if (abs(Vi[i])> sheathvel && sheath_allow_supersonic){
+	  visheath =  immersed_dir[i] * abs(Vi[i]);
+	} else {
+	  visheath = immersed_dir[i] * sheathvel;
+	  ddt(NVi)[i] = (1.0 - chi_P[i]) * ddt(NVi)[i] + chi_P[i] / epsilon_P[i] * Ne[i] * (visheath - Vi[i]);
+	}
+	debug_visheath[i] = visheath;
+      }// end evolve_nvi
+
+      if (evolve_vepsi) {
+
+	// sheath_ramp_factor * (pnt.dir * sqrt(tesheath) * (sqrt(mi_me) / (sqrt(2.0*PI))) * exp(-(phisheath/tesheath)));
+	BoutReal vesheath = 0.0;
+        BoutReal sheathvel = sqrt(Te[i]) * sqrt(mi_me) / (sqrt(2.0*PI)) * exp(-(floor(phi[i], 0.0)/Te[i]));
+        if (abs(Ve[i])> sheathvel && sheath_allow_supersonic){
+          vesheath =  immersed_dir[i] * abs(Ve[i]);
+        } else {
+          vesheath = immersed_dir[i] * sheathvel;
+	}
+        // VePsi = Ve - Vi + 0.5 * mi_me * beta_e * psi
+	// Ve = VePsi + Vi
+	ddt(VePsi)[i] = (1.0 - chi_P[i]) * ddt(VePsi)[i] + chi_P[i] / epsilon_P[i] * (vesheath - (VePsi[i] + Vi[i]));
+					    
+      }// End evolve_vepsi
+
+      const BoutReal q_e = floor( (sheath_gamma_e - 1.5) * Te[i] * Ne[i] * (Ve[i]) * immersed_dir[i] , 0.0);
+      const BoutReal flux_e = q_e * (coord->J[i]) / (sqrt(coord->g_22[i]) );
+      BoutReal power_e = 0.0;
+
+      const BoutReal q_i = floor( (sheath_gamma_i - 1.0) * Ti[i] * Ne[i] * (Vi[i]) * immersed_dir[i] , 0.0);
+      const BoutReal flux_i = q_i * (coord->J[i] ) / (sqrt(coord->g_22[i]) );
+      BoutReal power_i = 0.0;
+
+      power_e = flux_e / (coord->dy[i] * coord->J[i]);
+      power_i = flux_i / (coord->dy[i] * coord->J[i]);
+      sheath_dpi[i] -= (3.0/2.0) * power_i * chi_P[i];                                                                                               
+      sheath_dpe[i] -= (3.0/2.0) * power_e * chi_P[i];
+      ddt(Pi)[i] += sheath_dpi[i];
+      ddt(Pe)[i] += sheath_dpe[i];
+      
+      if (immersed_neumann) {
+	const auto iyp = i.yp();
+	const auto iym = i.ym();
+
+	if (evolve_ne && immersed_dir[i] > 0.0) {
+	  BoutReal nevalue = Ne.ydown()[iym];
+	  ddt(Ne)[i] = (1.0 - chi_P[i]) * ddt(Ne)[i] + chi_P[i] / epsilon_P[i] * (nevalue - Ne[i]);
+	} else if (evolve_ne && immersed_dir[i] < 0.0) {
+	  BoutReal nevalue = Ne.yup()[iyp];
+	  ddt(Ne)[i] = (1.0 - chi_P[i]) * ddt(Ne)[i] + chi_P[i] / epsilon_P[i] * (nevalue - Ne[i]);
+	}
+	
+	if (evolve_te && immersed_dir[i] > 0.0) {
+          BoutReal pevalue = Pe.ydown()[iym];
+          ddt(Pe)[i] = (1.0 - chi_P[i]) * ddt(Pe)[i] + chi_P[i] / epsilon_P[i] * (pevalue - Pe[i]);
+        } else if (evolve_te && immersed_dir[i] < 0.0) {
+          BoutReal pevalue = Pe.yup()[iyp];
+          ddt(Pe)[i] = (1.0 - chi_P[i]) * ddt(Pe)[i] + chi_P[i] / epsilon_P[i] * (pevalue - Pe[i]);
+        }
+
+	if (evolve_ti && immersed_dir[i] > 0.0) {
+          BoutReal pivalue = Pi.ydown()[iym];
+          ddt(Pi)[i] = (1.0 - chi_P[i]) * ddt(Pi)[i] + chi_P[i] / epsilon_P[i] * (pivalue - Pi[i]);
+	} else if (evolve_ti && immersed_dir[i] < 0.0) {
+          BoutReal pivalue = Pi.yup()[iyp];
+          ddt(Pi)[i] = (1.0 - chi_P[i]) * ddt(Pi)[i] + chi_P[i] / epsilon_P[i] * (pivalue - Pi[i]);
+	}
+
+	if (evolve_vort && immersed_dir[i] > 0.0) {
+          BoutReal vortvalue = Vort.ydown()[iym];
+          ddt(Vort)[i] = (1.0 - chi_P[i]) * ddt(Vort)[i] + chi_P[i] / epsilon_P[i] * (vortvalue - Vort[i]);
+        } else if (evolve_vort && immersed_dir[i] < 0.0) {
+          BoutReal vortvalue = Vort.yup()[iyp];
+          ddt(Vort)[i] = (1.0 - chi_P[i]) * ddt(Vort)[i] + chi_P[i] / epsilon_P[i] * (vortvalue - Vort[i]);
+        }
+	
+      }
+    }
+
+    
+    
+
+
+    
+    if (immersed_diffusion > 0.0 && evolve_vort) {
+      ddt(Vort) += chi_P * Div_par_K_Grad_par_mod(immersed_D, Vort, false);
+    }
+
+    if (immersed_diffusion > 0.0 && evolve_ne) {
+      ddt(Ne) += chi_P * Div_par_K_Grad_par_mod(immersed_D, Ne, false);
+    }
+
+    if (immersed_diffusion > 0.0 && evolve_te) {
+      ddt(Pe) += chi_P * Div_par_K_Grad_par_mod(immersed_D, Pe, false);
+    }
+
+    if (immersed_diffusion > 0.0 && evolve_ti) {
+      ddt(Pi) += chi_P * Div_par_K_Grad_par_mod(immersed_D, Pi, false);
+    }
+
+    if (immersed_sheathdissipation) {
+      BOUT_FOR(i, NVi.getRegion("RGN_NOBNDRY")){
+	BoutReal dissflux = fastest_espeed[i] * Vort[i] * coord->J[i] / sqrt(coord->g_22[i]);
+	ddt(Vort)[i] += -dissflux * chi_P[i] / (coord->dy[i]*coord->J[i]);  
+      }
+    }
+    
+  } // End immersed_boundary
+  
 
   
   
