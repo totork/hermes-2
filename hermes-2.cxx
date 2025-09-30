@@ -4080,9 +4080,9 @@ int Hermes::rhs(BoutReal t) {
 	  visheath =  immersed_dir[i] * abs(Vi[i]);
 	} else {
 	  visheath = immersed_dir[i] * sheathvel;
+	  ddt(NVi)[i] = (1.0 - chi_P[i]) * ddt(NVi)[i] + chi_P[i] / epsilon_P[i] * Ne[i] * (visheath - Vi[i]);
 	}
 	debug_visheath[i] = visheath;
-	ddt(NVi)[i] = (1.0 - chi_P[i]) * ddt(NVi)[i] + chi_P[i] / epsilon_P[i] * Ne[i] * (visheath - Vi[i]);
       }// end evolve_nvi
 
       if (evolve_vepsi) {
