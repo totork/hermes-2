@@ -810,6 +810,7 @@ int Hermes::init(bool restarting) {
   Vort_collision = optvort["Vort_collision"].doc("Include collisional effects in vorticity").withDefault<bool>(false);
   Vort_parviscous = optvort["Vort_parviscous"].doc("Include parallel viscous effects in vorticity").withDefault<bool>(false);
   Vort_anomalous = optvort["Vort_anomalous"].doc("Include anomalous effects in vorticity").withDefault<bool>(false);
+  Vort_anomalous_par = optvort["Vort_anomalous_par"].doc("Include anomalous effects in vorticity").withDefault<bool>(Vort_anomalous);
   Vort_hyper = optvort["Vort_hyper"].doc("Use hyperdiffusion in vorticity").withDefault<bool>(false);
   Vort_numdiff = optvort["Vort_numdiff"].doc("Use parallel numerical diffusion in vorticity").withDefault<bool>(false);
   Vort_parflow = optvort["Vort_parflow"].doc("Use parallel ion flow in vorticity").withDefault<bool>(false);
@@ -1177,6 +1178,7 @@ int Hermes::init(bool restarting) {
   TE_Vort_collision = 0.0;
   TE_Vort_parviscous = 0.0;
   TE_Vort_anomalous = 0.0;
+  TE_Vort_anomalous_par = 0.0;
   TE_Vort_hyper = 0.0;
   TE_Vort_numdiff = 0.0;
   TE_Vort_parflow = 0.0;
@@ -1201,6 +1203,9 @@ int Hermes::init(bool restarting) {
     }
     if (Vort_anomalous) {
       SAVE_REPEAT(TE_Vort_anomalous);
+    }
+    if (Vort_anomalous_par) {
+      SAVE_REPEAT(TE_Vort_anomalous_par);
     }
     if (Vort_hyper) {
       SAVE_REPEAT(TE_Vort_hyper);
@@ -5056,15 +5061,17 @@ int Hermes::rhs(BoutReal t) {
 	} else {
 	  TE_Vort_anomalous = FCIDiv_a_Grad_perp(mu_i_perp, Vort);
 	}
-
-	if (!use_new_conduction){
-	  TE_Vort_anomalous +=  Div_par_K_Grad_par(mu_i_par, Vort);
-	} else {
-	  //TE_Vort_anomalous += Div_par_K_Grad_par_mod(mu_i_par,Vort,false);
-	  TE_Vort_anomalous += Div_par_K_Grad_par_mod(mu_i_par, Vort, true, use_conduction_higher);
-	}
 	
 	ddt(Vort) += TE_Vort_anomalous;
+      }
+
+      if (Vort_anomalous_par) {
+	if (!use_new_conduction){
+          TE_Vort_anomalous_par =  Div_par_K_Grad_par(mu_i_par, Vort);
+	} else {
+          TE_Vort_anomalous_par = Div_par_K_Grad_par_mod(mu_i_par, Vort, true, use_conduction_higher);
+        }
+        ddt(Vort) += TE_Vort_anomalous_par;
       }
 
       if (Vort_hyper){
