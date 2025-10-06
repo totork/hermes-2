@@ -1801,7 +1801,10 @@ int Hermes::init(bool restarting) {
 
 
   if (immersed_boundary){
-
+    SAVE_REPEAT(debug_visheath);
+    if (evolve_vepsi) {
+      SAVE_REPEAT(debug_vesheath);
+    }
     mesh->get(immersed_len, "immersed_len", 0.0);
     mesh->get(immersed_dir, "immersed_dir", 0.0);
     epsilon_P = optsheath["epsilon_P"].doc("user_defined number to adjust strength").withDefault<Field3D>({1.0});
@@ -1952,6 +1955,7 @@ int Hermes::init(bool restarting) {
   debug_VePsisheath = 0.0;
   debug_phisheath = 0.0;
   debug_denom = 0.0;
+  debug_denom_beta = 0.0;
   debug_phibndry3d = 0.0;
   NVi_dampening = 0.0;
   Ve_dampening = 0.0;
@@ -2050,6 +2054,10 @@ int Hermes::init(bool restarting) {
   
   if(kappa_limit_alpha>0.0){
     SAVE_REPEAT(debug_denom);
+  }
+
+  if(kappa_limit_beta>0.0){
+    SAVE_REPEAT(debug_denom_beta);
   }
 
   
@@ -3660,7 +3668,8 @@ int Hermes::rhs(BoutReal t) {
     Field3D q_fl = kappa_limit_beta * Ne * Ti32;
 
     Field3D denom = 1.0 + abs(q_SH / q_fl);
-    
+
+    debug_denom_beta = denom;
 
     kappa_ipar = kappa_ipar / denom;
     kappa_ipar.applyBoundary("neumann");
@@ -3670,6 +3679,7 @@ int Hermes::rhs(BoutReal t) {
     kappa_ipar = 3.9 * Ti * Ne * tau_i;
     // q =                                                                                                                                                                        
     Field3D denom = 1.0 + kappa_ipar / (kappa_limit_beta * sqrt(Ti) * Ne * limiter_q * limiter_R0);
+    debug_denom_beta = denom;
     kappa_ipar = kappa_ipar / denom;
     kappa_ipar.applyBoundary("neumann");
     mesh->communicate(kappa_ipar);
@@ -5352,6 +5362,7 @@ int Hermes::rhs(BoutReal t) {
         } else {
           vesheath = immersed_dir[i] * sheathvel;
 	}
+	debug_vesheath[i] = vesheath;
         // VePsi = Ve - Vi + 0.5 * mi_me * beta_e * psi
 	// Ve = VePsi + Vi
 	ddt(VePsi)[i] = (1.0 - chi_P[i]) * ddt(VePsi)[i] + chi_P[i] / epsilon_P[i] * (vesheath - (VePsi[i] + Vi[i]));

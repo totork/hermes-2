@@ -106,7 +106,7 @@ private:
   Field3D debug_visheath,debug_VePsisheath,debug_vesheath,debug_sheathexp,debug_tisheath, debug_jsheath;
   Field3D debug_phisheath;
   BoutReal phisheath_floor;
-  Field3D debug_denom,debug_soundspeed;
+  Field3D debug_denom,debug_soundspeed, debug_denom_beta;
   Field3D debug_phibndry3d;
   Field3D debug_Pe_conduction_A,debug_Pe_conduction_B;
   Field3D debug_decay_Ne;
