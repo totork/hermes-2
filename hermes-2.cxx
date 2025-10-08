@@ -1326,6 +1326,7 @@ int Hermes::init(bool restarting) {
   OPTION(optnumerics, limiter_grillix, false);
   OPTION(optnumerics, limiter_R0, 5.5);
   OPTION(optnumerics, limiter_q, 1.0);
+  OPTION(optnumerics, limiter_core, true);
   if (use_rhie_interpolation){
     alloc_all(rhie_cor_up);
     alloc_all(rhie_cor_down);
@@ -2256,6 +2257,11 @@ int Hermes::init(bool restarting) {
   } // End if (par_sheath_model == 1)
 
   inv_SQB = div_all(1.0,SQ_all(coord->Bxy));
+
+  if (!limiter_core) {
+    mesh->get(is_core, "is_core", 0.0);
+    SAVE_ONCE(is_core);
+  }
   
   return 0;
 }
@@ -3642,6 +3648,9 @@ int Hermes::rhs(BoutReal t) {
     kappa_epar = 3.16 * mi_me * Te * Ne * tau_e;
     // q = 
     Field3D denom = 1.0 + kappa_epar / (kappa_limit_alpha * sqrt(Te * mi_me) * Ne * limiter_q * limiter_R0);
+    if (!limiter_core){
+      denom = (1.0-is_core) * denom + is_core * 1.0;
+    }
     debug_denom = denom;
     kappa_epar = kappa_epar / denom;
     kappa_epar.applyBoundary("neumann");
@@ -3668,7 +3677,7 @@ int Hermes::rhs(BoutReal t) {
     Field3D q_fl = kappa_limit_beta * Ne * Ti32;
 
     Field3D denom = 1.0 + abs(q_SH / q_fl);
-
+    
     debug_denom_beta = denom;
 
     kappa_ipar = kappa_ipar / denom;
@@ -3679,7 +3688,11 @@ int Hermes::rhs(BoutReal t) {
     kappa_ipar = 3.9 * Ti * Ne * tau_i;
     // q =                                                                                                                                                                        
     Field3D denom = 1.0 + kappa_ipar / (kappa_limit_beta * sqrt(Ti) * Ne * limiter_q * limiter_R0);
+    if (!limiter_core){
+      denom = (1.0-is_core) * denom + is_core * 1.0;
+    }
     debug_denom_beta = denom;
+    
     kappa_ipar = kappa_ipar / denom;
     kappa_ipar.applyBoundary("neumann");
     mesh->communicate(kappa_ipar);
@@ -3705,6 +3718,7 @@ int Hermes::rhs(BoutReal t) {
     eta_epar.applyParallelBoundary(parbc);
   } else {
     eta_epar = 0.973 * mi_me * tau_e * Te;
+    
     Field3D denom = 1.0 + eta_epar / (eta_limit_alpha * sqrt(Te * mi_me) * Ne * limiter_q * limiter_R0);
     eta_epar = eta_epar / denom;
     eta_epar.applyBoundary("neumann");
