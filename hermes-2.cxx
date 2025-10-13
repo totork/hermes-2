@@ -924,9 +924,6 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(TE_Pn_parflow, TE_Pn_perpflow, TE_Pn_parcompression, TE_Pn_perpdiffusion, TE_Pn_sources, TE_Pn_hyper, TE_Pn_numdiff);
   }
 
-  bool TE_phi_1;
-  Field3D TE_phi_1_pol,	TE_phi_1_phi;
-
   TE_phi_1_pol = 0.0;
   TE_phi_1_phi = 0.0;
   if (TE_phi_1) {
