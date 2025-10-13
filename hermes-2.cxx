@@ -1332,7 +1332,7 @@ int Hermes::init(bool restarting) {
 
   OPTION(optnumerics, ExB_inflow, true);
 
-
+  OPTION(optnumerics, numdiff_ignore_boundary, false);
   
   OPTION(optsc, boussinesq, true);
   OPTION(optnumerics, check_finite, false);
@@ -3933,7 +3933,7 @@ int Hermes::rhs(BoutReal t) {
 
     if (Ne_numdiff){
       TRACE("Density numerical parallel diffusion");
-      TE_Ne_numdiff = numericaldissipation(num_D,Ne);
+      TE_Ne_numdiff = numericaldissipation(num_D,Ne,numdiff_ignore_boundary);
       ddt(Ne) += TE_Ne_numdiff;
     } // End Ne_numdiff
 
@@ -4076,7 +4076,7 @@ int Hermes::rhs(BoutReal t) {
 
     if (Vort_numdiff){
       TRACE("Vorticity numerical parallel diffusion");
-      TE_Vort_numdiff = numericaldissipation(num_Vort,Vort);
+      TE_Vort_numdiff = numericaldissipation(num_Vort,Vort,numdiff_ignore_boundary);
       ddt(Vort) += TE_Vort_numdiff;
     } // End Vort_numdiff
 
@@ -4201,7 +4201,7 @@ int Hermes::rhs(BoutReal t) {
 
     if (VePsi_numdiff){
       TRACE("VePsi numerical parallel diffusion");
-      TE_VePsi_numdiff = numericaldissipation(num_VePsi,Ve);
+      TE_VePsi_numdiff = numericaldissipation(num_VePsi,Ve,numdiff_ignore_boundary);
       ddt(VePsi) += TE_VePsi_numdiff;
     } // End VePsi_numdiff
 
@@ -4365,7 +4365,7 @@ int Hermes::rhs(BoutReal t) {
 
     if (NVi_numdiff){
       TRACE("Ion momentum numerical parallel diffusion");
-      TE_NVi_numdiff = numericaldissipation(num_nu,NVi);
+      TE_NVi_numdiff = numericaldissipation(num_nu,NVi,numdiff_ignore_boundary);
       ddt(NVi) += TE_NVi_numdiff;
     } // End NVi_numdiff
 
@@ -4574,7 +4574,7 @@ int Hermes::rhs(BoutReal t) {
 
     if (Pe_numdiff){
       TRACE("Electron pressure numerical parallel diffusion");
-      TE_Pe_numdiff = numericaldissipation(num_chi,Pe);
+      TE_Pe_numdiff = numericaldissipation(num_chi,Pe,numdiff_ignore_boundary);
       ddt(Pe) += TE_Pe_numdiff;
     } // End Pe_numdiff
 
@@ -4780,7 +4780,7 @@ int Hermes::rhs(BoutReal t) {
 
     if (Pi_numdiff){
       TRACE("Ion pressure numerical parallel diffusion");
-      TE_Pi_numdiff = numericaldissipation(num_chi,Pi);
+      TE_Pi_numdiff = numericaldissipation(num_chi,Pi,numdiff_ignore_boundary);
       ddt(Pi) += TE_Pi_numdiff;
     } // End Pi_numdiff
 
@@ -4897,7 +4897,7 @@ int Hermes::rhs(BoutReal t) {
 
 
     if (Nn_numdiff){
-      TE_Nn_numdiff = numericaldissipation(num_D,Nn);
+      TE_Nn_numdiff = numericaldissipation(num_D,Nn,numdiff_ignore_boundary);
       ddt(Nn) += TE_Nn_numdiff;
     } // End Ne_numdiff
 
@@ -4963,7 +4963,7 @@ int Hermes::rhs(BoutReal t) {
       } // End Pe_hyper
       
       if (NnVn_numdiff){
-	TE_NnVn_numdiff = numericaldissipation(num_nu,Vn);
+	TE_NnVn_numdiff = numericaldissipation(num_nu,Vn,numdiff_ignore_boundary);
 	ddt(NnVn) += TE_NnVn_numdiff;
       } // End Ne_numdiff
       
@@ -5032,7 +5032,7 @@ int Hermes::rhs(BoutReal t) {
       } // End Pe_hyper
       
       if (Pn_numdiff){
-	TE_Pn_numdiff = numericaldissipation(num_chi,Tn);
+	TE_Pn_numdiff = numericaldissipation(num_chi,Tn,numdiff_ignore_boundary);
 	ddt(Pn) += TE_Pn_numdiff;
       } // End Ne_numdiff
       
@@ -5115,7 +5115,7 @@ int Hermes::rhs(BoutReal t) {
 
       if (Vort_numdiff){
 	TRACE("Vorticity numerical parallel diffusion");
-	TE_Vort_numdiff = numericaldissipation(num_Vort,Vort);
+	TE_Vort_numdiff = numericaldissipation(num_Vort,Vort,numdiff_ignore_boundary);
 	ddt(Vort) += TE_Vort_numdiff;
       } // End Vort_numdiff
 
@@ -5534,10 +5534,22 @@ Field3D Hermes::hyperdissipation(const Field3D &a, const Field3D &b) {
   //return -a * (D4DZ4(b)/SQSQ_g_33);
 }
 
-Field3D Hermes::numericaldissipation(const Field3D &a, const Field3D &b) {
+Field3D Hermes::numericaldissipation(const Field3D &a, const Field3D &b, const bool &ignore_boundary) {
   //return a * Grad2_par2(b);
   auto thiscoords=b.getCoordinates();
-  return -a * D4DY4(b) / (SQ_all(thiscoords->g_22));
+  Field3D result{zeroFrom(a)};
+  result = -a * D4DY4(b) / (SQ_all(thiscoords->g_22));
+  if (ignore_boundary){
+    for (const auto &bndry_par :
+           mesh->getBoundariesPar(BoundaryParType::xout)) {
+        for (const auto& pnt : *bndry_par) {
+          const auto i = pnt.ind();
+	  result[i] = 0.0;
+	}
+	
+    }
+  }
+  return result;
 }
 
 Field3D Hermes::term_limiter(const Field3D &a, const BoutReal &val){

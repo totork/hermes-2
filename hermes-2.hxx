@@ -207,7 +207,7 @@ private:
   bool reverse_field;
   bool low_source;
   BoutReal low_source_Ne, low_source_Te, low_source_Ti, low_source_Nn,low_source_timescale;
-
+  bool numdiff_ignore_boundary;
   bool low_resistivity, low_resistivity_exp;
   BoutReal low_resistivity_Ne, low_resistivity_Te;
   
@@ -477,7 +477,7 @@ private:
                      const BoutMask &fwd, const BoutMask &bwd);
 
   Field3D hyperdissipation(const Field3D &a, const Field3D &b);
-  Field3D numericaldissipation(const Field3D &a, const Field3D &b);
+  Field3D numericaldissipation(const Field3D &a, const Field3D &b, const bool &ignore_boundary);
   Field3D term_limiter(const Field3D &a, const BoutReal &val);
   // Electromagnetic solver for finite electron mass case
   bool split_n0_psi;   // Split the n=0 component of Apar (psi)?
