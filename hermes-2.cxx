@@ -543,7 +543,7 @@ int Hermes::init(bool restarting) {
   auto& optpn = opt["Pn"];
   auto& optneutrals = opt["Neutrals"];
   auto& optss = opt["Steady_state"];
-
+  auto& optphi_1 = opt["phi_1"];
 
   OPTION(optsc, Tnorm, 20);  // Reference temperature [eV]                                                                                                                                                                                                                       
   OPTION(optsc, Nnorm, 1e19); // Reference density [m^-3]                                                                                                                                                                                                                        
