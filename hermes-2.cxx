@@ -924,10 +924,13 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(TE_Pn_parflow, TE_Pn_perpflow, TE_Pn_parcompression, TE_Pn_perpdiffusion, TE_Pn_sources, TE_Pn_hyper, TE_Pn_numdiff);
   }
 
+  phi_1_numdiff = optnvi["phi_1_numdiff"].doc("Use numerical diffusion for the potential").withDefault<bool>(false);
+  
   TE_phi_1_pol = 0.0;
   TE_phi_1_phi = 0.0;
+  TE_phi_1_numdiff = 0.0;
   if (TE_phi_1) {
-    SAVE_REPEAT(TE_phi_1_pol , TE_phi_1_phi);
+    SAVE_REPEAT(TE_phi_1_pol , TE_phi_1_phi, TE_phi_1_numdiff);
   }
   
   OPTION(optneutrals,Recycling_coef, 0.95);
@@ -1558,6 +1561,7 @@ int Hermes::init(bool restarting) {
   num_chi = opttransport["num_chi"].doc("numerical parallel conductivity").withDefault(0.0);
   num_Vort = opttransport["num_Vort"].doc("numerical parallel viscosity for vorticity").withDefault(num_nu);
   num_VePsi = opttransport["num_VePsi"].doc("numerical parallel viscosity for vorticity").withDefault(num_nu);
+  num_phi_1 = opttransport["num_phi_1"].doc("numerical parallel conductivity").withDefault(0.0);
   
   hyper_D /= (rho_s0 * rho_s0 * rho_s0 * rho_s0) * Omega_ci;
   hyper_nu /= (rho_s0 * rho_s0 * rho_s0 * rho_s0) * Omega_ci;
@@ -1568,7 +1572,7 @@ int Hermes::init(bool restarting) {
   num_chi /= (rho_s0 * rho_s0 * rho_s0 * rho_s0) * Omega_ci;
   num_Vort /= (rho_s0 * rho_s0 * rho_s0 * rho_s0) * Omega_ci;
   num_VePsi /= (rho_s0 * rho_s0 * rho_s0 * rho_s0) * Omega_ci;
-
+  num_phi_1 /= (rho_s0 * rho_s0 * rho_s0 * rho_s0) * Omega_ci;
   
   hyper_D.applyBoundary("neumann");
   hyper_chi.applyBoundary("neumann");
@@ -5187,6 +5191,11 @@ int Hermes::rhs(BoutReal t) {
         TE_phi_1_phi = FCIDiv_a_Grad_perp(mul_all(Ne, inv_SQB), phi);
       }
       ddt(phi_1) = lam1 * (TE_phi_1_pol + TE_phi_1_phi - Vort);
+
+      if (phi_1_numdiff) {
+	ddt(phi_1) += numericaldissipation(num_phi_1,phi_1,numdiff_ignore_boundary); 
+      }
+      
     }
     
     

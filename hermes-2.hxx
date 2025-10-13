@@ -320,7 +320,7 @@ private:
   BoutReal anomalous_r1, anomalous_r2,anomalous_f1,anomalous_f2;
   Field3D gridR;
   Field3D hyper_D, hyper_chi, hyper_nu;
-  Field3D num_D, num_nu, num_chi;
+  Field3D num_D, num_nu, num_chi, num_phi_1;
   Field3D num_Vort, num_VePsi;
   bool anomalous_ballooning;
   BoutReal ballooning_alpha, ballooning_beta, ballooning_Bref;
@@ -405,8 +405,8 @@ private:
   Field3D TE_Pn_parflow, TE_Pn_perpflow, TE_Pn_parcompression, TE_Pn_perpdiffusion, TE_Pn_sources, TE_Pn_hyper, TE_Pn_numdiff;
 
   bool TE_phi_1;
-  Field3D TE_phi_1_pol, TE_phi_1_phi;
-  
+  Field3D TE_phi_1_pol, TE_phi_1_phi, TE_phi_1_numdiff;
+  bool phi_1_numdiff;
   // Numerical dissipation
 
 
