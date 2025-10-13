@@ -924,7 +924,7 @@ int Hermes::init(bool restarting) {
     SAVE_REPEAT(TE_Pn_parflow, TE_Pn_perpflow, TE_Pn_parcompression, TE_Pn_perpdiffusion, TE_Pn_sources, TE_Pn_hyper, TE_Pn_numdiff);
   }
 
-  phi_1_numdiff = optnvi["phi_1_numdiff"].doc("Use numerical diffusion for the potential").withDefault<bool>(false);
+  phi_1_numdiff = optphi_1["phi_1_numdiff"].doc("Use numerical diffusion for the potential").withDefault<bool>(false);
   
   TE_phi_1_pol = 0.0;
   TE_phi_1_phi = 0.0;
@@ -5192,12 +5192,13 @@ int Hermes::rhs(BoutReal t) {
       }
       ddt(phi_1) = lam1 * (TE_phi_1_pol + TE_phi_1_phi - Vort);
 
-      if (phi_1_numdiff) {
-	ddt(phi_1) += numericaldissipation(num_phi_1,phi_1,numdiff_ignore_boundary); 
-      }
       
     }
-    
+
+    if (phi_1_numdiff) {
+      TE_phi_1_numdiff = numericaldissipation(num_phi_1,phi_1,numdiff_ignore_boundary);
+      ddt(phi_1) += TE_phi_1_numdiff;
+    }
     
         
   } // End if steady_state
