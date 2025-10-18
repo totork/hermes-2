@@ -56,7 +56,7 @@ private:
  */
 const Field3D Div_par_K_Grad_par_mod_lim(const Field3D& T, const Field3D& N, const BoutReal prefackappa, const BoutReal prefaclim );
 const Field3D Div_par_K_Grad_par_mod(const Field3D& k, const Field3D& f, bool bndry_flux = false, bool higher_order = false);
-
+const Field3D Div_par_K_Grad_par_B(const Field3D& k, const Field3D& f, bool bndry_flux = false, bool higher_order = false);
 const Field3D Div_par_K_Grad_par_map(const Field3D& flux);
 
 const Field3D Div_par_mod(const Field3D& f, const Field3D& v, const Field3D& fastest, const bool& fl);

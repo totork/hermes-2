@@ -3608,10 +3608,12 @@ int Hermes::rhs(BoutReal t) {
   
   //kappa_epar = mul_all(mul_all(mul_all(mul_all(3.16, mi_me), Te), Ne), tau_e);
   if (kappa_limit_alpha <= 0.0){
-    kappa_epar = 3.16 * mi_me * Te * Ne * tau_e;
-    kappa_epar.applyBoundary("neumann");
-    mesh->communicate(kappa_epar);
-    kappa_epar.applyParallelBoundary(parbc);
+    //kappa_epar = 3.16 * mi_me * Te * Ne * tau_e;
+    //kappa_epar.applyBoundary("neumann");
+    //mesh->communicate(kappa_epar);
+    //kappa_epar.applyParallelBoundary(parbc);
+
+    kappa_epar = mul_all(mul_all(mul_all(mul_all(3.16, mi_me), Te), Ne), tau_e);
   } else if (!limiter_grillix) {
     kappa_epar = 3.16 * mi_me * Te * Ne * tau_e;
     Field3D gradTe;
