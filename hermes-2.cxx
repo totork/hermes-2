@@ -1790,6 +1790,20 @@ int Hermes::init(bool restarting) {
       
 
     SAVE_ONCE(bracket_factor);
+
+    Bxy_yp1 = 0.0;
+    Bxy_ym1 = 0.0;
+
+    BOUT_FOR(i, Ne.getRegion("RGN_NOBNDRY")){
+      const auto iyp = i.yp();
+      const auto iym = i.ym();
+      const auto iypp = i.ypp();
+      const auto iymm = i.ymm();
+      Bxy_ym1[i] = coord->Bxy.ydown()[iym];
+      Bxy_yp1[i] = coord->Bxy.yup()[iyp];
+    }
+    SAVE_ONCE(Bxy_ym1, Bxy_yp1);
+    
   }else{
     mesh->communicate(coord->Bxy);
     bracket_factor = sqrt(coord->g_22) / (coord->J * coord->Bxy);
@@ -4482,6 +4496,7 @@ int Hermes::rhs(BoutReal t) {
         TE_Pe_conduction = (2. / 3) * Div_par_K_Grad_par_mod(new_kappa_epar, new_Te, true, use_conduction_higher);
       } else {      
 	TE_Pe_conduction = (2.0/3.0) * Div_par_K_Grad_par_mod(kappa_epar,Te,true,use_conduction_higher);
+	//TE_Pe_conduction = (2.0/3.0) * Div_par_K_Grad_par_B(kappa_epar,Te,true,use_conduction_higher);
       }
       
       ddt(Pe) += TE_Pe_conduction;
