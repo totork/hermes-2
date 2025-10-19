@@ -740,6 +740,7 @@ int Hermes::init(bool restarting) {
   Ne_parflow = optne["Ne_parflow"].doc("Use parallel flow in density").withDefault<bool>(false);
   Ne_collision = optne["Ne_collision"].doc("Use collisional transport in density").withDefault<bool>(false);
   Ne_anomalous = optne["Ne_anomalous"].doc("Use anomalous cross field transport in density").withDefault<bool>(false);
+  Ne_anomalous_par = optne["Ne_anomalous_par"].doc("Use anomalous parallel transport in density").withDefault<bool>(false);
   Ne_sources = optne["Ne_sources"].doc("Use sources in density").withDefault<bool>(false);
   Ne_hyper = optne["Ne_hyper"].doc("Use hyperdiffusion in density").withDefault<bool>(false);
   Ne_numdiff = optne["Ne_numdiff"].doc("Use parallel numerical diffusion in density").withDefault<bool>(false);
@@ -947,6 +948,7 @@ int Hermes::init(bool restarting) {
   TE_Ne_parflow = 0.0;
   TE_Ne_collision = 0.0;
   TE_Ne_anomalous = 0.0;
+  TE_Ne_anomalous_par = 0.0;
   TE_Ne_sources = 0.0;
   TE_Ne_hyper = 0.0;
   TE_Ne_numdiff = 0.0;
@@ -978,6 +980,9 @@ int Hermes::init(bool restarting) {
     }
     if (Ne_lowdiffuse){
       SAVE_REPEAT(TE_Ne_lowdiffuse);
+    }
+    if (Ne_anomalous_par){
+      SAVE_REPEAT(TE_Ne_anomalous_par);
     }
   }
 
@@ -1549,6 +1554,7 @@ int Hermes::init(bool restarting) {
   anomalous_nu = opttransport["anomalous_nu"].doc("Anomalous viscosity").withDefault(0.0);
   anomalous_chi = opttransport["anomalous_chi"].doc("Anomalous condoctivity").withDefault(0.0);
   anomalous_nu_par = opttransport["anomalous_nu_par"].doc("Anomalous parallel viscosity").withDefault(0.0);
+  anomalous_D_par = opttransport["anomalous_D_par"].doc("Anomalous parallel diffusion").withDefault(0.0);
   
   hyper_D = opttransport["hyper_D"].doc("hyperdiffusion").withDefault(Field3D{0.0});
   hyper_chi = opttransport["hyper_chi"].doc("hyperconductivity").withDefault(Field3D{0.0});
@@ -1602,6 +1608,16 @@ int Hermes::init(bool restarting) {
     a_d3d.applyBoundary("neumann");
     mesh->communicate(a_d3d);
     a_d3d.applyParallelBoundary("parallel_neumann_o1");
+  }
+
+  if (anomalous_D_par > 0.0) {
+    // Normalise                                                                                                                                      
+    anomalous_D_par /= rho_s0 * rho_s0 * Omega_ci; // m^2/s                                                                                               
+    output.write("\tnormalised anomalous D_perp = {:e}\n", anomalous_D_par);
+    a_d3d_par = anomalous_D_par;
+    a_d3d_par.applyBoundary("neumann");
+    mesh->communicate(a_d3d_par);
+    a_d3d_par.applyParallelBoundary("parallel_neumann_o1");
   }
 
   if(anomalous_Dn > 0.0){
@@ -3926,6 +3942,11 @@ int Hermes::rhs(BoutReal t) {
       ddt(Ne) += TE_Ne_anomalous;
     }  // End Ne_anomalous
 
+    if (Ne_anomalous_par) {
+      TE_Ne_anomalous_par = Div_par_K_Grad_par_mod(a_d3d_par, Ne);
+      ddt(Ne) += TE_Ne_anomalous_par;
+    }
+    
     
     if (Ne_sources){//Row 5 Term 2
       TRACE("Density sources");
